@@ -1,0 +1,13 @@
+# Release build output (the workflow builds these; never commit them)
+dist/
+*.zip
+release-notes.md
+
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~

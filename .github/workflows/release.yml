@@ -1,0 +1,115 @@
+name: Build and release
+
+# Every push and pull request: syntax-check the Lua and make sure the TOC version has
+# notes in Changelog.lua. Pushing a tag like v0.1.0 also builds OneCast-0.1.0.zip,
+# publishes a GitHub release with it, and uploads it to CurseForge once that's set up
+# (see "Releasing" in README.md).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Lua 5.1
+        run: sudo apt-get update -q && sudo apt-get install -y -q lua5.1
+
+      - name: Syntax-check Lua files
+        run: |
+          for file in *.lua .github/scripts/*.lua; do
+            luac5.1 -p "$file"
+          done
+
+      - name: Changelog has notes for the TOC version
+        run: |
+          version=$(sed -n 's/^## Version: *//p' OneCast.toc | tr -d '\r')
+          lua5.1 .github/scripts/release-notes.lua "$version" > /dev/null
+          echo "OneCast $version has release notes."
+
+  release:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Lua 5.1
+        run: sudo apt-get update -q && sudo apt-get install -y -q lua5.1
+
+      - name: Tag matches the TOC version
+        id: version
+        run: |
+          version=$(sed -n 's/^## Version: *//p' OneCast.toc | tr -d '\r')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the TOC's ## Version: $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from Changelog.lua
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: lua5.1 .github/scripts/release-notes.lua "$VERSION" > release-notes.md
+
+      - name: Build the zip
+        # git archive gives one OneCast/ folder with forward-slash paths, and leaves out
+        # everything marked export-ignore in .gitattributes.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist
+          git archive --format=zip --prefix=OneCast/ -o "dist/OneCast-$VERSION.zip" HEAD
+          unzip -l "dist/OneCast-$VERSION.zip"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *alpha*|*beta*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "dist/OneCast-$VERSION.zip" \
+            --title "OneCast $VERSION" --notes-file release-notes.md $prerelease
+
+      - name: Upload to CurseForge
+        # Runs once the repository has the CF_API_TOKEN secret and the
+        # CURSEFORGE_PROJECT_ID and CURSEFORGE_GAME_VERSION_ID variables.
+        if: vars.CURSEFORGE_PROJECT_ID != '' && vars.CURSEFORGE_GAME_VERSION_ID != ''
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          GAME_VERSION_ID: ${{ vars.CURSEFORGE_GAME_VERSION_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::Add the CF_API_TOKEN secret to upload to CurseForge"
+            exit 1
+          fi
+          case "$VERSION" in
+            *alpha*) type=alpha ;;
+            *beta*) type=beta ;;
+            *) type=release ;;
+          esac
+          metadata=$(jq -n \
+            --rawfile notes release-notes.md \
+            --arg name "OneCast $VERSION" \
+            --arg type "$type" \
+            --argjson versions "[$GAME_VERSION_ID]" \
+            '{changelog: $notes, changelogType: "markdown", displayName: $name,
+              gameVersions: $versions, releaseType: $type}')
+          curl --fail-with-body -sS \
+            -H "X-Api-Token: $CF_API_TOKEN" \
+            --form-string "metadata=$metadata" \
+            -F "file=@dist/OneCast-$VERSION.zip" \
+            "https://wow.curseforge.com/api/projects/$PROJECT_ID/upload-file"
