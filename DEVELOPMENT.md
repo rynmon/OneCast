@@ -22,6 +22,9 @@ Each cast and reel is still one hardware press; nothing is automated.
 | `Stats.lua` | Session, zone, lifetime and log stats, and the stats window |
 | `Prices.lua` | Handing the catch to Auctionator's search |
 | `ZoneLevels.lua` | Zone fishing levels (Classic Era data plus Forever player reports) |
+| `FishData.lua` | Every fish in the collection: category, zones (most common first) and recipes |
+| `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats |
+| `Book.lua` | The collection book window: fish grid and each fish's page with zones, map and recipes |
 | `Changelog.lua` | Release notes, shown in the What's new window and used for releases |
 | `WhatsNew.lua` | The What's new window and the login chat line |
 | `Media/*.tga` | Button glyphs: white with a dark outline, tinted gold in game |
@@ -34,6 +37,11 @@ Each cast and reel is still one hardware press; nothing is automated.
 - **Zone levels** are keyed by English zone name (`GetRealZoneText`). The Zone tab counts real getaways (`ERR_FISH_ESCAPED`), and zones without data are judged from them.
 - **Auction prices** come from Auctionator (`GetAuctionPriceByItemID`) or TSM (`dbmarket`). The scan hands every caught item to Auctionator's `MultiSearchExact`.
 - **Wanted items** are account-wide (`OneCastDB.wanted`); stats are per character (`OneCastCharDB`).
+- **Collection:** `OneCastDB.collection.items[itemID].byChar[character]` holds each character's count and zones, copied from that character's `OneCastCharDB` at login and after each catch, so earlier catches count and nothing is counted twice. Any "Meat" trade good you fish up that isn't in `FishData.lua` joins the book as a discovered fish.
+
+### Fish data
+
+`FishData.lua` was built from Wowhead's WoW Forever database: each zone's Fishing tab for where fish are caught, and each fish's "Reagent for" tab for recipes. Only facts are kept: zones in order of how common the fish is there, with Wowhead's counts and percentages left out, and zones below 2% of a fish's catches dropped as noise. Gaps are filled from Classic data or player reports and marked in `more`. Riverglades, new in Forever, has no Wowhead fishing data yet, so its fish come from a player report.
 
 ## Install for testing
 

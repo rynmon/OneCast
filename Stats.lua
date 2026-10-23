@@ -280,6 +280,9 @@ local function OnLootReady()
 	AddCatch(charDB.lifetime, zone, loot)
 	AddCatch(ZoneTotals(zone), zone, loot)
 	AddToLog(zone, loot)
+	if ns.Collection then
+		ns.Collection.OnCatch(loot, zone)
+	end
 	AlertIfRare(loot)
 	RefreshIfShown()
 end
@@ -521,6 +524,7 @@ local function SetPortrait(f, texture)
 		SetPortraitToTexture(f.portrait, texture)
 	end
 end
+ns.SetPortrait = SetPortrait -- shared with the collection book
 
 local function CreateShell()
 	local f = TryCreate("Frame", "OneCastStatsFrame", UIParent, "ButtonFrameTemplate")
@@ -1027,7 +1031,10 @@ local function CreateWindow()
 		ns.Prices.Scan()
 	end)
 	f.reset = IconButton(f, "Reset", "Reset session", ResetSession)
-	f.bottomButtons = { options, f.gear, f.scan, f.reset }
+	local book = IconButton(f, "Book", "Fishing collection", function()
+		ns.Book.Toggle()
+	end)
+	f.bottomButtons = { options, book, f.gear, f.scan, f.reset }
 
 	-- Resize grip: drag the bottom-right corner to scale the whole window.
 	local grip = CreateFrame("Button", nil, f)

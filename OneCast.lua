@@ -73,6 +73,7 @@ local SOUND_CVARS = {
 _G.BINDING_HEADER_ONECAST = "OneCast"
 _G["BINDING_NAME_" .. BINDING_COMMAND] = "Cast / reel (one button fishing)"
 _G.BINDING_NAME_ONECAST_RESTORE = "Re-equip weapons"
+_G.BINDING_NAME_ONECAST_BOOK = "Fishing collection"
 
 local db
 local fishingName
@@ -209,9 +210,10 @@ end
 -- Minimap button: a plain round button orbiting the minimap, dragged to any angle.
 local minimapButton
 
--- Forever's minimap is square; a minimap addon can say otherwise via GetMinimapShape.
+-- Round unless a minimap addon says otherwise through GetMinimapShape, the convention
+-- minimap buttons share (Forever's minimap can be round or square).
 local function MinimapIsRound()
-	return GetMinimapShape and GetMinimapShape() == "ROUND"
+	return not GetMinimapShape or GetMinimapShape() == "ROUND"
 end
 
 local function UpdateMinimapPosition()
@@ -253,6 +255,9 @@ local function SetupSettings()
 		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("OneCast v" .. ns.VERSION))
 	end
 	if CreateSettingsButtonInitializer then
+		layout:AddInitializer(CreateSettingsButtonInitializer("Fishing collection", "Open collection", function()
+			ns.Book.Show()
+		end, "Every fish, which you've caught, and where to find the rest.", true))
 		layout:AddInitializer(CreateSettingsButtonInitializer("What's new", "What's new", function()
 			ns.WhatsNew.Show()
 		end, "See what changed in each version of OneCast.", true))
@@ -362,6 +367,8 @@ local function SetupMinimapButton()
 	b:SetScript("OnClick", function(_, mouseButton)
 		if mouseButton == "RightButton" then
 			ns.Stats.Toggle()
+		elseif IsShiftKeyDown() then
+			ns.Book.Toggle()
 		else
 			OpenSettings()
 		end
@@ -387,6 +394,7 @@ local function SetupMinimapButton()
 		GameTooltip:AddLine(ns.Stats.Summary(), 1, 1, 1)
 		GameTooltip:AddLine("Left-click: options", 0.8, 0.8, 0.8)
 		GameTooltip:AddLine("Right-click: session stats", 0.8, 0.8, 0.8)
+		GameTooltip:AddLine("Shift-click: fishing collection", 0.8, 0.8, 0.8)
 		GameTooltip:AddLine("Drag: move", 0.8, 0.8, 0.8)
 		GameTooltip:Show()
 	end)
@@ -491,6 +499,9 @@ SlashCmdList.ONECAST = function(msg)
 	elseif cmd == "scan" then
 		ns.Prices.Scan()
 		return
+	elseif cmd == "book" or cmd == "collection" then
+		ns.Book.Toggle()
+		return
 	elseif cmd == "new" or cmd == "whatsnew" then
 		ns.WhatsNew.Toggle()
 		return
@@ -515,6 +526,7 @@ SlashCmdList.ONECAST = function(msg)
 	Print("v" .. ns.VERSION .. " | key: " .. BoundKeysText() .. " | spell: " .. tostring(fishingName))
 	Print("/onecast - open options")
 	Print("/onecast new - what's new in each version")
+	Print("/onecast book - fishing collection")
 	Print("/onecast stats - stats window (or /onecast session|zone|lifetime|log for a tab)")
 	Print("/onecast reset - start a new session")
 	Print("/onecast gear - put your weapons back on")

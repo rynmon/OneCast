@@ -28,6 +28,12 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 - Every fish you've caught, with icon, quality colour and count.
 - Click any item for its **WoW Forever Wowhead** page, ready to copy. Shift-click to link it in chat.
 
+### 📖 The fishing collection
+- A book of every fish in WoW Forever: fish, special catches, trophy fish and bloated fish.
+- See which you've caught, on which characters, and how many. The rest wait greyed out.
+- Click any fish for its own page: its description, your catches, every zone it's caught in with a map, and the recipes it's used in.
+- Shared across all your characters, including everything caught before you installed it.
+
 ### 🗺️ Is this zone right for you?
 - An animated skill bar shows your Fishing skill, lure bonus included.
 - See at a glance whether you meet the zone's fishing level, so no fish get away.
@@ -58,6 +64,7 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 | `/onecast reset` | Start a new session |
 | `/onecast gear` | Put your weapons back on |
 | `/onecast scan` | Price your catch with Auctionator (auction house open) |
+| `/onecast book` | Fishing collection |
 | `/onecast new` | What's new |
 | `/onecast help` | All commands and options |
 

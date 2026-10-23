@@ -5,4 +5,7 @@
 	<Binding name="ONECAST_RESTORE" category="ADDONS">
 		OneCast_RestoreWeapons()
 	</Binding>
+	<Binding name="ONECAST_BOOK" category="ADDONS">
+		OneCast_ToggleBook()
+	</Binding>
 </Bindings>

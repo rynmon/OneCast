@@ -6,6 +6,23 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "0.2.0",
+		date = "23 October 2026",
+		sections = {
+			{ "New", {
+				{ "The fishing collection.", "A book of every fish in WoW Forever: 61 catches across fish, special catches, trophy fish and bloated fish. Caught ones show in colour with your count; the rest wait greyed out." },
+				{ "A page for every fish.", "Click any fish for its own page: the game's own description, a summary, your catches on every character, and when and where you first caught it." },
+				{ "Where to catch it.", "Every zone it's caught in, the skill each needs, how many you've caught there, and a map of the zone. Open the full map in one click." },
+				{ "What it's used in.", "The cooking, alchemy and fishing recipes each fish goes into, including WoW Forever's new ones." },
+				{ "Shared across characters.", "The collection counts every character on your account, including everything you caught before this update." },
+				{ "New fish announced.", "Catch a fish none of your characters has caught before and chat tells you it's new for your collection." },
+			} },
+			{ "How to open it", {
+				{ "Anywhere you like.", "The book button in the stats window, Shift-click on the minimap button, the Open collection button in options, a key binding, or /onecast book." },
+			} },
+		},
+	},
+	{
 		version = "0.1.0",
 		date = "22 October 2026",
 		sections = {
