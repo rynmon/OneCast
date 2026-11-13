@@ -35,9 +35,12 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 
 ![A fish's page: your catches, where to catch it with a map, and its recipes](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/fish-page.png?v=0.8.0)
 
-- A book of **every fish in WoW Forever**: 91 catches across fish, special catches, trophy fish and bloated fish, shared across all your characters, including what you caught before installing.
+- A book of **every fish in WoW Forever**, and the **treasure** you can fish up: 109 catches across fish, special catches, trophy fish, bloated fish and treasure like **The 1 Ring** and the **Rumsey Rums**, shared across all your characters, including what you caught before installing.
+- **How rare is it?** Every catch has a rarity, from Common to Very rare, with its odds: The 1 Ring is about 1 in 2,000 catches. Each zone on its page shows its own odds. These are Classic's odds, as Forever's aren't published.
+- **Who caught it:** anything in the collection says on its tooltip how rare it is and which of your characters caught it, in your bags, chat links or the auction house.
 - Click any fish for **its own page**: the game's description, your catches on every character, when and where you first caught it, whether it was **by day or at night**, every zone it's caught in with a **map**, and the **recipes** it's used in.
-- **Filter by zone and search by name.** Pick your zone and show what's missing to see what's left to catch here.
+- **Wowhead links everywhere:** right-click any catch for its menu, or any reagent or recipe in the book, or use the Wowhead button on its page, for its WoW Forever page ready to copy.
+- **Filter by zone and search by name.** Pick your zone and show what's missing, or just the rare catches (marked with a gem), to see what's left to catch here.
 - Catch a fish none of your characters has and chat tells you it's **new for your collection**.
 - **Remembered pools:** hover over a fishing pool with your pole on and cast, and the spot you fished it from is marked on the book's zone maps.
 
@@ -58,7 +61,8 @@ A stats window that opens as you cast, with three tabs:
 - **All-time records:** personal bests (fish per hour, gold per hour, skill in a session, longest session), your notable catches (rares, wanted fish and new ones for your collection) and lifetime totals.
 
 - A **session summary** in chat when you take a break.
-- Click any item for its **WoW Forever Wowhead** page, ready to copy. Shift-click to link it in chat.
+- Click any catch to open it in the collection. **Right-click** for everything else: where it bites best, mark it as wanted, its **WoW Forever Wowhead** page or a chat link. The same clicks work in the collection.
+- Long lists scroll with the mouse wheel.
 
 ### 💰 What your catch is worth
 - Vendor value of everything caught, and per hour of fishing.
@@ -66,7 +70,7 @@ A stats window that opens as you cast, with three tabs:
 
 ### ✨ Rare catch alerts
 - A raid-warning flash and sound for anything green or better (you choose the quality).
-- Right-click any fish in the stats window to mark it as **wanted** and get alerted when you catch it.
+- Right-click any fish and choose **Mark as wanted** to get alerted when you catch it.
 
 ### 🏕️ Fishing at camp
 ![The Camp tab: the Fish Bowl, Fishing Rack and Fishing Hut, what each needs and does, and your camp right now](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/camp.png?v=0.8.0)

@@ -6,6 +6,27 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "0.8.2",
+		date = "13 November 2026",
+		sections = {
+			{ "New", {
+				{ "Treasure in the collection.", "A new Treasure tab for what you fish up besides fish: The 1 Ring from the city canals, the Tightly Sealed Trunk, the Rumsey Rums (Light, Dark and Black Label), Message in a Bottle, the Broken Wine Bottle, and every chest and crate, from the Battered Chest to the Reinforced Locked Chest. Tangy Clam Meat joins the special catches. Each has its own page with where it's found, and treasure you've already caught counts. Thanks to DevanHyrax for the idea!" },
+				{ "A roomier page for each catch.", "Every zone it's found in now shows, in two columns, with your catches there and the Fishing each needs. A fish found almost everywhere has a +N more that opens the rest. The map is bigger, filling the page in its own shape, and the recipes moved across to the left page." },
+				{ "Easier to use all round.", "Right-click any catch, on the stats pages or in the collection, for one menu with everything you can do with it: open it in the collection, where it bites best, mark it as wanted, its Wowhead page or a chat link. A plain click opens it in the collection. The stats page's lists scroll with the mouse wheel instead of stopping at \"and N more\". Rare catches wear a gem in the collection, with a Showing: rare filter. Every character shows under Your catches, everything caught with a camp buff shows on the Camp tab, the data report gives its text more room when there's nothing new, and the tackle box shows fish per hour as tiles, with what a lure adds." },
+				{ "Wowhead links all through the collection.", "Right-click any fish or treasure in the book, or anything you can hover on its pages and the Camp tab (reagents, recipes, campfires), for its WoW Forever page on Wowhead, ready to copy. Each page also has a Wowhead button, and Shift-click links a catch in chat." },
+				{ "How rare is it?", "Every catch now has a rarity, from Common to Very rare, with its odds per catch and where they're best: The 1 Ring is about 1 in 2,000 in the city canals, the 103 Pound Mightfish 1 in 10,000. It shows on each page, with each zone's own odds when you hover it, and how often your own character has caught it. These are Classic's odds from its loot tables: Forever's aren't published." },
+				{ "Rarity and who caught it, on item tooltips.", "Anything in the collection now says on its tooltip how rare it is and which of your characters caught it, wherever you see it: your bags, chat links, the auction house. Turn it off under General in the options." },
+			} },
+			{ "Fixed", {
+				{ "Ready for the game's newer APIs.", "Lure timers, learned camp recipes, rare-catch alerts and chat links now use the game's current functions, so they keep working for players who turn off the game's old-API fallbacks, and after Blizzard removes them." },
+				{ "A fairer \"level may be lower\" finding.", "Catches just under a zone's level no longer count as a sign the level is lower: fish rarely get away that close to it either way. The data report now flags a zone only when getaways were to be expected." },
+			} },
+			{ "Reported by user_6zyawui5bf5c0btl", {
+				{ "Stormwind City confirmed at 75.", "A third of fish got away at skill 25-49, as a level of 75 would have it, and none in 22 catches from 50." },
+			} },
+		},
+	},
+	{
 		version = "0.8.1",
 		date = "12 November 2026",
 		sections = {

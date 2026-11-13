@@ -19,7 +19,7 @@ local DEFAULT_POINT = { "CENTER", "CENTER", 0, -220 }
 local TICK = 0.5           -- seconds between redraws while shown
 local WARN_LEFT = 30       -- seconds left when the button starts to pulse
 -- Window layout, matching the stats window's.
-local WINDOW_WIDTH, ROW_HEIGHT, STAT_HEIGHT = 340, 22, 17
+local WINDOW_WIDTH, ROW_HEIGHT = 340, 22
 local HEADER_HEIGHT, SECTION_GAP = 28, 8 -- a 24 header and 4 under it; 8 between sections
 local INSET_TOP, INSET_BOTTOM = 60, 28 -- the frame around the inset (see CreateShell)
 local COUNT_WIDTH, MINUTES_WIDTH, BONUS_WIDTH = 30, 26, 32
@@ -319,6 +319,12 @@ local function RedrawWindow()
 	local rates = ns.Stats and ns.Stats.LureRates and ns.Stats.LureRates() or {}
 	window.rateWith.value:SetText(rates.with and string.format("%.0f", rates.with) or "-")
 	window.rateWithout.value:SetText(rates.without and string.format("%.0f", rates.without) or "-")
+	if rates.with and rates.without and rates.without > 0 then
+		local gain = (rates.with - rates.without) / rates.without * 100
+		window.rateGain.value:SetText(string.format("%s%+.0f%%|r", gain >= 0 and "|cff1eff00" or "|cffff4040", gain))
+	else
+		window.rateGain.value:SetText("-")
+	end
 end
 
 local function CreateWindow()
@@ -392,12 +398,17 @@ local function CreateWindow()
 	y = y - SECTION_GAP
 	UI.SectionHeader(inset, y).text:SetText("Fish per hour")
 	y = y - HEADER_HEIGHT
-	f.rateWith = UI.StatRow(inset, 1, y)
-	f.rateWith.label:SetText("With a lure")
-	y = y - STAT_HEIGHT
-	f.rateWithout = UI.StatRow(inset, 2, y)
-	f.rateWithout.label:SetText("Without")
-	y = y - STAT_HEIGHT
+	-- Headline tiles, as on the stats window: with a lure, without, and what the lure adds.
+	f.rateWith = UI.StatTile(inset, 1, y)
+	f.rateWith.caption:SetText("with a lure")
+	f.rateWith.tooltip = "Your fish per hour while a lure is on, on this character. Shows after 5 minutes of fishing with one."
+	f.rateWithout = UI.StatTile(inset, 2, y)
+	f.rateWithout.caption:SetText("without")
+	f.rateWithout.tooltip = "Your fish per hour with no lure on, on this character. Shows after 5 minutes of fishing without one."
+	f.rateGain = UI.StatTile(inset, 3, y)
+	f.rateGain.caption:SetText("a lure adds")
+	f.rateGain.tooltip = "How many more fish per hour a lure brings you, as a share of your rate without one."
+	y = y - 44
 
 	-- The bottom bar's Options button, as on the stats window.
 	local options = UI.IconButton(f, "Options", "Options", function()

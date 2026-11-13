@@ -387,9 +387,7 @@ local function AlertIfRare(loot)
 		if IsWanted(l.id) or (l.quality and l.quality >= db.alertQuality) then
 			local color = QualityColor(l.quality)
 			local text = (color and color.hex or "|cffffffff") .. (l.name or "?") .. "|r"
-			if RaidNotice_AddMessage and RaidWarningFrame then
-				RaidNotice_AddMessage(RaidWarningFrame, "Caught " .. text .. "!", ChatTypeInfo.RAID_WARNING)
-			end
+			ns.RaidWarning("Caught " .. text .. "!")
 			PlaySound(SOUNDKIT.RAID_WARNING)
 			ns.Print("rare catch: " .. (l.link or text))
 		end
@@ -1179,7 +1177,7 @@ local function RecordsView()
 	local zonesText = CountKeys(life.zones) .. " zones fished"
 	if ns.Collection then
 		local caught, total = ns.Collection.Progress()
-		stats[#stats + 1] = { "Collection", string.format("%d of %d fish", caught, total) .. SEP .. zonesText }
+		stats[#stats + 1] = { "Collection", string.format("%d of %d caught", caught, total) .. SEP .. zonesText }
 	else
 		stats[#stats + 1] = { "Zones", zonesText }
 	end
@@ -1793,11 +1791,11 @@ local function RowBackground(row, index)
 end
 
 -- A headline number with a small caption under it, and a tooltip saying what it is.
-local function StatTile(parent, index)
+local function StatTile(parent, index, top)
 	local width = math.floor((INSET_WIDTH - 2 * EDGE - 2 * TILE_GAP) / 3)
 	local t = CreateFrame("Frame", nil, parent)
 	t:SetSize(width, TILE_HEIGHT)
-	t:SetPoint("TOPLEFT", EDGE + (index - 1) * (width + TILE_GAP), TILES_TOP)
+	t:SetPoint("TOPLEFT", EDGE + (index - 1) * (width + TILE_GAP), top or TILES_TOP)
 	t:EnableMouse(true)
 	local bg = t:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
@@ -1982,7 +1980,7 @@ local function ShowOnMap(mapID, x, y, label)
 end
 
 -- Addons can't open a browser, so show the Wowhead address selected in a popup to copy.
-local WOWHEAD_ITEM_URL = "https://www.wowhead.com/forever/item=%d"
+local WOWHEAD_URL = "https://www.wowhead.com/forever/%s=%d" -- kind: "item" or "spell"
 
 StaticPopupDialogs["ONECAST_WOWHEAD"] = {
 	text = "%s on Wowhead\nPress Ctrl+C to copy, then paste it into your browser.",
@@ -2013,10 +2011,131 @@ StaticPopupDialogs["ONECAST_WOWHEAD"] = {
 	end,
 }
 
-local function ShowWowheadLink(itemID, name)
-	StaticPopup_Show("ONECAST_WOWHEAD", name or ("item " .. itemID), nil,
-		string.format(WOWHEAD_ITEM_URL, itemID))
+-- Wowhead's WoW Forever page for an item or spell, in a popup to copy.
+local function ShowWowhead(kind, id, name)
+	if not name then
+		name = kind == "spell" and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or C_Item.GetItemNameByID(id)
+	end
+	StaticPopup_Show("ONECAST_WOWHEAD", name or (kind .. " " .. id), nil, string.format(WOWHEAD_URL, kind, id))
 end
+
+local function ShowWowheadLink(itemID, name)
+	ShowWowhead("item", itemID, name)
+end
+
+-- Right-click on any catch, here or in the collection: everything you can do with it, in one
+-- small menu like the minimap button's. A click anywhere else, or Escape, closes it.
+local itemMenu
+local MENU_WIDTH, MENU_ROW, MENU_PAD = 190, 20, 10
+
+local function InCollection(itemID)
+	return (ns.FISH_BY_ID and ns.FISH_BY_ID[itemID]) and true or false
+end
+
+local function ItemMenuFrame()
+	if itemMenu then
+		return itemMenu
+	end
+	local f = TryCreate("Frame", "OneCastItemMenu", UIParent, "TooltipBackdropTemplate")
+		or CreateFrame("Frame", "OneCastItemMenu", UIParent, "BackdropTemplate")
+	if not f.NineSlice and f.SetBackdrop then
+		f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+		f:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
+	end
+	f:SetFrameStrata("FULLSCREEN_DIALOG")
+	f:SetClampedToScreen(true)
+	f:EnableMouse(true)
+	f:Hide()
+	tinsert(UISpecialFrames, "OneCastItemMenu")
+	f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	f.title:SetPoint("TOPLEFT", MENU_PAD + 2, -MENU_PAD)
+	f.title:SetPoint("RIGHT", -MENU_PAD, 0)
+	f.title:SetJustifyH("LEFT")
+	f.title:SetWordWrap(false)
+	f.buttons = {}
+	f:SetScript("OnShow", function(self)
+		self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+	end)
+	f:SetScript("OnHide", function(self)
+		self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+	end)
+	f:SetScript("OnEvent", function(self)
+		if not self:IsMouseOver() then
+			self:Hide()
+		end
+	end)
+	itemMenu = f
+	return f
+end
+
+-- Show the menu at the mouse with these entries: { label, function }.
+local function ShowMenu(title, entries)
+	local f = ItemMenuFrame()
+	f.title:SetText(title)
+	local y = -MENU_PAD - 18
+	for i, entry in ipairs(entries) do
+		local b = f.buttons[i]
+		if not b then
+			b = CreateFrame("Button", nil, f)
+			b:SetHeight(MENU_ROW)
+			b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+			b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+			b.text:SetPoint("LEFT", 4, 0)
+			f.buttons[i] = b
+		end
+		b:ClearAllPoints()
+		b:SetPoint("TOPLEFT", MENU_PAD - 2, y)
+		b:SetPoint("TOPRIGHT", -MENU_PAD + 2, y)
+		b.text:SetText(entry[1])
+		b.label = entry[1]
+		b:SetScript("OnClick", function()
+			f:Hide()
+			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			entry[2]()
+		end)
+		b:Show()
+		y = y - MENU_ROW
+	end
+	for i = #entries + 1, #f.buttons do
+		f.buttons[i]:Hide()
+	end
+	f:SetSize(MENU_WIDTH, -y + MENU_PAD)
+	local scale = UIParent:GetEffectiveScale()
+	local x, cy = GetCursorPosition()
+	f:ClearAllPoints()
+	f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (x or 0) / scale + 4, (cy or 0) / scale - 4)
+	f:Show()
+	return f
+end
+
+-- The menu for one item: open it in the collection, where it bites best, wanted, Wowhead, chat.
+local function ShowItemMenu(itemID, name)
+	name = name or C_Item.GetItemNameByID(itemID) or ("item " .. itemID)
+	local entries = {}
+	if InCollection(itemID) then
+		entries[#entries + 1] = { "Open in the collection", function()
+			ns.Book.Show()
+			ns.Book.ShowFish(itemID)
+		end }
+	end
+	if charDB and charDB.lifetime.items[itemID] then
+		entries[#entries + 1] = { "Where it bites best", function()
+			Stats.Farm(itemID)
+		end }
+	end
+	entries[#entries + 1] = { IsWanted(itemID) and "No longer wanted" or "Mark as wanted (alert on catch)", function()
+		ToggleWanted(itemID, name)
+	end }
+	entries[#entries + 1] = { "Wowhead link", function()
+		ShowWowhead("item", itemID, name)
+	end }
+	entries[#entries + 1] = { "Link in chat", function()
+		ns.InsertChatLink(ns.ItemLink(itemID))
+	end }
+	return ShowMenu(name, entries)
+end
+Stats.ShowItemMenu = ShowItemMenu
 
 local function ItemRow(parent, index, y)
 	local row = CreateFrame("Button", nil, parent)
@@ -2062,23 +2181,24 @@ local function ItemRow(parent, index, y)
 		if not self.itemID then
 			return
 		end
-		if self.missing then
-			-- Not caught yet: its page in the collection, with where it's found.
-			ns.Book.Show()
-			ns.Book.ShowFish(self.itemID)
+		-- The same clicks as in the collection: right-click for everything you can do with it,
+		-- Shift-click to link it, and a plain click opens its page.
+		if mouseButton == "RightButton" then
+			ShowItemMenu(self.itemID, self.itemName)
 			return
 		end
-		if mouseButton == "RightButton" then
-			ToggleWanted(self.itemID, self.itemName)
+		local link = select(2, C_Item.GetItemInfo(self.itemID))
+		if link and HandleModifiedItemClick and IsModifiedClick("CHATLINK") and HandleModifiedItemClick(link) then
 			return
 		end
 		if self.pick or IsControlKeyDown() then
 			Stats.Farm(self.itemID)
 			return
 		end
-		-- Shift-click links the item in chat, as elsewhere in the UI; plain click: Wowhead.
-		local link = select(2, C_Item.GetItemInfo(self.itemID))
-		if not (link and HandleModifiedItemClick and HandleModifiedItemClick(link)) then
+		if InCollection(self.itemID) then
+			ns.Book.Show()
+			ns.Book.ShowFish(self.itemID)
+		else
 			ShowWowheadLink(self.itemID, self.itemName)
 		end
 	end)
@@ -2123,6 +2243,7 @@ local function ItemRow(parent, index, y)
 			GameTooltip:AddLine(" ")
 			GameTooltip:AddLine("Not in your collection yet, and found in this zone.", 1, 1, 1, true)
 			GameTooltip:AddLine("Click: see it in the collection", 0.6, 0.8, 1)
+			GameTooltip:AddLine("Right-click: more", 0.6, 0.8, 1)
 			GameTooltip:Show()
 		elseif self.itemID then
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -2133,13 +2254,13 @@ local function ItemRow(parent, index, y)
 			GameTooltip:AddLine(" ")
 			if self.pick then
 				GameTooltip:AddLine("Click: where it bites best", 0.6, 0.8, 1)
+			elseif InCollection(self.itemID) then
+				GameTooltip:AddLine("Click: open it in the collection", 0.6, 0.8, 1)
 			else
 				GameTooltip:AddLine("Click: Wowhead link", 0.6, 0.8, 1)
-				GameTooltip:AddLine("Ctrl-click: where it bites best", 0.6, 0.8, 1)
 			end
+			GameTooltip:AddLine("Right-click: more (wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
 			GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.8, 1)
-			GameTooltip:AddLine(IsWanted(self.itemID) and "Right-click: unmark wanted"
-				or "Right-click: mark as wanted (alert on catch)", 0.6, 0.8, 1)
 			GameTooltip:Show()
 		end
 	end)
@@ -2306,6 +2427,10 @@ ns.UI = {
 	RowBackground = RowBackground,
 	StatRow = StatRow,
 	IconButton = IconButton,
+	ShowWowhead = ShowWowhead,
+	ShowMenu = ShowMenu,
+	StatTile = StatTile, -- a headline number: (parent, 1 to 3, top), with .value, .caption and .tooltip
+	ShowItemMenu = ShowItemMenu,
 }
 
 -- Top tabs like the Options window's Game / AddOns, else classic tabs under the frame.
@@ -2444,6 +2569,24 @@ local function CreateWindow()
 	end
 	f.more = inset:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	f.more:SetWordWrap(true)
+	f.moreButton = CreateFrame("Button", nil, inset)
+	f.moreButton:SetScript("OnClick", function()
+		local capacity = f.listCapacity or 1
+		f.listOffset = (f.listOffset or 0) >= (f.listMax or 0) and 0 or (f.listOffset or 0) + capacity
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		Stats.Refresh()
+	end)
+	f.moreButton:SetScript("OnEnter", function()
+		f.more:SetTextColor(1, 0.82, 0)
+	end)
+	f.moreButton:SetScript("OnLeave", function()
+		f.more:SetTextColor(0.5, 0.5, 0.5)
+	end)
+	f.moreButton:Hide()
+	f.scrollTrack = inset:CreateTexture(nil, "ARTWORK")
+	f.scrollTrack:SetColorTexture(1, 1, 1, 0.08)
+	f.scrollThumb = inset:CreateTexture(nil, "OVERLAY")
+	f.scrollThumb:SetColorTexture(1, 0.82, 0, 0.6)
 
 	-- Bottom bar: square icon buttons, like the Character frame's model controls.
 	local options = IconButton(f, "Options", "Options", function()
@@ -2482,8 +2625,17 @@ local function CreateWindow()
 
 	f:EnableMouseWheel(true)
 	f:SetScript("OnMouseWheel", function(_, delta)
-		if IsControlKeyDown() and not (ns.db and ns.db.lockWindow) then
-			Stats.SetScale(f:GetScale() * 100 + delta * SCALE_STEP)
+		if IsControlKeyDown() then
+			if not (ns.db and ns.db.lockWindow) then
+				Stats.SetScale(f:GetScale() * 100 + delta * SCALE_STEP)
+			end
+			return
+		end
+		-- The wheel scrolls the list, three rows at a time.
+		local before = f.listOffset or 0
+		f.listOffset = math.max(0, math.min(before - delta * 3, f.listMax or 0))
+		if f.listOffset ~= before then
+			Stats.Refresh()
 		end
 	end)
 
@@ -2604,10 +2756,19 @@ function Stats.Refresh()
 	frame.listHeader:SetPoint("TOPRIGHT", -EDGE, listTop)
 	local capacity = math.min(MAX_ROWS, math.floor((INSET_HEIGHT + rowsTop - 18) / ITEM_HEIGHT))
 	frame.listHeader.text:SetText(listTitle)
+	-- Scrolled with the mouse wheel; back to the top when the list itself changes.
+	local listKey = view .. ":" .. tostring(charDB.farmTarget) .. ":" .. tostring(charDB.farmList)
+	if frame.listKey ~= listKey then
+		frame.listKey, frame.listOffset = listKey, 0
+	end
+	local maxOffset = math.max(0, #rows - capacity)
+	frame.listOffset = math.max(0, math.min(frame.listOffset or 0, maxOffset))
+	frame.listCapacity, frame.listMax = capacity, maxOffset
+	local offset = frame.listOffset
 	frame.listToggle:SetShown(view == "farm")
 	frame.listToggle:SetText(charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
 	for i, row in ipairs(frame.rows) do
-		local r = i <= capacity and rows[i]
+		local r = i <= capacity and rows[offset + i]
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", EDGE, rowsTop - (i - 1) * ITEM_HEIGHT)
 		row:SetPoint("TOPRIGHT", -EDGE, rowsTop - (i - 1) * ITEM_HEIGHT)
@@ -2648,9 +2809,30 @@ function Stats.Refresh()
 		frame.more:SetPoint("TOPLEFT", EDGE + PAD, rowsTop - capacity * ITEM_HEIGHT - HEADER_GAP)
 		frame.more:SetPoint("RIGHT", frame.inset, "RIGHT", -(EDGE + PAD), 0)
 		frame.more:SetJustifyH("LEFT")
-		frame.more:SetText(string.format("and %d more...", #rows - capacity))
+		local below = #rows - capacity - offset
+		frame.more:SetText(below > 0 and string.format("%d more below: scroll, or click here", below)
+			or "Back to the top: click here")
 	else
 		frame.more:SetText("")
+	end
+	-- Clicking the line under the list pages down, or back to the top at the end.
+	frame.moreButton:SetShown(#rows > capacity)
+	frame.moreButton:ClearAllPoints()
+	frame.moreButton:SetPoint("TOPLEFT", frame.more, "TOPLEFT", -2, 2)
+	frame.moreButton:SetPoint("BOTTOMRIGHT", frame.more, "BOTTOMRIGHT", 2, -2)
+	-- A slim scroll bar beside the rows, showing how far down the list is.
+	local track, thumb = frame.scrollTrack, frame.scrollThumb
+	track:SetShown(#rows > capacity)
+	thumb:SetShown(#rows > capacity)
+	if #rows > capacity then
+		local height = capacity * ITEM_HEIGHT
+		track:ClearAllPoints()
+		track:SetPoint("TOPRIGHT", frame.inset, "TOPRIGHT", -3, rowsTop)
+		track:SetSize(3, height)
+		local thumbH = math.max(12, height * capacity / #rows)
+		thumb:ClearAllPoints()
+		thumb:SetPoint("TOP", track, "TOP", 0, -(height - thumbH) * offset / math.max(1, maxOffset))
+		thumb:SetSize(3, thumbH)
 	end
 
 	LayoutBottomButtons(view)

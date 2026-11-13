@@ -30,8 +30,9 @@ Each cast and reel is still one hardware press; nothing is automated.
 | `Prices.lua` | Handing the catch to Auctionator's search |
 | `ZoneLevels.lua` | Zone fishing levels (Classic Era data) and notes on Forever zones |
 | `ZoneNames.lua` | Area IDs for every zone name, translating the zone tables on non-English clients |
-| `FishData.lua` | Every fish in the collection: category, zones (most common first) and recipes |
-| `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats |
+| `FishData.lua` | Every fish and treasure in the collection: category, zones (most common first) and recipes |
+| `Odds.lua` | Each catch's chance per cast by zone and pool, from Classic's loot tables (generated), and its rarity tier |
+| `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats, and the "caught by" line on item tooltips |
 | `Extravaganza.lua` | The Stranglethorn Fishing Extravaganza: schedule (Classic's), Tastyfish counter and reminders |
 | `MapOverlays.lua` | Every explored-area overlay of each zone map, so the book's maps show fully revealed (generated from game data) |
 | `Book.lua` | The collection book window: fish grid, each fish's page with zones, map and recipes, and the Zones view of every zone's level |

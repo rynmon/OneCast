@@ -15,8 +15,8 @@ local WIDTH, HEIGHT = 840, 580
 local COLS, ROWS = 4, 3
 local PER_PAGE = COLS * ROWS
 local CELL_W, CELL_H = 86, 108
-local MAX_ZONES, MAX_RECIPES, MAX_CHARS = 6, 4, 4
-local MAP_W, MAP_H = 300, 128
+local MAX_RECIPES, MAX_CHARS = 4, 4
+local MAP_W, MAP_H = 300, 200 -- the fish page's map before it's sized to the page
 -- Zones view, in pixels: the height a page has for rows, and what each kind of line takes.
 local ZONES_TOP, ZONES_BOTTOM, ZONES_INTRO = 50, 36, 56
 local ZONES_HEIGHT = HEIGHT - 102 - ZONES_TOP - ZONES_BOTTOM
@@ -28,24 +28,33 @@ local CATEGORIES = {
 	{ key = "special", label = "Special" },
 	{ key = "trophy", label = "Trophies" },
 	{ key = "bloated", label = "Bloated" },
+	{ key = "treasure", label = "Treasure" },
 	{ key = "zones", label = "Zones" },
 	{ key = "camp", label = "Camp" },
 }
-local CAT_ORDER = { fish = 1, special = 2, trophy = 3, bloated = 4 }
+local CAT_ORDER = { fish = 1, special = 2, trophy = 3, bloated = 4, treasure = 5 }
 -- FishData's `when`: fish that bite only at some hours in Classic.
 local WHEN_TEXT = {
 	night = "In Classic it bites only at night, 18:00-06:00 realm time.",
 	day = "In Classic it bites only by day, 06:00-18:00 realm time.",
 }
-local CAT_NAME = { fish = "Fish", special = "Special catch", trophy = "Trophy fish", bloated = "Bloated fish" }
+local CAT_NAME = { fish = "Fish", special = "Special catch", trophy = "Trophy fish", bloated = "Bloated fish",
+	treasure = "Treasure" }
 local CAT_LEAD = {
 	fish = "A fish",
 	special = "An unusual catch",
 	trophy = "A trophy fish, kept for its size rather than eaten",
 	bloated = "A bloated fish that can hold a pearl or other treasure when opened",
+	treasure = "Treasure fished up from the water",
 }
-local SHOW = { "all", "caught", "missing" }
-local SHOW_LABEL = { all = "Showing: all", caught = "Showing: caught", missing = "Showing: missing" }
+local SHOW = { "all", "caught", "missing", "rare" }
+local SHOW_LABEL = { all = "Showing: all", caught = "Showing: caught", missing = "Showing: missing", rare = "Showing: rare" }
+
+-- Rare and Very rare, by Classic's odds.
+local function IsRare(fish)
+	local rarity = ns.Rarity and ns.Rarity(fish.id)
+	return rarity and (rarity.key == "rare" or rarity.key == "veryrare") or false
+end
 
 -- Parchment ink, as in the What's new window.
 local INK = { 0.18, 0.10, 0.02 }
@@ -168,7 +177,9 @@ local function Filtered()
 			and (not state.search or FishName(fish):lower():find(state.search, 1, true)) then
 			local info = ns.Collection.Get(fish.id)
 			local caught = info.total > 0
-			if (state.show == "all" or (state.show == "caught") == caught)
+			local shown = state.show == "all" or (state.show == "rare" and IsRare(fish))
+				or (state.show ~= "rare" and (state.show == "caught") == caught)
+			if shown
 				and (not state.where or FoundIn(fish, info, state.where)) then
 				out[#out + 1] = { fish = fish, info = info, skill = EasiestSkill(fish) }
 			end
@@ -222,6 +233,11 @@ local function Summary(fish)
 		text = text .. string.format(" found in %d zones, most often in %s", zones, first)
 	end
 	text = text .. "."
+	local rarity = ns.Rarity and ns.Rarity(fish.id)
+	if rarity then
+		text = text .. string.format(" %s: about %s catches at best, %s (Classic's odds).", rarity.label,
+			ns.OneIn(rarity.pct), ns.RarityWhere(rarity))
+	end
 	local skill = EasiestSkill(fish)
 	if skill then
 		text = text .. string.format(" Its easiest waters need %d Fishing so none get away.", skill)
@@ -425,9 +441,10 @@ local function DrawMap(box, zone)
 	end
 	box.empty:Hide()
 	local cols = math.ceil(layer.layerWidth / layer.tileWidth)
-	local scale = math.min(MAP_W / layer.layerWidth, MAP_H / layer.layerHeight)
-	local offX = (MAP_W - layer.layerWidth * scale) / 2
-	local offY = (MAP_H - layer.layerHeight * scale) / 2
+	local boxW, boxH = box.w or MAP_W, box.h or MAP_H
+	local scale = math.min(boxW / layer.layerWidth, boxH / layer.layerHeight)
+	local offX = (boxW - layer.layerWidth * scale) / 2
+	local offY = (boxH - layer.layerHeight * scale) / 2
 	for i, file in ipairs(files) do
 		local tile = box.tiles[i]
 		if not tile then
@@ -545,7 +562,8 @@ end
 
 -- An invisible button over part of a page: hovering shows a tooltip `fill` writes, and a
 -- Shift-click links what `link` returns in chat. Text underneath shows through.
-local function Hover(pool, x, y, width, height, fill, link)
+-- `wowhead` is { "item" or "spell", id }: right-click shows its Wowhead page to copy.
+local function Hover(pool, x, y, width, height, fill, link, wowhead)
 	local b = PoolButton(pool)
 	b:SetPoint("TOPLEFT", pool.page, "TOPLEFT", x - 3, -y + 2)
 	b:SetSize(width + 6, height)
@@ -558,13 +576,20 @@ local function Hover(pool, x, y, width, height, fill, link)
 		if link then
 			GameTooltip:AddLine("Shift-click to link it in chat", 0.6, 0.8, 1)
 		end
+		if wowhead then
+			GameTooltip:AddLine("Right-click: Wowhead link", 0.6, 0.8, 1)
+		end
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", GameTooltip_Hide)
-	b:SetScript("OnClick", function()
+	b:SetScript("OnClick", function(_, mouseButton)
+		if mouseButton == "RightButton" and wowhead then
+			ns.UI.ShowWowhead(wowhead[1], wowhead[2])
+			return
+		end
 		local text = link and IsModifiedClick("CHATLINK") and link()
 		if text then
-			ChatEdit_InsertLink(text)
+			ns.InsertChatLink(text)
 		end
 	end)
 	return b
@@ -596,7 +621,7 @@ local function Flow(pool, pieces, x, y, width, size, color, sep)
 		end
 		fs:SetPoint("TOPLEFT", pool.page, "TOPLEFT", x + cx, -y)
 		if piece.fill then
-			Hover(pool, x + cx, y, w, lineHeight, piece.fill, piece.link)
+			Hover(pool, x + cx, y, w, lineHeight, piece.fill, piece.link, piece.wowhead)
 		end
 		cx = cx + w
 	end
@@ -636,6 +661,10 @@ local function CreateCell(parent)
 	b.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
 	b.check:SetSize(18, 18)
 	b.check:SetPoint("CENTER", b.icon, "TOPRIGHT", -2, -2)
+	-- The rarity gem sits on the parchment beside the icon, never over it.
+	b.gem = b:CreateTexture(nil, "OVERLAY", nil, 3)
+	b.gem:SetPoint("RIGHT", b.icon, "LEFT", -3, 0)
+	b.gem:Hide()
 	b.count = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
 	b.count:SetPoint("BOTTOMRIGHT", b.icon, "BOTTOMRIGHT", -2, 2)
 	b.name = b:CreateFontString(nil, "OVERLAY")
@@ -652,7 +681,17 @@ local function CreateCell(parent)
 	hl:SetAllPoints(b.icon)
 	hl:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
 	hl:SetBlendMode("ADD")
-	b:SetScript("OnClick", function(self)
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	b:SetScript("OnClick", function(self, mouseButton)
+		if mouseButton == "RightButton" then
+			ns.UI.ShowItemMenu(self.fishID)
+			return
+		end
+		local link = IsModifiedClick("CHATLINK") and ns.ItemLink(self.fishID)
+		if link then
+			ns.InsertChatLink(link)
+			return
+		end
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		Book.ShowFish(self.fishID)
 	end)
@@ -667,12 +706,25 @@ local function CreateCell(parent)
 		else
 			GameTooltip:AddLine("Not caught yet", 0.7, 0.7, 0.7)
 		end
+		local rarity = ns.Rarity and ns.Rarity(self.fishID)
+		if rarity then
+			GameTooltip:AddLine(string.format("%s%s|r  ·  %s catches at best", ns.RARITY_COLOR[rarity.key], rarity.label,
+				ns.OneIn(rarity.pct)), 0.8, 0.8, 0.8)
+		end
 		GameTooltip:AddLine("Click to open its page", 0.6, 0.8, 1)
+		GameTooltip:AddLine("Right-click: more (wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
+		GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.8, 1)
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", GameTooltip_Hide)
 	return b
 end
+
+-- Cut gems from the game's own art (its followers' rarity gems), at their own shape.
+local GEMS = {
+	rare = { atlas = "adventurers-followers-rare-gem", w = 14, h = 15, icon = "Interface\\Icons\\INV_Misc_Gem_Sapphire_02" },
+	veryrare = { atlas = "adventurers-followers-epic-gem", w = 14, h = 20, icon = "Interface\\Icons\\INV_Misc_Gem_Amethyst_02" },
+}
 
 local function FillCell(cell, entry)
 	local fish, info = entry.fish, entry.info
@@ -681,13 +733,32 @@ local function FillCell(cell, entry)
 	cell.icon:SetTexture(FishIcon(fish))
 	cell.icon:SetDesaturated(not caught)
 	cell.icon:SetVertexColor(caught and 1 or 0.55, caught and 1 or 0.55, caught and 1 or 0.55)
+	-- Its colours show either way, so you can see what's rare before you've caught it: the icon
+	-- alone is greyed until then. An uncaught border is a little dimmer.
 	local color = QualityColor(FishQuality(fish))
-	if caught and color then
-		cell.border:SetVertexColor(color.r, color.g, color.b)
+	if color then
+		local k = caught and 1 or 0.75
+		cell.border:SetVertexColor(color.r * k, color.g * k, color.b * k)
 	else
 		cell.border:SetVertexColor(0.4, 0.35, 0.3)
 	end
 	cell.check:SetShown(caught)
+	-- The game's own rarity gems (the mission table's), blue for Rare and purple for Very rare:
+	-- coloured already, so they show bright on any icon, caught or not.
+	local rarity = ns.Rarity and ns.Rarity(fish.id)
+	local gem = rarity and GEMS[rarity.key]
+	cell.gem:SetShown(gem and true or false)
+	if gem then
+		if HasAtlas(gem.atlas) then
+			cell.gem:SetTexCoord(0, 1, 0, 1)
+			cell.gem:SetAtlas(gem.atlas)
+		else
+			-- Without that art: the game's gem item icon, its square edge trimmed.
+			cell.gem:SetTexture(gem.icon)
+			cell.gem:SetTexCoord(0.15, 0.85, 0.15, 0.85)
+		end
+		cell.gem:SetSize(gem.w, gem.h)
+	end
 	cell.count:SetText(caught and info.total > 1 and info.total or "")
 	cell.name:SetText(FishName(fish))
 	local ink = caught and INK or INK_SOFT
@@ -726,6 +797,8 @@ local function RenderGrid()
 	frame.empty:SetShown(#list == 0)
 	if state.show == "missing" and not state.search then
 		frame.empty:SetText("Nothing missing here: all caught!")
+	elseif state.show == "rare" and not state.search then
+		frame.empty:SetText("No rare catches here.")
 	elseif state.search or state.where or state.show ~= "all" then
 		frame.empty:SetText("No fish match.")
 	else
@@ -759,6 +832,43 @@ local function ZoneRows(fish, info)
 	return rows
 end
 
+-- "Used in": the recipes it goes into, each with its own tooltip. Returns the y below.
+local function RenderRecipes(pool, fish, x, y, width)
+	local page = pool.page
+	y = y + Heading(pool, "Used in", x, y, 32)
+	local recipes = fish.recipes or {}
+	for i, recipe in ipairs(recipes) do
+		if i > MAX_RECIPES then
+			local more = PoolString(pool, QuestFont, 13, INK_SOFT)
+			more:SetText(string.format("and %d more", #recipes - MAX_RECIPES))
+			more:SetPoint("TOPLEFT", page, "TOPLEFT", x + 18, -y)
+			return y + 17
+		end
+		local dot = PoolTexture(pool)
+		dot:SetTexture("Interface\\QuestFrame\\UI-Quest-BulletPoint")
+		dot:SetSize(12, 12)
+		dot:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y - 1)
+		local line = PoolString(pool, QuestFont, 14, INK)
+		local skill = recipe[4] and (" " .. recipe[4]) or ""
+		line:SetText(string.format("%s  %s%s%s|r", recipe[2], SOFT, recipe[3], skill))
+		line:SetPoint("TOPLEFT", page, "TOPLEFT", x + 18, -y)
+		Hover(pool, x + 18, y, line:GetStringWidth() or width, 17, function(tip)
+			tip:SetSpellByID(recipe[1])
+			if recipe[4] then
+				tip:AddLine(string.format("Needs %d %s.", recipe[4], recipe[3]), 1, 0.82, 0)
+			end
+		end, SpellLink(recipe[1]), { "spell", recipe[1] })
+		y = y + 17
+	end
+	if #recipes == 0 then
+		local none = PoolString(pool, QuestFont, 14, INK_SOFT)
+		none:SetText("Not used in any recipe.")
+		none:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y)
+		y = y + 17
+	end
+	return y
+end
+
 local function RenderLeft(fish, info)
 	local pool = frame.leftPool
 	local page = pool.page
@@ -785,11 +895,13 @@ local function RenderLeft(fish, info)
 	name:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -2)
 	local kind = PoolString(pool, QuestFont, 13, INK_SOFT)
 	local skill = EasiestSkill(fish)
-	kind:SetText((CAT_NAME[fish.cat] or "Catch") .. (skill and ("  ·  " .. skill .. " Fishing") or ""))
+	local rarity = ns.Rarity and ns.Rarity(fish.id)
+	kind:SetText((CAT_NAME[fish.cat] or "Catch") .. (skill and ("  ·  " .. skill .. " Fishing") or "")
+		.. (rarity and ("  ·  " .. ns.RARITY_INK[rarity.key] .. rarity.label .. "|r") or ""))
 	kind:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
 	Hover(pool, x, 30, width, 56, function(tip)
 		tip:SetItemByID(fish.id)
-	end, ItemLink(fish.id))
+	end, ItemLink(fish.id), { "item", fish.id })
 
 	local y = 30 + 56 + 18
 	local function Paragraph(text, color, gap)
@@ -810,12 +922,28 @@ local function RenderLeft(fish, info)
 	if info.total > 0 then
 		Paragraph(string.format("Caught %s%d|r time%s on %d character%s.", LEAD, info.total,
 			info.total == 1 and "" or "s", #info.chars, #info.chars == 1 and "" or "s"), INK, 6)
-		for i, who in ipairs(info.chars) do
-			if i > MAX_CHARS then
-				Paragraph(string.format("%sand %d more|r", SOFT, #info.chars - MAX_CHARS), INK, 4)
-				break
+		if #info.chars <= MAX_CHARS then
+			for _, who in ipairs(info.chars) do
+				Paragraph(string.format("%s  %s%d|r", who.name, LEAD, who.count), INK, 4)
 			end
-			Paragraph(string.format("%s  %s%d|r", who.name, LEAD, who.count), INK, 4)
+		else
+			-- Two columns, so a long list of characters still fits the page.
+			local colW = (width - 12) / 2
+			for i, who in ipairs(info.chars) do
+				local fs = PoolString(pool, QuestFont, 14, INK)
+				fs:SetWidth(colW)
+				fs:SetWordWrap(false)
+				fs:SetText(string.format("%s  %s%d|r", who.name, LEAD, who.count))
+				fs:SetPoint("TOPLEFT", page, "TOPLEFT", x + ((i - 1) % 2) * (colW + 12), -(y + math.floor((i - 1) / 2) * 18))
+			end
+			y = y + math.ceil(#info.chars / 2) * 18 + 4
+		end
+		-- This character's own rate: how many of its catches were this one.
+		local mine = OneCastCharDB and OneCastCharDB.lifetime
+		local count = mine and mine.items and mine.items[fish.id] and mine.items[fish.id].count or 0
+		if count > 0 and (mine.catches or 0) >= count then
+			Paragraph(string.format("%sOn this character, %s of your catches.|r", SOFT,
+				ns.OneIn(count / mine.catches * 100)), INK, 4)
 		end
 		y = y + 6
 		if info.first then
@@ -830,6 +958,87 @@ local function RenderLeft(fish, info)
 		local tip = (fish.zones and fish.zones[1]) or (fish.more and fish.more[1] and fish.more[1][1])
 		Paragraph("Not caught yet." .. (tip and (" Try " .. tip .. ".") or ""), INK)
 	end
+
+	y = y + 8
+	RenderRecipes(pool, fish, x, y, width)
+end
+
+-- The right page: every zone it's found in, in two columns, then a map of the chosen one as big
+-- as the page allows. A fish found almost everywhere shows a "+N more" that opens the full list
+-- in the map's place; picking a zone brings the map back.
+local ZONE_ROW, ZONE_GAP = 19, 12
+local ZONE_GRID_MAX = 16 -- zones shown with the map, before "+N more"
+local MAP_ASPECT = 2 / 3 -- zone maps are 3:2
+local MAP_MIN_H = 120
+
+local TAG_TEXT = {
+	classic = "From Classic's data: not seen in Forever yet.",
+	reported = "Reported by players in Forever.",
+	["found by you"] = "Where you've caught it yourself.",
+}
+
+local function ZoneCell(pool, fish, row, info, x, y, width)
+	local b = PoolButton(pool)
+	b:SetPoint("TOPLEFT", pool.page, "TOPLEFT", x, -y)
+	b:SetWidth(width)
+	b.bg:SetShown(row.zone == state.zone)
+	b.left:SetText(row.zone .. (row.tag and (SOFT .. " *|r") or ""))
+	b.left:SetTextColor(INK[1], INK[2], INK[3])
+	local needs = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[row.zone]
+	local mine = info.zones[row.zone]
+	b.right:SetText((mine and (LEAD .. "x" .. mine .. "|r  ") or "") .. ((needs and needs > 1) and tostring(needs) or ""))
+	b.right:SetTextColor(INK_SOFT[1], INK_SOFT[2], INK_SOFT[3])
+	b:SetScript("OnClick", function(_, mouseButton)
+		if mouseButton == "RightButton" then
+			OpenZoneByName(row.zone)
+			return
+		end
+		state.zone, state.zonesExpanded = row.zone, false
+		Book.Refresh()
+	end)
+	b:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetText(row.zone)
+		if needs and needs > 1 then
+			GameTooltip:AddDoubleLine("Fishing needed", tostring(needs), 1, 0.82, 0, 1, 1, 1)
+		end
+		if mine then
+			GameTooltip:AddDoubleLine("You've caught", tostring(mine), 1, 0.82, 0, 1, 1, 1)
+		end
+		local here = ns.ODDS and ns.ODDS[fish.id] and ns.ODDS[fish.id].water and ns.ODDS[fish.id].water[row.zone]
+		if here then
+			GameTooltip:AddDoubleLine("Odds here", ns.OneIn(here) .. " catches", 1, 0.82, 0, 1, 1, 1)
+		end
+		if row.tag then
+			GameTooltip:AddLine(TAG_TEXT[row.tag] or row.tag, 0.8, 0.8, 0.8, true)
+		end
+		GameTooltip:AddLine(ns.Stats.ZoneVerdict(row.zone), 1, 1, 1, true)
+		GameTooltip:AddLine(" ")
+		GameTooltip:AddLine("Click: show it on the map", 0.6, 0.8, 1)
+		GameTooltip:AddLine("Right-click: open the world map", 0.6, 0.8, 1)
+		GameTooltip:Show()
+	end)
+	b:SetScript("OnLeave", GameTooltip_Hide)
+end
+
+-- "+N more" or "Show fewer": a cell that opens or closes the full list.
+local function MoreCell(pool, text, x, y, width)
+	local b = PoolButton(pool)
+	b:SetPoint("TOPLEFT", pool.page, "TOPLEFT", x, -y)
+	b:SetWidth(width)
+	b.bg:Hide()
+	b.left:SetText(LEAD .. text .. "|r")
+	b.right:SetText("")
+	b:SetScript("OnClick", function()
+		state.zonesExpanded = not state.zonesExpanded
+		Book.Refresh()
+	end)
+	b:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetText(state.zonesExpanded and "Back to the map" or "Every zone it's found in")
+		GameTooltip:Show()
+	end)
+	b:SetScript("OnLeave", GameTooltip_Hide)
 end
 
 local function RenderRight(fish, info)
@@ -844,55 +1053,27 @@ local function RenderRight(fish, info)
 	if not state.zone then
 		state.zone = rows[1] and rows[1].zone
 	end
-	for i, row in ipairs(rows) do
-		if i > MAX_ZONES then
-			local more = PoolString(pool, QuestFont, 13, INK_SOFT)
-			more:SetText(string.format("and %d more zone%s", #rows - MAX_ZONES, #rows - MAX_ZONES == 1 and "" or "s"))
-			more:SetPoint("TOPLEFT", page, "TOPLEFT", x + 6, -y)
-			y = y + 16
-			break
-		end
-		local b = PoolButton(pool)
-		b:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y)
-		b:SetWidth(width)
-		b.bg:SetShown(row.zone == state.zone)
-		b.left:SetText(row.zone .. (row.tag and (" " .. SOFT .. "(" .. row.tag .. ")|r") or ""))
-		b.left:SetTextColor(INK[1], INK[2], INK[3])
-		local needs = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[row.zone]
-		local mine = info.zones[row.zone]
-		local right = {}
-		if needs and needs > 1 then
-			right[#right + 1] = "needs " .. needs
-		end
-		if mine then
-			right[#right + 1] = LEAD .. mine .. " caught|r"
-		end
-		b.right:SetText(table.concat(right, "  ·  "))
-		b.right:SetTextColor(INK_SOFT[1], INK_SOFT[2], INK_SOFT[3])
-		local nameWidth = (b.left.GetUnboundedStringWidth and b.left:GetUnboundedStringWidth()) or b.left:GetStringWidth() or 0
-		if needs and mine and nameWidth + (b.right:GetStringWidth() or 0) + 20 > width then
-			b.right:SetText(LEAD .. mine .. " caught|r")
-		end
-		b:SetScript("OnClick", function(_, mouseButton)
-			if mouseButton == "RightButton" then
-				OpenZoneByName(row.zone)
-				return
-			end
-			state.zone = row.zone
-			Book.Refresh()
-		end)
-		b:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(row.zone)
-			GameTooltip:AddLine(ns.Stats.ZoneVerdict(row.zone), 1, 1, 1, true)
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine("Click: show it on the map below", 0.6, 0.8, 1)
-			GameTooltip:AddLine("Right-click: open the world map", 0.6, 0.8, 1)
-			GameTooltip:Show()
-		end)
-		b:SetScript("OnLeave", GameTooltip_Hide)
-		y = y + 19
+	local colW = (width - ZONE_GAP) / 2
+	local function Cell(i)
+		local col, line = (i - 1) % 2, math.floor((i - 1) / 2)
+		return x + col * (colW + ZONE_GAP), y + line * ZONE_ROW
 	end
+	local expanded = state.zonesExpanded and #rows > ZONE_GRID_MAX
+	local shown = #rows
+	if not expanded and #rows > ZONE_GRID_MAX then
+		shown = ZONE_GRID_MAX - 1 -- the last cell is "+N more"
+	end
+	for i = 1, shown do
+		local cx, cy = Cell(i)
+		ZoneCell(pool, fish, rows[i], info, cx, cy, colW)
+	end
+	local cells = shown
+	if #rows > ZONE_GRID_MAX then
+		cells = cells + 1
+		local cx, cy = Cell(cells)
+		MoreCell(pool, expanded and "Show fewer" or string.format("+%d more", #rows - shown), cx, cy, colW)
+	end
+	y = y + math.ceil(cells / 2) * ZONE_ROW
 	if #rows == 0 then
 		local none = PoolString(pool, QuestFont, 14, INK_SOFT)
 		none:SetText("No known waters yet. Catch one and OneCast will remember where.")
@@ -900,50 +1081,41 @@ local function RenderRight(fish, info)
 		none:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y)
 		y = y + none:GetStringHeight() + 6
 	end
+	local tagged = false
+	for _, row in ipairs(rows) do
+		tagged = tagged or row.tag ~= nil
+	end
+	if tagged then
+		local key = PoolString(pool, QuestFont, 11, INK_SOFT)
+		key:SetText("* not from Wowhead's Forever data: hover for where it's from")
+		key:SetPoint("TOPLEFT", page, "TOPLEFT", x, -(y + 2))
+		y = y + 16
+	end
 
-	-- Map of the selected zone.
-	y = y + 8
+	-- The map: as big as the rest of the page allows, in its own 3:2 shape. Hidden while the full
+	-- list is open.
 	local map = frame.map
+	if expanded then
+		map:Hide()
+		frame.mapCaption:SetText("")
+		frame.openMap:Hide()
+		return
+	end
+	y = y + 10
+	local room = page:GetHeight() - y - 44 -- the caption and Open map button go under it
+	local h = math.max(MAP_MIN_H, math.min(math.floor(width * MAP_ASPECT), room))
+	local w = math.floor(h / MAP_ASPECT)
+	map:SetSize(w, h)
+	map.w, map.h = w, h
 	map:ClearAllPoints()
 	map:SetPoint("TOP", page, "TOP", 0, -y)
 	map:Show()
+	frame.openMap:Show()
 	frame.mapID = DrawMap(map, state.zone)
 	local pools = frame.mapID and #ns.Pools.ForMap(frame.mapID) or 0
 	frame.mapCaption:SetText((state.zone or "") .. (pools > 0
 		and string.format("  ·  %d pool%s found", pools, pools == 1 and "" or "s") or ""))
 	frame.openMap:SetEnabled(frame.mapID ~= nil)
-	y = y + MAP_H + 34
-
-	y = y + Heading(pool, "Used in", x, y, 32)
-	local recipes = fish.recipes or {}
-	for i, recipe in ipairs(recipes) do
-		if i > MAX_RECIPES then
-			local more = PoolString(pool, QuestFont, 13, INK_SOFT)
-			more:SetText(string.format("and %d more", #recipes - MAX_RECIPES))
-			more:SetPoint("TOPLEFT", page, "TOPLEFT", x + 18, -y)
-			break
-		end
-		local dot = PoolTexture(pool)
-		dot:SetTexture("Interface\\QuestFrame\\UI-Quest-BulletPoint")
-		dot:SetSize(12, 12)
-		dot:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y - 1)
-		local line = PoolString(pool, QuestFont, 14, INK)
-		local skill = recipe[4] and (" " .. recipe[4]) or ""
-		line:SetText(string.format("%s  %s%s%s|r", recipe[2], SOFT, recipe[3], skill))
-		line:SetPoint("TOPLEFT", page, "TOPLEFT", x + 18, -y)
-		Hover(pool, x + 18, y, line:GetStringWidth() or width, 17, function(tip)
-			tip:SetSpellByID(recipe[1])
-			if recipe[4] then
-				tip:AddLine(string.format("Needs %d %s.", recipe[4], recipe[3]), 1, 0.82, 0)
-			end
-		end, SpellLink(recipe[1]))
-		y = y + 17
-	end
-	if #recipes == 0 then
-		local none = PoolString(pool, QuestFont, 14, INK_SOFT)
-		none:SetText("Not used in any recipe.")
-		none:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y)
-	end
 end
 
 local function RenderFish()
@@ -1191,7 +1363,7 @@ local function ItemHover(pool, itemID, extra, x, y, width, height)
 		if extra then
 			extra(tip)
 		end
-	end, ItemLink(itemID))
+	end, ItemLink(itemID), { "item", itemID })
 end
 
 local function RenderCraft(pool, craft, x, y, width)
@@ -1248,6 +1420,7 @@ local function RenderCraft(pool, craft, x, y, width)
 				tip:AddLine(string.format("You have %d, and it takes %d.", have, r[2]), 1, 1, 1)
 			end,
 			link = ItemLink(r[1]),
+			wowhead = { "item", r[1] },
 		}
 	end
 	y = Flow(pool, pieces, x, y, width, 12, INK, "") + 2
@@ -1289,6 +1462,7 @@ local function RenderCamp()
 				tip:AddLine(string.format("A Cooking recipe. Holds up to %d camp features.", fire.holds), 1, 1, 1, true)
 			end,
 			link = SpellLink(fire.recipe),
+			wowhead = { "spell", fire.recipe },
 		}
 	end
 	y = Flow(right, fires, x, y, width, 12, INK_SOFT, "") + 8
@@ -1322,7 +1496,7 @@ local function RenderCamp()
 				return a.n > b.n
 			end)
 			local top = {}
-			for i = 1, math.min(#items, 5) do
+			for i = 1, #items do
 				top[i] = string.format("%s x%d", C_Item.GetItemNameByID(items[i].id) or ("item " .. items[i].id), items[i].n)
 			end
 			y = CampText(right, string.format("%s%s|r: %d catch%s. %s", LEAD, c.buffName, r.catches,
@@ -1452,7 +1626,7 @@ local function CreateWindow()
 	f.progressText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	f.progressText:SetPoint("TOPRIGHT", -24, -32)
 	f.progress = CreateFrame("StatusBar", nil, f)
-	f.progress:SetSize(170, 8)
+	f.progress:SetSize(140, 8) -- narrow enough to clear the eight category tabs
 	f.progress:SetPoint("TOPRIGHT", f.progressText, "BOTTOMRIGHT", 0, -4)
 	f.progress:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 	f.progress:SetStatusBarColor(0.16, 0.36, 0.86)
@@ -1544,6 +1718,24 @@ local function CreateWindow()
 	ns.Theme.Register(f.back, "button")
 	f.back:SetSize(150, 22)
 	f.back:SetPoint("BOTTOMLEFT", 10, 4)
+	f.wowhead = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	ns.Theme.Register(f.wowhead, "button")
+	f.wowhead:SetSize(110, 22)
+	f.wowhead:SetPoint("LEFT", f.back, "RIGHT", 6, 0)
+	f.wowhead:SetText("Wowhead")
+	f.wowhead:SetScript("OnClick", function()
+		if state.fishID then
+			ns.UI.ShowWowhead("item", state.fishID)
+		end
+	end)
+	f.wowhead:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Wowhead")
+		GameTooltip:AddLine("Its WoW Forever page on Wowhead, ready to copy into your browser.", 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	f.wowhead:SetScript("OnLeave", GameTooltip_Hide)
+	f.wowhead:Hide()
 	f.back:SetScript("OnClick", function()
 		if state.fishID then
 			state.fishID, state.zone = nil, nil
@@ -1615,6 +1807,7 @@ local function CreateWindow()
 	f.next:SetScript("OnClick", function()
 		if state.fishID and state.index then
 			state.fishID, state.zone = state.list[state.index + 1].fish.id, nil
+			state.zonesExpanded = false
 		else
 			state.spread = state.spread + 1
 		end
@@ -1629,6 +1822,7 @@ local function CreateWindow()
 	f.prev:SetScript("OnClick", function()
 		if state.fishID and state.index then
 			state.fishID, state.zone = state.list[state.index - 1].fish.id, nil
+			state.zonesExpanded = false
 		else
 			state.spread = state.spread - 1
 		end
@@ -1696,6 +1890,7 @@ function Book.Refresh()
 	end
 	frame.back:SetShown(not showZones and not showCamp)
 	frame.back:SetText(showFish and "Back to collection" or SHOW_LABEL[state.show])
+	frame.wowhead:SetShown(showFish and true or false)
 	frame.where:SetShown(showGrid)
 	frame.where:SetText(state.where or "All zones")
 	frame.search:SetShown(showGrid)
@@ -1782,6 +1977,7 @@ function Book.RefreshIfShown()
 end
 
 function Book.ShowFish(itemID)
+	state.zonesExpanded = false
 	state.fishID, state.zone = itemID, nil
 	Book.Refresh()
 end

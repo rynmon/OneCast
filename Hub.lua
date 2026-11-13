@@ -18,19 +18,19 @@ local RAIL_TOP_LEFT = 72 -- below the portrait, on the left
 
 -- The tabs, top to bottom. `open` shows that panel; the panel registers itself with Attach.
 local TABS = {
-	{ key = "session", label = "Session stats", icon = "Interface\\Icons\\INV_Misc_Fish_68",
+	{ key = "session", hint = "/onecast stats", label = "Session stats", icon = "Interface\\Icons\\INV_Misc_Fish_68",
 		open = function() ns.Stats.Show() end },
-	{ key = "tackle", label = "Tackle box", icon = 466035,
+	{ key = "tackle", hint = "/onecast tackle", label = "Tackle box", icon = 466035,
 		open = function() ns.TackleBox.ShowWindow() end },
-	{ key = "collection", label = "Fishing collection", icon = "Interface\\Icons\\INV_Misc_Book_09",
+	{ key = "collection", hint = "/onecast book", label = "Fishing collection", icon = "Interface\\Icons\\INV_Misc_Book_09",
 		open = function() ns.Book.ShowCollection() end },
-	{ key = "camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
+	{ key = "camp", hint = "/onecast camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
 		open = function() ns.Book.ShowCamp() end },
-	{ key = "report", label = "Data report", icon = "Interface\\Icons\\INV_Letter_15",
+	{ key = "report", hint = "/onecast report", label = "Data report", icon = "Interface\\Icons\\INV_Letter_15",
 		open = function() ns.Report.Show() end },
-	{ key = "news", label = "What's new", icon = "Interface\\Icons\\INV_Misc_Note_01",
+	{ key = "news", hint = "/onecast new", label = "What's new", icon = "Interface\\Icons\\INV_Misc_Note_01",
 		open = function() ns.WhatsNew.Show() end },
-	{ key = "options", label = "Options", icon = "Interface\\Icons\\INV_Misc_Gear_01",
+	{ key = "options", hint = "/onecast", label = "Options", icon = "Interface\\Icons\\INV_Misc_Gear_01",
 		open = function() Hub.ShowOptions() end },
 }
 
@@ -160,6 +160,13 @@ local function CreateRail()
 		tab:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(def.label)
+			if def.hint then
+				GameTooltip:AddLine("Also " .. def.hint, 0.6, 0.8, 1)
+			end
+			local key = GetBindingKey and GetBindingKey("ONECAST_WINDOW")
+			if key then
+				GameTooltip:AddLine(key .. " opens the page you last used", 0.6, 0.8, 1)
+			end
 			GameTooltip:Show()
 		end)
 		tab:SetScript("OnLeave", GameTooltip_Hide)

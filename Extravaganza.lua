@@ -102,9 +102,7 @@ local function CheckGoal()
 	end
 	announcedGoal = true
 	ns.Print(string.format("%d %s! Hand them to Riggle Bassbait in Booty Bay to win.", X.GOAL, Tastyfish()))
-	if RaidNotice_AddMessage and RaidWarningFrame then
-		RaidNotice_AddMessage(RaidWarningFrame, X.GOAL .. " Tastyfish: hurry to Booty Bay!", ChatTypeInfo.RAID_WARNING)
-	end
+	ns.RaidWarning(X.GOAL .. " Tastyfish: hurry to Booty Bay!")
 	PlaySound(SOUNDKIT.RAID_WARNING)
 end
 

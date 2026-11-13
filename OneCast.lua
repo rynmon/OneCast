@@ -28,6 +28,7 @@ local defaults = {
 	minimapButton = true,
 	minimapAngle = 225,
 	closeOnDone = true,
+	catchTooltip = true,
 	fadeStats = false,
 	lockWindow = false,
 	tabSide = "right", -- the OneCast window's side tabs: "right" or "left"
@@ -105,6 +106,8 @@ local OPTIONS = {
 		tooltip = "Say in chat shortly before the Stranglethorn Fishing Extravaganza starts, and when it does (Classic's schedule: Sundays 14:00-16:00 realm time)." },
 	{ cmd = "loginmessage", key = "loginMessage", label = "Version in chat at login",
 		tooltip = "Say OneCast's version in chat when you log in, with a link to What's new." },
+	{ cmd = "caughtby", key = "catchTooltip", label = "Rarity and who caught it, in item tooltips",
+		tooltip = "On the tooltip of anything in the collection, wherever you see it (bags, chat links, the auction house), say how rare it is (Classic's odds per catch) and which of your characters caught it." },
 	{ cmd = "minimap", key = "minimapButton", label = "Show minimap button",
 		tooltip = "Show the OneCast button on the minimap. Drag it to move it." },
 }
@@ -211,7 +214,7 @@ local CHOICES = {
 -- The options on the main page, before OPTION_PAGES, for the window's Options page.
 local OPTION_MAIN = {
 	{ "Look", "theme", "tabSide", "statsScale" },
-	{ "General", "lockWindow", "minimapButton", "loginMessage" },
+	{ "General", "lockWindow", "minimapButton", "catchTooltip", "loginMessage" },
 }
 
 -- CVars changed only for the length of a cast, and restored afterwards only if
@@ -287,6 +290,66 @@ end
 -- An item as a chat link, to hover or Shift-click, or `fallback` until the game has its data.
 function ns.ItemLink(itemID, fallback)
 	return select(2, C_Item.GetItemInfo(itemID)) or fallback
+end
+
+-- The game's current APIs first, then the old names: those live in Blizzard's deprecated files,
+-- which only load while the loadDeprecationFallbacks setting is on, and go at the next expansion.
+
+-- Milliseconds of temporary enchant (a lure) on the main hand, or nil if none.
+function ns.MainHandEnchantMs()
+	local paperDoll = C_PaperDollInfo
+	if paperDoll and paperDoll.GetTemporaryEnchantmentInfo then
+		local info = paperDoll.GetTemporaryEnchantmentInfo(INVSLOT_MAINHAND or 16)
+		local ms = info and info.remainingTimeMs
+		if ms and not (issecretvalue and issecretvalue(ms)) then
+			return ms
+		end
+		return nil
+	end
+	if GetWeaponEnchantInfo then
+		local has, ms = GetWeaponEnchantInfo()
+		return has and ms or nil
+	end
+end
+
+-- True if this character knows the spell (a recipe), nil if the game can't say.
+function ns.KnowsSpell(spellID)
+	local spellBook = C_SpellBook
+	if spellBook and spellBook.IsSpellKnown and Enum.SpellBookSpellBank then
+		return spellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Player) and true or false
+	end
+	if IsPlayerSpell then
+		return IsPlayerSpell(spellID) and true or false
+	end
+end
+
+-- A raid-warning flash in the middle of the screen.
+function ns.RaidWarning(text)
+	local color = ChatTypeInfo and ChatTypeInfo.RAID_WARNING
+	if RaidWarningUtil and RaidWarningUtil.AddMessage then
+		RaidWarningUtil.AddMessage(text, color)
+	elseif RaidNotice_AddMessage and RaidWarningFrame then
+		RaidNotice_AddMessage(RaidWarningFrame, text, color)
+	end
+end
+
+-- Put a link into chat: into the chat box if it's open, else opening it with the link in. The
+-- game's current ChatFrameUtil, or the old names it keeps (deprecated) for older clients.
+function ns.InsertChatLink(link)
+	if not link then
+		return false
+	end
+	local util = ChatFrameUtil
+	local insert = (util and util.InsertLink) or ChatEdit_InsertLink
+	if insert and insert(link) then
+		return true
+	end
+	local open = (util and util.OpenChat) or ChatFrame_OpenChat
+	if open then
+		open(link)
+		return true
+	end
+	return false
 end
 ns.GetFishingName = function()
 	return fishingName
@@ -715,6 +778,7 @@ local function SetupSettings()
 	Header(layout, "General")
 	AddControl(category, "lockWindow")
 	AddControl(category, "minimapButton")
+	AddControl(category, "catchTooltip")
 	AddControl(category, "loginMessage")
 
 	for _, pageInfo in ipairs(OPTION_PAGES) do

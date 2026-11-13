@@ -61,9 +61,7 @@ end
 
 -- True if the recipe is learned, false if not, nil if the game can't say.
 function Camp.Known(craft)
-	if IsPlayerSpell then
-		return IsPlayerSpell(craft.recipe) and true or false
-	end
+	return ns.KnowsSpell(craft.recipe)
 end
 
 -- The camp fishing buff on you now, if any: the craft that gives it and seconds left. The

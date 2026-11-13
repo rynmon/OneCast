@@ -117,4 +117,10 @@ for _, fish in ipairs(ns.FISH) do
 		extra[1] = Translate(extra[1])
 	end
 end
+-- Each catch's odds by zone, so they match the zone lists above.
+for _, odds in pairs(ns.ODDS or {}) do
+	if odds.water then
+		odds.water = TranslateKeys(odds.water)
+	end
+end
 ns.Extravaganza.ZONE = Translate(ns.Extravaganza.ZONE)

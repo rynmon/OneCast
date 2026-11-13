@@ -81,6 +81,7 @@ end
 
 local MIN_UNKNOWN_LEVEL = 10 -- catches in a zone with no known level
 local MIN_BELOW_LEVEL = 20   -- catches without a getaway below a zone's listed level
+local MIN_EXPECTED = 3       -- getaways those catches should have had, had the level been right
 local MIN_CAMP = 5           -- catches under a camp buff
 
 -- A collection fish the book can't say where to find: no zones at all, from any source. Only
@@ -146,15 +147,19 @@ Findings = function()
 				add("above:" .. zone, string.format("A fish got away in %s at skill %d-%d, though OneCast lists %d",
 					zone, highestAway, highestAway + step - 1, listed), zone)
 			end
-			-- Plenty of catches below the listed level, none getting away there, says it's lower.
-			local below, lowest = 0, nil
+			-- Plenty of catches below the listed level, none getting away there, says it's lower: but
+			-- only where getaways were to be expected. Fish get away about (level - skill)% of the
+			-- time below a zone's level, so catches just under it say little. Each step counts at its
+			-- top skill, the least getaways it could expect; it takes MIN_EXPECTED in all.
+			local below, lowest, expected = 0, nil, 0
 			for bucket, n in pairs(z.skillCatches or {}) do
 				if bucket + step <= listed and not (highestAway and bucket <= highestAway) then
 					below = below + n
 					lowest = math.min(lowest or bucket, bucket)
+					expected = expected + n * (listed - (bucket + step - 1)) / 100
 				end
 			end
-			if below >= MIN_BELOW_LEVEL then
+			if below >= MIN_BELOW_LEVEL and expected >= MIN_EXPECTED then
 				add("below:" .. zone, string.format("%d catches in %s from skill %d with no getaways, though OneCast lists %d",
 					below, zone, lowest, listed), zone)
 			end
@@ -659,14 +664,12 @@ local function CreateWindow()
 	f.empty:SetText("Nothing new yet: everything you've fished matches what OneCast knows.\n"
 		.. "|cff9d9d9dA zone with no known level, a fish getting away above a listed level, a fish the collection "
 		.. "doesn't have or can't place, or catches with a camp buff will show here.|r")
-	y = y - NEW_ROWS * NEW_ROW_HEIGHT - GAP
+	f.listTop = y
 
-	-- 2. Share it.
-	UI.SectionHeader(inset, y).text:SetText("Share it")
-	y = y - HEADER_HEIGHT - HEADER_GAP
+	-- 2. Share it: placed under however much the list above shows (PlaceShare).
+	f.shareHeader = UI.SectionHeader(inset, y)
+	f.shareHeader.text:SetText("Share it")
 	f.share = SharePanel(f, inset)
-	f.share:SetPoint("TOPLEFT", EDGE, y)
-	f.share:SetPoint("TOPRIGHT", -EDGE, y)
 	InkShare(f.share)
 
 	-- 3. The report text, under the panel, in its own sunken box.
@@ -740,6 +743,21 @@ local function CreateWindow()
 	return f
 end
 
+-- The share steps go straight under the found list, which is only as tall as it needs to be:
+-- the report text below gets the room the list doesn't use.
+local EMPTY_HEIGHT = 60
+local function PlaceShare(f, shownRows)
+	local listHeight = shownRows > 0 and shownRows * NEW_ROW_HEIGHT or EMPTY_HEIGHT
+	local y = f.listTop - listHeight - GAP
+	f.shareHeader:ClearAllPoints()
+	f.shareHeader:SetPoint("TOPLEFT", EDGE, y)
+	f.shareHeader:SetPoint("TOPRIGHT", -EDGE, y)
+	y = y - HEADER_HEIGHT - HEADER_GAP
+	f.share:ClearAllPoints()
+	f.share:SetPoint("TOPLEFT", EDGE, y)
+	f.share:SetPoint("TOPRIGHT", -EDGE, y)
+end
+
 FillFindings = function(f)
 	local findings = Report.Findings()
 	local shared = OneCastCharDB and OneCastCharDB.reportFindings and OneCastCharDB.reportFindings.shared or {}
@@ -784,6 +802,7 @@ FillFindings = function(f)
 		end
 	end
 	f.empty:SetShown(#findings == 0)
+	PlaceShare(f, math.min(#findings, NEW_ROWS))
 end
 
 local function Fill(f)

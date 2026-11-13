@@ -18,7 +18,8 @@ local LEVELS = {
 	[75] = {
 		"Darkshore", "Loch Modan", "Silverpine Forest", "Westfall",
 		-- Orgrimmar's 75 is confirmed in Forever by a player's report (10 November 2026): 3 got away at
-		-- skill 50-74, none in 178 catches from 75 up.
+		-- skill 50-74, none in 178 catches from 75 up. Stormwind City's too (13 November 2026): 12 of
+		-- 36 got away at 25-49, as 75 would have it, and none in 22 catches at 50-74.
 		"Stormwind City", "Orgrimmar", "Ironforge", "Thunder Bluff", "Undercity", "Darnassus",
 		"The Deadmines", "Wailing Caverns", "Blackfathom Deeps",
 	},
