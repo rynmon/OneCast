@@ -47,8 +47,9 @@ local CAT_LEAD = {
 	bloated = "A bloated fish that can hold a pearl or other treasure when opened",
 	treasure = "Treasure fished up from the water",
 }
-local SHOW = { "all", "caught", "missing", "rare" }
-local SHOW_LABEL = { all = "Showing: all", caught = "Showing: caught", missing = "Showing: missing", rare = "Showing: rare" }
+local SHOW = { "all", "caught", "missing", "reach", "rare" }
+local SHOW_LABEL = { all = "Showing: all", caught = "Showing: caught", missing = "Showing: missing",
+	reach = "Showing: in reach", rare = "Showing: rare" }
 
 -- Rare and Very rare, by Classic's odds.
 local function IsRare(fish)
@@ -120,6 +121,20 @@ local function EasiestSkill(fish)
 	return best
 end
 
+-- In reach: a fish with a known zone your Fishing (lure and pole included) already covers, and
+-- not one that only bites during an event.
+local function InReach(fish)
+	if fish.event then
+		return false
+	end
+	local needed = EasiestSkill(fish)
+	local rank, _, modifier = ns.Stats.FishingSkill()
+	if not needed or not rank then
+		return false
+	end
+	return rank + (modifier or 0) >= needed
+end
+
 local function AllFish()
 	local list = {}
 	for _, fish in ipairs(ns.FISH) do
@@ -178,7 +193,8 @@ local function Filtered()
 			local info = ns.Collection.Get(fish.id)
 			local caught = info.total > 0
 			local shown = state.show == "all" or (state.show == "rare" and IsRare(fish))
-				or (state.show ~= "rare" and (state.show == "caught") == caught)
+				or (state.show == "reach" and not caught and InReach(fish))
+				or ((state.show == "caught" or state.show == "missing") and (state.show == "caught") == caught)
 			if shown
 				and (not state.where or FoundIn(fish, info, state.where)) then
 				out[#out + 1] = { fish = fish, info = info, skill = EasiestSkill(fish) }
@@ -712,7 +728,7 @@ local function CreateCell(parent)
 				ns.OneIn(rarity.pct)), 0.8, 0.8, 0.8)
 		end
 		GameTooltip:AddLine("Click to open its page", 0.6, 0.8, 1)
-		GameTooltip:AddLine("Right-click: more (wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
+		GameTooltip:AddLine("Right-click: more (goal, wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
 		GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.8, 1)
 		GameTooltip:Show()
 	end)
@@ -799,6 +815,8 @@ local function RenderGrid()
 		frame.empty:SetText("Nothing missing here: all caught!")
 	elseif state.show == "rare" and not state.search then
 		frame.empty:SetText("No rare catches here.")
+	elseif state.show == "reach" and not state.search then
+		frame.empty:SetText("Nothing left in reach: everything your skill covers here is caught.")
 	elseif state.search or state.where or state.show ~= "all" then
 		frame.empty:SetText("No fish match.")
 	else
@@ -1234,10 +1252,23 @@ local function ZoneCounts(groups)
 	return counts
 end
 
+-- One zone's fish: how many are known there and how many you've caught, for the world map.
+function Book.ZoneFishCount(zone)
+	local count = { caught = 0, total = 0 }
+	for _, fish in ipairs(AllFish()) do
+		local info = ns.Collection.Get(fish.id)
+		if FoundIn(fish, info, zone) then
+			count.total = count.total + 1
+			count.caught = count.caught + (info.total > 0 and 1 or 0)
+		end
+	end
+	return count
+end
+
 -- A row's status, in ink dark enough for parchment.
 local function ZoneStatusText(status)
 	if status.kind == "ok" then
-		return GOOD .. "ready|r"
+		return GOOD .. "no fish get away|r"
 	elseif status.kind == "short" then
 		return BAD .. status.short .. " short|r"
 	elseif status.kind == "getaways" then
@@ -1718,6 +1749,17 @@ local function CreateWindow()
 	ns.Theme.Register(f.back, "button")
 	f.back:SetSize(150, 22)
 	f.back:SetPoint("BOTTOMLEFT", 10, 4)
+	f.back:SetScript("OnEnter", function(self)
+		if state.fishID then
+			return
+		end
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Which catches to show")
+		GameTooltip:AddLine("Click to move through: all, caught, missing, in reach (missing ones in a zone your "
+			.. "Fishing already covers, lure included) and rare.", 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	f.back:SetScript("OnLeave", GameTooltip_Hide)
 	f.wowhead = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	ns.Theme.Register(f.wowhead, "button")
 	f.wowhead:SetSize(110, 22)

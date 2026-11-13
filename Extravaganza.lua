@@ -95,6 +95,27 @@ local function Tastyfish()
 	return ns.ItemLink(X.TASTYFISH, "Speckled Tastyfish")
 end
 
+-- A waypoint to Riggle Bassbait in Booty Bay, where the Tastyfish are handed in, without
+-- opening the map: the arrow points the way. Classic's spot for him.
+X.RIGGLE = { x = 0.276, y = 0.776 }
+function X.Waypoint()
+	if InCombatLockdown() or not (C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
+		return false
+	end
+	local mapID = ns.Book and ns.Book.ZoneMapID and ns.Book.ZoneMapID(X.ZONE)
+	if not mapID or (C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID)) then
+		return false
+	end
+	local ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, X.RIGGLE.x, X.RIGGLE.y))
+	if ok and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+		pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+	end
+	if ok then
+		ns.Print("waypoint set: Riggle Bassbait, Booty Bay.")
+	end
+	return ok
+end
+
 local announcedGoal = false
 local function CheckGoal()
 	if announcedGoal or not (ns.db and ns.db.extravaganza) or not X.Status() or X.TastyfishInBags() < X.GOAL then
@@ -104,6 +125,7 @@ local function CheckGoal()
 	ns.Print(string.format("%d %s! Hand them to Riggle Bassbait in Booty Bay to win.", X.GOAL, Tastyfish()))
 	ns.RaidWarning(X.GOAL .. " Tastyfish: hurry to Booty Bay!")
 	PlaySound(SOUNDKIT.RAID_WARNING)
+	X.Waypoint()
 end
 
 -- Called by Stats.lua after a catch: watch the bags only once a Tastyfish bites.

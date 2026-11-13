@@ -14,6 +14,10 @@ local _, ns = ...
 local LEVELS = {
 	[25] = {
 		"Dun Morogh", "Durotar", "Elwynn Forest", "Mulgore", "Teldrassil", "Tirisfal Glades",
+		-- Forever's own, from a player's /onecast report (13 November 2026): 10 catches at skill
+		-- 0-24 and none got away. Its fish are the starting zones' (Brilliant Smallfish, the Mud
+		-- Snappers). Not a Classic number: a getaway above 25 would overrule it, as for any zone.
+		"Zephras Isle",
 	},
 	[75] = {
 		"Darkshore", "Loch Modan", "Silverpine Forest", "Westfall",
@@ -89,10 +93,12 @@ for skill, zones in pairs(LEVELS) do
 	end
 end
 
--- Zones new in Forever with no level yet (Shen'dralas, Mount Hyjal, Gilneas, Zephras Isle): the
--- stats window judges them from your own catches and getaways. The book's Zones view lists them
--- all the same. Riverglades was here until a player's report measured it (see 225 above).
-ns.ZONE_FISHING_UNKNOWN = { "Shen'dralas", "Mount Hyjal", "Gilneas", "Zephras Isle" }
+-- Zones new in Forever with no level yet (Shen'dralas, Mount Hyjal, Gilneas, City of Dalaran):
+-- the stats window judges them from your own catches and getaways. The book's Zones view lists
+-- them all the same. Riverglades and Zephras Isle were here until players' reports measured them
+-- (see 225 and 25 above). City of Dalaran is fished in Forever (a report, 13 November 2026: 54
+-- catches, none got away, but only one below skill 225), so its level is still open.
+ns.ZONE_FISHING_UNKNOWN = { "Shen'dralas", "Mount Hyjal", "Gilneas", "City of Dalaran" }
 
 -- Notes shown instead of a level, until a getaway in that zone proves them wrong:
 -- { [zone] = "text" }. Riverglades' "no minimum skill" (forever-bugs#189) was dropped when a

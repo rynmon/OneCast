@@ -92,8 +92,10 @@ function Collection.OnCatch(loot, zone)
 			SyncItem(l.id, key, OneCastCharDB)
 		end
 	end
-	for _, l in ipairs(newFish) do
-		ns.Print("new for your collection: " .. (l.link or l.name or "?") .. "!")
+	if not (ns.db and ns.db.newCatchMessage == false) then
+		for _, l in ipairs(newFish) do
+			ns.Print("new for your collection: " .. (l.link or l.name or "?") .. "!")
+		end
 	end
 	if ns.Book and ns.Book.RefreshIfShown then
 		ns.Book.RefreshIfShown()

@@ -351,16 +351,349 @@ local function AddSurface(owner, role)
 	end
 end
 
+-- Scenes -----------------------------------------------------------------------------------
+-- What makes a theme a place rather than a palette: a landscape along the foot of each window
+-- (the game's own garrison mission scenery, faded into the background), particles drifting
+-- over it, an emblem in the window's title bar, and its own water in the Fishing bar. Every
+-- piece is the game's art, checked for at runtime, and the "Theme effects" option can keep the
+-- scenery still or turn the lot off.
+--
+-- vista: a scenery name (its -Back, -Mid and -Fore layers). motes: kind ("up", "down",
+-- "wander"), count, colour, size, speed, sway, alpha, twinkle, star (glint texture).
+-- emblem: an item whose icon badges the portrait. water: the bar's flipbook profession and tint.
+Theme.SCENES = {
+	dark = { vista = "Underground", emblem = 13757,
+		motes = { kind = "up", count = 8, color = { 0.8, 0.8, 0.85 }, size = { 2, 3 }, speed = { 4, 9 }, sway = 6, alpha = 0.25 } },
+	tidal = { vista = "NagrandSea", emblem = 4603,
+		motes = { kind = "up", count = 14, color = { 0.65, 0.9, 1 }, size = { 2, 5 }, speed = { 10, 22 }, sway = 8, alpha = 0.35 } },
+	abyss = { vista = "Nazjatar", emblem = 13888,
+		motes = { kind = "up", count = 16, color = { 0.4, 1, 0.95 }, size = { 2, 4 }, speed = { 6, 14 }, sway = 10, alpha = 0.4 } },
+	golden = { vista = "SouthernBarrens", emblem = 8350, water = { tint = { 1, 0.78, 0.35 } },
+		motes = { kind = "wander", count = 10, color = { 1, 0.85, 0.45 }, size = { 6, 10 }, speed = { 2, 5 }, sway = 4, alpha = 0.6, twinkle = 2.5, star = true } },
+	marsh = { vista = "Nazmir", emblem = 6358, water = { prof = "Alchemy" },
+		motes = { kind = "wander", count = 9, color = { 0.75, 1, 0.35 }, size = { 3, 4 }, speed = { 4, 9 }, sway = 12, alpha = 0.7, twinkle = 1.6 } },
+	moonlit = { vista = "Valsharah", emblem = 13759, water = { prof = "Enchanting" },
+		motes = { kind = "wander", count = 10, color = { 0.75, 0.85, 1 }, size = { 2, 4 }, speed = { 3, 7 }, sway = 10, alpha = 0.6, twinkle = 1.2 } },
+	lodge = { vista = "Highmountain", emblem = 13889, water = { prof = "Leatherworking" },
+		motes = { kind = "up", count = 7, color = { 1, 0.75, 0.4 }, size = { 2, 3 }, speed = { 3, 6 }, sway = 5, alpha = 0.3 } },
+	bootybay = { vista = "TiragardeSound", emblem = 21151, water = { prof = "Jewelcrafting" },
+		motes = { kind = "wander", count = 8, color = { 1, 0.85, 0.3 }, size = { 6, 10 }, speed = { 2, 4 }, sway = 3, alpha = 0.7, twinkle = 3, star = true } },
+	murloc = { vista = "Islands", emblem = 1468, water = { tint = { 0.45, 1, 0.75 } },
+		motes = { kind = "up", count = 14, color = { 0.55, 1, 0.75 }, size = { 2, 5 }, speed = { 10, 20 }, sway = 9, alpha = 0.35 } },
+	winterspring = { vista = "FrostfireRidge", emblem = 13755, water = { tint = { 0.85, 0.95, 1 } },
+		motes = { kind = "down", count = 22, color = { 1, 1, 1 }, size = { 2, 4 }, speed = { 8, 18 }, sway = 14, alpha = 0.6 } },
+	deviate = { vista = "NorthernBarrens", emblem = 6522, water = { prof = "Alchemy" },
+		motes = { kind = "up", count = 10, color = { 0.5, 1, 0.4 }, size = { 2, 4 }, speed = { 3, 7 }, sway = 12, alpha = 0.45, twinkle = 0.8 } },
+	ember = { vista = "BlackrockMountain", emblem = 6359, water = { prof = "Blacksmithing" },
+		motes = { kind = "up", count = 16, color = { 1, 0.55, 0.15 }, size = { 2, 4 }, speed = { 14, 30 }, sway = 10, alpha = 0.75, twinkle = 4 } },
+	class = { class = true,
+		motes = { kind = "wander", count = 8, size = { 3, 5 }, speed = { 3, 6 }, sway = 8, alpha = 0.45, twinkle = 1.4 } },
+}
+
+local VISTA_LAYERS = { { "-Back", 0.55 }, { "-Mid", 0.75 }, { "-Fore", 1 } }
+local VISTA_MAX = 130   -- the scenery's height at most, so it stays a strip along the foot
+local VISTA_ALPHA = 0.5 -- at its foot; it fades to nothing at its top
+local scenes = {}       -- { owner, driver, vista = { textures }, motes = { particles } }
+Theme._scenes = scenes  -- for the tests
+
+local function Effects()
+	return ns.db and ns.db.themeEffects or "all"
+end
+
+local function ClassColor()
+	local _, classFile = UnitClass("player")
+	local color = classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile]
+	return color and { color.r, color.g, color.b } or { 1, 1, 1 }
+end
+
+-- The scenery layers, cropped to their lower part so they fill the width without towering.
+local function LayoutVista(scene)
+	local owner = scene.owner
+	local width = (owner:GetWidth() or 0) - 6
+	if width <= 0 then
+		return
+	end
+	for _, tex in ipairs(scene.vista) do
+		local info = tex.atlasInfo
+		if info then
+			local natural = width * info.height / info.width
+			local height = math.min(natural, VISTA_MAX, math.max(10, (owner:GetHeight() or 0) - 6))
+			local top, bottom = info.topTexCoord, info.bottomTexCoord
+			tex:SetTexCoord(info.leftTexCoord, info.rightTexCoord, bottom - (bottom - top) * height / natural, bottom)
+			tex:SetHeight(height)
+		end
+	end
+end
+
+local function ApplyVista(scene, spec)
+	local name = spec and spec.vista and Effects() ~= "off" and ("_GarrMissionLocation-" .. spec.vista)
+	local infos, present = {}, 0
+	for i, layer in ipairs(VISTA_LAYERS) do
+		local info = name and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name .. layer[1])
+		if info and (info.file or info.filename) and info.width and info.width > 0 then
+			infos[i], present = info, present + 1
+		end
+	end
+	for i, layer in ipairs(VISTA_LAYERS) do
+		local tex = scene.vista[i]
+		local info = infos[i]
+		if info then
+			if not tex then
+				tex = scene.owner:CreateTexture(nil, "BACKGROUND", nil, 7)
+				tex:SetPoint("BOTTOMLEFT", 3, 3)
+				tex:SetPoint("BOTTOMRIGHT", -3, 3)
+				isGrain[tex] = true
+				scene.vista[i] = tex
+			end
+			tex:SetTexture(info.file or info.filename)
+			tex.atlasInfo = info
+			-- Layers behind are fainter; a scene with one layer shows it at full strength.
+			local a = VISTA_ALPHA * (present > 1 and layer[2] or 1)
+			if tex.SetGradient and CreateColor then
+				tex:SetVertexColor(1, 1, 1, 1)
+				tex:SetGradient("VERTICAL", CreateColor(1, 1, 1, a), CreateColor(1, 1, 1, 0))
+			else
+				tex:SetAlpha(a * 0.6)
+			end
+			tex:Show()
+		elseif tex then
+			tex.atlasInfo = nil
+			tex:Hide()
+		end
+	end
+	LayoutVista(scene)
+end
+
+-- Particles: each a small disc (or a star, for glints), moved every frame while shown.
+local function NewMote(scene)
+	local owner = scene.owner
+	local tex = owner:CreateTexture(nil, "BACKGROUND", nil, 7)
+	isGrain[tex] = true
+	tex:SetBlendMode("ADD")
+	local mask = owner:CreateMaskTexture()
+	mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetAllPoints(tex)
+	return { tex = tex, mask = mask }
+end
+
+local function Rand(range)
+	return range[1] + math.random() * (range[2] - range[1])
+end
+
+local function Spawn(m, spec, w, h, anywhere)
+	m.size = Rand(spec.size)
+	m.speed = Rand(spec.speed)
+	m.phase = math.random() * 6.28
+	m.x = math.random() * w
+	if spec.kind == "down" then
+		m.y = anywhere and math.random() * h or h + m.size
+	elseif spec.kind == "up" then
+		m.y = anywhere and math.random() * h or -m.size
+	else
+		m.y = math.random() * h
+		m.life, m.age = 3 + math.random() * 5, anywhere and math.random() * 3 or 0
+		local angle = math.random() * 6.28
+		m.vx, m.vy = math.cos(angle) * m.speed, math.sin(angle) * m.speed
+	end
+	m.tex:SetSize(m.size, m.size)
+end
+
+local function ApplyMotes(scene, spec)
+	local motes = spec and spec.motes
+	local on = motes and Effects() == "all"
+	scene.spec = on and motes or nil
+	-- As many as a full window has, fewer in a smaller panel (the mini bar), so it never crowds.
+	local area = (scene.owner:GetWidth() or 0) * (scene.owner:GetHeight() or 0)
+	local share = area > 0 and math.min(1, math.sqrt(area / (400 * 480))) or 1
+	local count = on and math.max(3, math.floor(motes.count * share + 0.5)) or 0
+	scene.count = count
+	local color = motes and (motes.color or (spec.class and ClassColor())) or { 1, 1, 1 }
+	for i = 1, math.max(count, #scene.motes) do
+		local m = scene.motes[i]
+		if i <= count then
+			if not m then
+				m = NewMote(scene)
+				scene.motes[i] = m
+			end
+			if motes.star then
+				if m.masked then
+					m.tex:RemoveMaskTexture(m.mask)
+					m.masked = false
+				end
+				m.tex:SetTexture("Interface\\Cooldown\\star4")
+			else
+				m.tex:SetColorTexture(1, 1, 1, 1)
+				if not m.masked then
+					m.tex:AddMaskTexture(m.mask)
+					m.masked = true
+				end
+			end
+			m.tex:SetVertexColor(color[1], color[2], color[3], 1)
+			m.fresh = true
+			m.tex:Show()
+		elseif m then
+			m.tex:Hide()
+		end
+	end
+	scene.driver:SetShown(on and true or false)
+end
+
+local function StepMotes(scene, elapsed)
+	local spec = scene.spec
+	if not spec then
+		return
+	end
+	local owner = scene.owner
+	local w, h = (owner:GetWidth() or 0) - 8, (owner:GetHeight() or 0) - 8
+	if w <= 0 or h <= 0 then
+		return
+	end
+	elapsed = math.min(elapsed, 0.1)
+	local t = GetTime()
+	for i = 1, scene.count or 0 do
+		local m = scene.motes[i]
+		if m.fresh then
+			Spawn(m, spec, w, h, true)
+			m.fresh = false
+		end
+		local fade
+		if spec.kind == "wander" then
+			m.age = m.age + elapsed
+			if m.age >= m.life then
+				Spawn(m, spec, w, h)
+			end
+			m.x = m.x + m.vx * elapsed + math.sin(t * 0.7 + m.phase) * spec.sway * elapsed
+			m.y = m.y + m.vy * elapsed + math.cos(t * 0.5 + m.phase) * spec.sway * elapsed
+			fade = math.sin(math.pi * m.age / m.life)
+		else
+			local dir = spec.kind == "down" and -1 or 1
+			m.y = m.y + dir * m.speed * elapsed
+			m.x = m.x + math.sin(t * 0.9 + m.phase) * spec.sway * elapsed
+			if m.y > h + m.size or m.y < -m.size then
+				Spawn(m, spec, w, h)
+			end
+			-- Fade in from where it starts and out where it leaves, so nothing pops.
+			local along = dir == 1 and m.y / h or 1 - m.y / h
+			fade = math.min(1, math.max(0, along) / 0.15, math.max(0, 1 - along) / 0.25)
+		end
+		if m.x < 0 or m.x > w then
+			fade = 0
+		end
+		local twinkle = spec.twinkle and (0.55 + 0.45 * math.sin(t * spec.twinkle + m.phase)) or 1
+		m.tex:SetAlpha(spec.alpha * fade * twinkle)
+		m.tex:ClearAllPoints()
+		m.tex:SetPoint("CENTER", owner, "BOTTOMLEFT", 4 + m.x, 4 + m.y)
+	end
+end
+
+-- The emblem: the theme's item icon, round, in the title bar beside the portrait.
+local function ApplyEmblem(scene, spec)
+	local badge = scene.badge
+	local icon = spec and not scene.noEmblem and Effects() ~= "off" and (spec.emblem and C_Item and C_Item.GetItemIconByID(spec.emblem))
+	local classAtlas
+	if spec and spec.class and not scene.noEmblem and Effects() ~= "off" then
+		local _, classFile = UnitClass("player")
+		classAtlas = classFile and ("classicon-" .. classFile:lower())
+	end
+	if not (icon or classAtlas) then
+		if badge then
+			badge:Hide()
+		end
+		return
+	end
+	if not badge then
+		-- In the title bar, just right of the portrait: inside the frame, where it's always seen,
+		-- and clear of each window's title and of its status line below.
+		local f = scene.frame
+		if not f then
+			return
+		end
+		badge = CreateFrame("Frame", nil, f)
+		badge:SetSize(16, 16)
+		badge:SetPoint("CENTER", f, "TOPLEFT", 74, -11)
+		badge:SetFrameLevel(f:GetFrameLevel() + 20)
+		local ring = badge:CreateTexture(nil, "BACKGROUND")
+		ring:SetSize(19, 19)
+		ring:SetPoint("CENTER")
+		ring:SetColorTexture(0.85, 0.65, 0.25, 1)
+		local ringMask = badge:CreateMaskTexture()
+		ringMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		ringMask:SetAllPoints(ring)
+		ring:AddMaskTexture(ringMask)
+		badge.icon = badge:CreateTexture(nil, "ARTWORK")
+		badge.icon:SetAllPoints()
+		local mask = badge:CreateMaskTexture()
+		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(badge.icon)
+		badge.icon:AddMaskTexture(mask)
+		scene.badge = badge
+	end
+	if classAtlas and badge.icon.SetAtlas then
+		badge.icon:SetAtlas(classAtlas)
+		badge.icon:SetTexCoord(0, 1, 0, 1)
+	else
+		badge.icon:SetTexture(icon)
+		badge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	end
+	badge:Show()
+end
+
+local function ApplyScene(scene, theme)
+	local spec = Theme.SCENES[theme.id]
+	ApplyVista(scene, spec)
+	ApplyMotes(scene, spec)
+	ApplyEmblem(scene, spec)
+end
+
+-- A window's scene lives on its main inset, behind everything on it.
+local function AddScene(frame, inset, noEmblem)
+	if not (inset and inset.CreateTexture and inset.CreateMaskTexture) then
+		return
+	end
+	local scene = { owner = inset, frame = frame, vista = {}, motes = {}, noEmblem = noEmblem }
+	-- Drives the particles; a hidden window's frames don't update, so it costs nothing then.
+	scene.driver = CreateFrame("Frame", nil, inset)
+	scene.driver:Hide()
+	scene.driver:SetScript("OnUpdate", function(_, elapsed)
+		StepMotes(scene, elapsed)
+	end)
+	inset:HookScript("OnSizeChanged", function()
+		LayoutVista(scene)
+	end)
+	scenes[#scenes + 1] = scene
+	if tinted then
+		ApplyScene(scene, Theme.Current())
+	end
+end
+
+-- The Fishing bar's water for a theme: an atlas, how many flipbook rows it has, and a tint.
+function Theme.Water(theme)
+	local spec = Theme.SCENES[(theme or Theme.Current()).id]
+	local water = spec and spec.water
+	local prof = water and water.prof
+	local atlas = "Skillbar_Fill_Flipbook_Fishing"
+	local flare = "Skillbar_Flare_Fishing"
+	if prof and Effects() ~= "off" and C_Texture and C_Texture.GetAtlasInfo
+		and C_Texture.GetAtlasInfo("Skillbar_Fill_Flipbook_" .. prof) then
+		atlas = "Skillbar_Fill_Flipbook_" .. prof
+		if C_Texture.GetAtlasInfo("Skillbar_Flare_" .. prof) then
+			flare = "Skillbar_Flare_" .. prof
+		end
+	end
+	return atlas, flare, water and Effects() ~= "off" and water.tint or nil
+end
+
 -- An inset panel inside a window.
 function Theme.Panel(inset)
 	AddSurface(inset, "inset")
 end
 
 -- A whole window: its frame and its inset panel.
-function Theme.Frame(frame, inset)
+function Theme.Frame(frame, inset, noEmblem)
 	AddSurface(frame, "frame")
 	if inset then
 		Theme.Panel(inset)
+		AddScene(frame, inset, noEmblem)
 	end
 end
 
@@ -378,6 +711,9 @@ local function Apply()
 		end
 		for _, owner in ipairs(grainOwners) do
 			ApplyGrain(owner, theme)
+		end
+		for _, scene in ipairs(scenes) do
+			ApplyScene(scene, theme)
 		end
 	end
 	for _, fn in ipairs(listeners) do

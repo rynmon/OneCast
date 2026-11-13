@@ -131,6 +131,9 @@ local function RefreshIfShown()
 	if frame and frame:IsShown() then
 		Stats.Refresh()
 	end
+	if ns.Mini then
+		ns.Mini.Refresh()
+	end
 end
 Stats.RefreshIfShown = RefreshIfShown
 
@@ -147,7 +150,12 @@ local function ScheduleRefresh()
 	end)
 end
 
+local ArchiveSession -- below: keeps the session in the history before it's replaced
+
 local function ResetSession()
+	if ArchiveSession then
+		ArchiveSession(charDB.session)
+	end
 	charDB.session = NewTotals()
 	awaitingLoot = false
 	RefreshIfShown()
@@ -186,6 +194,92 @@ local function ToggleWanted(itemID, name)
 		or " is no longer wanted."))
 	RefreshIfShown()
 end
+
+-- Catch goals, per character: "catch 20 Stonescale Eels". Counted from when the goal is set,
+-- shown on the catch's rows and in mini mode, with an alert halfway and when it's reached.
+-- charDB.goals[itemID] = { target, got, name }
+local function Goal(itemID)
+	return charDB and charDB.goals and charDB.goals[itemID]
+end
+
+local function GoalText(itemID)
+	local g = Goal(itemID)
+	if not g then
+		return ""
+	end
+	return g.got >= g.target and string.format(" |cff1eff00%d/%d|r", g.got, g.target)
+		or string.format(" |cff71d5ff%d/%d|r", g.got, g.target)
+end
+
+local function SetGoal(itemID, target, name)
+	charDB.goals = charDB.goals or {}
+	if not target or target <= 0 then
+		charDB.goals[itemID] = nil
+		ns.Print("goal cleared: " .. (name or ("item " .. itemID)) .. ".")
+	else
+		charDB.goals[itemID] = { target = target, got = 0, name = name }
+		ns.Print(string.format("goal set: catch %d %s. Progress shows on its row in the stats.", target,
+			name or ("item " .. itemID)))
+	end
+	RefreshIfShown()
+end
+
+local function CountGoals(loot)
+	if not (charDB and charDB.goals) then
+		return
+	end
+	for _, l in ipairs(loot) do
+		local g = charDB.goals[l.id]
+		if g then
+			local before = g.got
+			g.got = g.got + (l.quantity or 1)
+			local name = g.name or l.name or "?"
+			if ns.db and ns.db.goalAlerts == false then
+				-- Counted, but quietly.
+			elseif before < g.target and g.got >= g.target then
+				ns.RaidWarning(string.format("Goal reached: %d %s!", g.target, name))
+				PlaySound(SOUNDKIT.UI_QUEST_ROLLING_FORWARD_01 or SOUNDKIT.RAID_WARNING)
+				ns.Print(string.format("goal reached: %d %s. Right-click it to set a new one.", g.target, name))
+			elseif before < g.target / 2 and g.got >= g.target / 2 and g.target >= 6 then
+				ns.Print(string.format("halfway to your goal: %d/%d %s.", g.got, g.target, name))
+			end
+		end
+	end
+end
+
+StaticPopupDialogs["ONECAST_GOAL"] = {
+	text = "How many %s do you want to catch?",
+	button1 = OKAY or "OK",
+	button2 = CANCEL or "Cancel",
+	hasEditBox = true,
+	OnShow = function(self, data)
+		local box = (self.GetEditBox and self:GetEditBox()) or self.editBox
+		if box then
+			box:SetNumeric(true)
+			box:SetText(tostring(data and data.default or 20))
+			box:HighlightText()
+		end
+	end,
+	OnAccept = function(self, data)
+		local box = (self.GetEditBox and self:GetEditBox()) or self.editBox
+		if data then
+			SetGoal(data.itemID, tonumber(box and box:GetText() or ""), data.name)
+		end
+	end,
+	-- The game hands these the dialog's data: the edit box's parent isn't always the dialog.
+	EditBoxOnEnterPressed = function(self, data)
+		if data then
+			SetGoal(data.itemID, tonumber(self:GetText() or ""), data.name)
+		end
+		StaticPopup_Hide("ONECAST_GOAL")
+	end,
+	EditBoxOnEscapePressed = function()
+		StaticPopup_Hide("ONECAST_GOAL")
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+}
 
 -- Fishing skill: rank, max rank and bonus (lure, pole), or nil if not found.
 local function FishingSkill()
@@ -242,6 +336,11 @@ local function CheckSkill()
 	end
 	local track = charDB.skill
 	if track.rank ~= rank then
+		-- A skill-up: say so on screen (not on the first look, when there's nothing to compare).
+		if track.rank and rank > track.rank and ns.Mini and ns.Mini.SkillToast then
+			local _, maxRank = FishingSkill()
+			ns.Mini.SkillToast(rank - track.rank, rank, maxRank)
+		end
 		track.rank, track.catches = rank, 0
 	end
 	track.catches = track.catches or 0
@@ -278,19 +377,83 @@ local function VendorPrice(itemID)
 	return sellPrice
 end
 
--- Auction price per unit and where it came from: Auctionator, then TradeSkillMaster.
-local function AuctionPrice(itemID)
-	local api = Auctionator and Auctionator.API and Auctionator.API.v1
-	if api and api.GetAuctionPriceByItemID then
-		local ok, price = pcall(api.GetAuctionPriceByItemID, ADDON, itemID)
-		if ok and price then
-			return price, "Auctionator"
+-- Naowh Forever's auction prices: its own scans and the prices it ships for every auction
+-- house (NaowhForever_QoL's Auction Prices), read straight from its namespace.
+local function NaowhPrices()
+	local naowh = _G.NaowhForever
+	return type(naowh) == "table" and type(naowh.AuctionPrice) == "function" and naowh or nil
+end
+
+-- Auctionator itself, not Naowh Forever's stand-in for it ("Prices for Other Addons"), which
+-- answers Auctionator's API when Auctionator isn't installed: those prices are Naowh's.
+local function RealAuctionator()
+	local loaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Auctionator")
+	return Auctionator and Auctionator.API and (loaded or not NaowhPrices()) and Auctionator.API.v1
+end
+
+-- Whether any addon OneCast reads auction prices from is installed.
+local function HasPriceAddon()
+	return RealAuctionator() or TSM_API or NaowhPrices()
+end
+
+-- Each source: whether it's installed, and an item's price from it.
+local SOURCES = {
+	{ key = "auctionator", name = "Auctionator",
+		installed = function() return RealAuctionator() ~= nil and RealAuctionator() ~= false end,
+		price = function(itemID)
+			local api = RealAuctionator()
+			if api and api.GetAuctionPriceByItemID then
+				local ok, price = pcall(api.GetAuctionPriceByItemID, ADDON, itemID)
+				return ok and price or nil
+			end
+		end },
+	{ key = "tsm", name = "TSM",
+		installed = function() return TSM_API ~= nil end,
+		price = function(itemID)
+			if TSM_API and TSM_API.GetCustomPriceValue then
+				local ok, price = pcall(TSM_API.GetCustomPriceValue, "dbmarket", "i:" .. itemID)
+				return ok and price or nil
+			end
+		end },
+	{ key = "naowh", name = "Naowh Forever",
+		installed = function() return NaowhPrices() ~= nil end,
+		price = function(itemID)
+			local naowh = NaowhPrices()
+			if naowh then
+				local ok, price = pcall(naowh.AuctionPrice, itemID)
+				return ok and type(price) == "number" and price > 0 and price or nil
+			end
+		end },
+}
+
+-- The installed price addons, in the automatic order, for the options' list.
+function Stats.PriceSources()
+	local list = {}
+	for _, source in ipairs(SOURCES) do
+		if source.installed() then
+			list[#list + 1] = source
 		end
 	end
-	if TSM_API and TSM_API.GetCustomPriceValue then
-		local ok, price = pcall(TSM_API.GetCustomPriceValue, "dbmarket", "i:" .. itemID)
-		if ok and price then
-			return price, "TSM"
+	return list
+end
+
+-- Auction price per unit and where it came from. "Auction prices from" (auctionSource) picks
+-- one source; Automatic, or a choice that isn't installed, takes the first with a price:
+-- Auctionator, then TradeSkillMaster, then Naowh Forever.
+local function AuctionPrice(itemID)
+	local choice = ns.db and ns.db.auctionSource or "auto"
+	if choice ~= "auto" then
+		for _, source in ipairs(SOURCES) do
+			if source.key == choice and source.installed() then
+				local price = source.price(itemID)
+				return price, price and source.name or nil
+			end
+		end
+	end
+	for _, source in ipairs(SOURCES) do
+		local price = source.price(itemID)
+		if price then
+			return price, source.name
 		end
 	end
 end
@@ -388,7 +551,9 @@ local function AlertIfRare(loot)
 			local color = QualityColor(l.quality)
 			local text = (color and color.hex or "|cffffffff") .. (l.name or "?") .. "|r"
 			ns.RaidWarning("Caught " .. text .. "!")
-			PlaySound(SOUNDKIT.RAID_WARNING)
+			if db.alertSound ~= false then
+				PlaySound(SOUNDKIT.RAID_WARNING)
+			end
 			ns.Print("rare catch: " .. (l.link or text))
 		end
 	end
@@ -413,6 +578,51 @@ local function SessionSummaryText(s)
 		parts[#parts + 1] = string.format("%d new for your collection", s.newFish)
 	end
 	return table.concat(parts, ", ")
+end
+
+-- Session history: each finished session, newest first, for the All-time records tab. A session
+-- ends when a new one starts (after a long break, or a reset).
+-- charDB.history = { { start, time, casts, catches, zone, vendor, skill, best, top, items }, ... }
+local HISTORY_MAX = 40
+ArchiveSession = function(s)
+	if not s or (s.catches or 0) == 0 then
+		return
+	end
+	local zone, most = nil, 0
+	for z, n in pairs(s.zones or {}) do
+		local count = type(n) == "table" and (n.catches or n.count or 0) or n
+		if type(count) == "number" and count > most then
+			zone, most = z, count
+		end
+	end
+	local top, topCount, best, bestScore = nil, 0, nil, nil
+	local items = {}
+	for id, item in pairs(s.items or {}) do
+		items[#items + 1] = { id = id, count = item.count }
+		if item.count > topCount then
+			top, topCount = id, item.count
+		end
+		-- The best catch: the highest quality, then the rarest by Classic's odds.
+		local r = ns.Rarity and ns.Rarity(id)
+		local score = (item.quality or 1) * 1000 - (r and r.pct or 100)
+		if not bestScore or score > bestScore then
+			best, bestScore = id, score
+		end
+	end
+	table.sort(items, function(a, b)
+		return a.count > b.count
+	end)
+	for i = #items, 7, -1 do
+		items[i] = nil
+	end
+	charDB.history = charDB.history or {}
+	table.insert(charDB.history, 1, {
+		start = s.start, time = s.activeTime, casts = s.casts, catches = s.catches, zone = zone,
+		vendor = TotalValue(s.items, VendorPrice), skill = SkillGained(s), best = best, top = top, items = items,
+	})
+	for i = #charDB.history, HISTORY_MAX + 1, -1 do
+		charDB.history[i] = nil
+	end
 end
 
 local function PrintSessionSummary()
@@ -527,8 +737,14 @@ function Stats.OnCast()
 	end
 	summaryTimer = C_Timer.NewTimer(ACTIVE_GAP + 1, PrintSessionSummary)
 
-	-- Open on cast, unless the player closed it during this stretch of fishing.
-	if ns.db and ns.db.openOnCast and not dismissed and not (frame and frame:IsShown())
+	-- Open on cast, unless the player closed it during this stretch of fishing. In mini mode, the
+	-- slim bar opens instead.
+	if ns.db and ns.db.statsMini and ns.Mini then
+		if ns.db.openOnCast and not dismissed then
+			ns.Mini.OnCast()
+		end
+		RefreshIfShown()
+	elseif ns.db and ns.db.openOnCast and not dismissed and not (frame and frame:IsShown())
 		and not ns.Hub.IsOpen() then
 		Stats.Show()
 		autoOpened = true
@@ -604,6 +820,7 @@ local function OnLootReady(autoLooted)
 		ns.Extravaganza.OnCatch(loot)
 	end
 	AlertIfRare(loot)
+	CountGoals(loot)
 	OfferAutoLoot(autoLooted)
 	if ns.Report then
 		ns.Report.Check()
@@ -645,8 +862,14 @@ local function AboutFishing(id, message)
 		return true
 	end
 	local lower = message:lower()
-	if lower:find("line of sight", 1, true) then
-		return false -- a cast that couldn't see its target, not a fishing line
+	-- A cast that couldn't see its target, not a fishing line: the game's own text for it.
+	if (SPELL_FAILED_LINE_OF_SIGHT and message == SPELL_FAILED_LINE_OF_SIGHT) or lower:find("line of sight", 1, true) then
+		return false
+	end
+	-- Fishing in the client's own words ("Angeln", "Pêche"), then the English ones.
+	local fishing = ns.GetFishingName and ns.GetFishingName()
+	if type(fishing) == "string" and fishing ~= "" and lower:find(fishing:lower(), 1, true) then
+		return true
 	end
 	for _, word in ipairs(FISHY) do
 		if lower:find(word, 1, true) then
@@ -828,6 +1051,16 @@ local function ShortGold(copper)
 	return string.format("|cffeda55f%dc|r", math.floor(copper))
 end
 
+local function PriceSources(sources)
+	local names = {}
+	for _, source in ipairs({ "Auctionator", "TSM", "Naowh Forever" }) do
+		if sources[source] then
+			names[#names + 1] = source
+		end
+	end
+	return table.concat(names, " and ")
+end
+
 -- Gold per hour of fishing: at auction prices where an addon has them, else the vendor's.
 local function GoldTile(items, seconds, what)
 	local ah, _, sources = TotalValue(items, AuctionPrice)
@@ -836,7 +1069,7 @@ local function GoldTile(items, seconds, what)
 	local value = copper > 0 and seconds and seconds >= 60 and ShortGold(copper / seconds * 3600)
 	return Tile(value, auction and "gold/hr (AH)" or "gold/hr (vendor)",
 		"What " .. what .. " is worth per hour of fishing, at " .. (auction and "auction" or "vendor") .. " prices."
-		.. (auction and "" or " Auctionator or TSM add auction prices."))
+		.. (auction and ("\n\nAuction prices from: " .. PriceSources(sources)) or " Auctionator, TSM or Naowh Forever add auction prices."))
 end
 
 -- Vendor and auction gold per hour of fishing, as two tiles.
@@ -846,23 +1079,24 @@ local function VendorTile(items, seconds, what)
 		"What " .. what .. " sells to a vendor for, per hour of fishing.")
 end
 
-local function PriceSources(sources)
-	local names = {}
-	for _, source in ipairs({ "Auctionator", "TSM" }) do
-		if sources[source] then
-			names[#names + 1] = source
-		end
-	end
-	return table.concat(names, " and ")
-end
 
 local function AuctionTile(items, seconds, what)
 	local copper, unpriced, sources = TotalValue(items, AuctionPrice)
 	local priced = next(sources) ~= nil
-	local tip = "Needs Auctionator or TradeSkillMaster, with prices scanned at the auction house."
+	local tip = "Needs Auctionator, TradeSkillMaster or Naowh Forever, with prices scanned at the auction house."
 	if priced then
-		tip = "What " .. what .. " is worth at auction, per hour of fishing. Prices from " .. PriceSources(sources) .. "."
-			.. (unpriced and " Some of it has no auction price, so it isn't counted." or "")
+		tip = "What " .. what .. " is worth at auction, per hour of fishing.\n\nPrices from: " .. PriceSources(sources)
+			.. (unpriced and "\nSome of it has no auction price, so it isn't counted." or "")
+	elseif #Stats.PriceSources() > 0 then
+		local names = {}
+		for _, source in ipairs(Stats.PriceSources()) do
+			names[#names + 1] = source.name
+		end
+		tip = "No auction prices yet for " .. what .. ". Price addon: " .. table.concat(names, ", ")
+			.. ". Scan at the auction house to fill them in."
+	end
+	if #Stats.PriceSources() > 1 then
+		tip = tip .. "\n\nYou have more than one price addon: pick which under Options, Stats and alerts, Auction prices from."
 	end
 	return Tile(priced and copper > 0 and seconds and seconds >= 60 and ShortGold(copper / seconds * 3600),
 		"auction/hr", tip)
@@ -878,10 +1112,10 @@ local function ValueRows(items)
 		auction = Coins(ah) -- where the prices come from is in the auction tile's tooltip
 	elseif not next(items) then
 		auction = GREY .. "-|r"
-	elseif (Auctionator and Auctionator.API) or TSM_API then
+	elseif HasPriceAddon() then
 		auction = GREY .. (ns.Prices and ns.Prices.CanScan() and "no prices yet: scan at the AH" or "no prices yet") .. "|r"
 	else
-		auction = GREY .. "needs Auctionator or TSM|r"
+		auction = GREY .. "needs Auctionator, TSM or Naowh|r"
 	end
 	rows[2] = { "Auction value", auction }
 	return rows
@@ -1013,6 +1247,95 @@ local function SessionTitle(s)
 	return "Session  " .. FormatDuration(s.start and GetServerTime() - s.start or 0)
 end
 
+-- The fish to go for next: missing ones in zones your skill (lure and pole included) covers,
+-- in this zone if it has any, else the zone with most of them. Event-only fish aren't counted.
+-- { zone, here, fish = { { id, name, pct } }, likeliest first }, or nil.
+local function CatchNext(zone)
+	local rank, _, modifier = FishingSkill()
+	if not (rank and ns.FISH and ns.Collection) then
+		return nil
+	end
+	local skill = rank + (modifier or 0)
+	local byZone = {}
+	for _, fish in ipairs(ns.FISH) do
+		if not fish.event and ns.Collection.Get(fish.id).total == 0 then
+			local seen = {}
+			local function Add(z)
+				local needed = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[z]
+				if z and not seen[z] and needed and needed <= skill then
+					seen[z] = true
+					local odds = ns.ODDS and ns.ODDS[fish.id] and ns.ODDS[fish.id].water
+					byZone[z] = byZone[z] or { zone = z, needed = needed, fish = {} }
+					table.insert(byZone[z].fish, { id = fish.id, name = C_Item.GetItemNameByID(fish.id) or fish.name,
+						pct = odds and odds[z] or 0 })
+				end
+			end
+			for _, z in ipairs(fish.zones or {}) do
+				Add(z)
+			end
+			for _, extra in ipairs(fish.more or {}) do
+				Add(extra[1])
+			end
+		end
+	end
+	local best = byZone[zone]
+	if best then
+		best.here = true
+	else
+		for _, z in pairs(byZone) do
+			if not best or #z.fish > #best.fish or (#z.fish == #best.fish and z.needed > best.needed) then
+				best = z
+			end
+		end
+	end
+	if best then
+		table.sort(best.fish, function(a, b)
+			if a.pct ~= b.pct then
+				return a.pct > b.pct
+			end
+			return (a.name or "") < (b.name or "")
+		end)
+	end
+	return best
+end
+Stats.CatchNext = CatchNext
+
+-- The row for it: the fish and where, with every missing fish there on hover; a click opens
+-- the collection on that zone.
+local function CatchNextRow(zone)
+	local pick = CatchNext(zone)
+	if not pick then
+		return nil
+	end
+	local first = pick.fish[1]
+	local more = #pick.fish - 1
+	local value = (first.name or "?") .. (pick.here and (GREY .. "  here|r") or (GREY .. "  in " .. pick.zone .. "|r"))
+		.. (more > 0 and (GREY .. string.format(" +%d", more) .. "|r") or "")
+	return { "Catch pick", value, {
+		tip = function(tooltip)
+			tooltip:SetText("Not caught yet in " .. pick.zone)
+			tooltip:AddLine(pick.here and "Here, and your skill covers it." or string.format(
+				"Needs %d Fishing, which your skill covers. It has the most fish you're missing.", pick.needed), 0.8, 0.8, 0.8, true)
+			tooltip:AddLine(" ")
+			for i, f in ipairs(pick.fish) do
+				if i > 12 then
+					tooltip:AddLine(string.format("and %d more", #pick.fish - 12), 0.6, 0.6, 0.6)
+					break
+				end
+				tooltip:AddDoubleLine(f.name or "?", f.pct > 0 and ns.OneIn(f.pct) or "", 1, 1, 1, 0.6, 0.6, 0.6)
+			end
+			tooltip:AddLine(" ")
+			tooltip:AddLine("Click: see them in the collection", 0.6, 0.8, 1)
+		end,
+		click = function()
+			if ns.Book and ns.Book.ShowZoneFish then
+				ns.Book.Show()
+				ns.Book.ShowZoneFish(pick.zone)
+			end
+		end,
+	} }
+end
+
 -- Now: this session, your skill's progress, and what's biting.
 local function NowView(zone)
 	local s = Session()
@@ -1050,6 +1373,10 @@ local function NowView(zone)
 	local camp = ns.Camp and ns.Camp.StatusText()
 	if camp then
 		stats[#stats + 1] = { "Camp", GREEN .. camp .. "|r" }
+	end
+	local catchNext = CatchNextRow(zone)
+	if catchNext then
+		stats[#stats + 1] = catchNext
 	end
 
 	local rows, listTitle
@@ -1182,6 +1509,17 @@ local function RecordsView()
 		stats[#stats + 1] = { "Zones", zonesText }
 	end
 	local rows = {}
+	if charDB.recordsList == "sessions" then
+		-- Recent sessions: when and where, catches and fish per hour; the rest in the tooltip.
+		for i, h in ipairs(charDB.history or {}) do
+			local rate = h.time and h.time >= 60 and h.catches / h.time * 3600
+			rows[i] = { icon = h.top and C_Item.GetItemIconByID(h.top) or 133888, session = h,
+				name = (h.start and date("%a %d %b", h.start) or "?") .. GREY .. "  " .. (h.zone or "?") .. "|r",
+				right = tostring(h.catches) .. (rate and (SEP .. string.format("%.0f/hr", rate)) or "") }
+		end
+		return "All-time records", tiles, stats, rows, "Recent sessions",
+			"No finished sessions yet. A session ends after a 30-minute break from fishing, or a reset."
+	end
 	for i, e in ipairs(charDB.notable or {}) do
 		rows[i] = { id = e.id, icon = e.icon, quality = e.quality, right = date("%d %b", e.time),
 			name = (e.name or "?") .. (e.quantity and e.quantity > 1 and (" x" .. e.quantity) or ""),
@@ -1326,30 +1664,31 @@ function Stats.ZoneBadge(zone, spot)
 		badge.need = "level unknown"
 	end
 	if kind == "ok" then
-		badge.mood, badge.status = "good", "Ready"
+		badge.mood, badge.status = "good", "No fish get away"
 	elseif kind == "short" then
 		if ns.Lure and ns.Lure.CoverHint(status.short) then
-			badge.mood, badge.status = "warn", status.short .. " short" -- yellow: a lure in your bags covers it
+			badge.mood, badge.status = "warn", status.short .. " skill short" -- yellow: a lure in your bags covers it
 		else
-			badge.mood, badge.status = "bad", status.short .. " short"
+			badge.mood, badge.status = "bad", status.short .. " skill short"
 		end
 	elseif kind == "getaways" then
 		badge.mood, badge.status = "bad", "Fish get away"
 	elseif kind == "clear" then
-		badge.mood, badge.status = "good", "No getaways"
+		badge.mood, badge.status = "good", "None got away yet"
 	elseif kind == "note" then
-		badge.mood, badge.status = "good", "No minimum"
+		badge.mood, badge.status = "good", "No minimum skill"
 	elseif kind == "outgrown" then
-		badge.mood, badge.status = "unknown", "Above last getaway"
+		badge.mood, badge.status = "unknown", "Past the last getaway"
 	elseif kind == "level" then
-		badge.mood, badge.status = "unknown", "Skill unknown"
+		badge.mood, badge.status = "unknown", "Skill not found"
 	else
-		badge.mood, badge.status = "unknown", "Unknown"
+		badge.mood, badge.status = "unknown", "Watching for getaways"
 	end
 	return badge
 end
 
 Stats.FishingSkill = FishingSkill
+Stats.CatchesToGo = CatchesToGo
 Stats.CurrentZone = CurrentZone
 
 -- Skill bar fraction and value text.
@@ -1534,14 +1873,38 @@ local function WaterBar(parent, name)
 	local flipbook = flow:CreateAnimation("FlipBook")
 	flipbook:SetTarget(fill)
 	flipbook:SetDuration(2)
-	local info = C_Texture.GetAtlasInfo(WATER_FILL)
-	local rows = info and info.height and math.max(1, math.floor(info.height / WATER_FRAME_HEIGHT + 0.5)) or 30
-	flipbook:SetFlipBookRows(rows)
 	flipbook:SetFlipBookColumns(2)
-	flipbook:SetFlipBookFrames(rows * 2)
 	flipbook:SetFlipBookFrameWidth(0)
 	flipbook:SetFlipBookFrameHeight(0)
-	flow:Play()
+
+	-- The theme's water: Fishing's own, another profession's flipbook (Alchemy's bubbling green,
+	-- Blacksmithing's molten metal), or Fishing's tinted. Each has 2 columns of 34-pixel frames.
+	local flareAtlas = WATER_FLARE
+	local function ApplyWater()
+		local atlas, flareName, tint = WATER_FILL, WATER_FLARE, nil
+		if ns.Theme and ns.Theme.Water then
+			atlas, flareName, tint = ns.Theme.Water()
+		end
+		flow:Stop()
+		fill:SetAtlas(atlas)
+		local info = C_Texture.GetAtlasInfo(atlas)
+		local rows = info and info.height and math.max(1, math.floor(info.height / WATER_FRAME_HEIGHT + 0.5)) or 30
+		flipbook:SetFlipBookRows(rows)
+		flipbook:SetFlipBookFrames(rows * 2)
+		fill:SetDesaturated(tint ~= nil)
+		fill:SetVertexColor(tint and tint[1] or 1, tint and tint[2] or 1, tint and tint[3] or 1)
+		flareAtlas = HasAtlas(flareName) and flareName or WATER_FLARE
+		if HasAtlas(flareAtlas) then
+			flare:SetAtlas(flareAtlas)
+		end
+		flare:SetVertexColor(tint and tint[1] or 1, tint and tint[2] or 1, tint and tint[3] or 1)
+		surge:SetVertexColor(tint and tint[1] or 0.55, tint and tint[2] or 0.85, tint and tint[3] or 1)
+		flow:Play()
+	end
+	ApplyWater()
+	if ns.Theme and ns.Theme.OnChange then
+		ns.Theme.OnChange(ApplyWater)
+	end
 
 	local flash = surge:CreateAnimationGroup()
 	local flashIn = flash:CreateAnimation("Alpha")
@@ -1841,14 +2204,32 @@ local function ZoneStrip(parent)
 	strip:SetPoint("TOPRIGHT", -EDGE, STRIP_TOP)
 	strip:SetHeight(STRIP_HEIGHT)
 	strip:EnableMouse(true)
-	strip.band = strip:CreateTexture(nil, "BACKGROUND")
-	strip.band:SetAllPoints()
+	-- The window's own art: the character sheet's gilded line as the base, a glow in the mood's
+	-- colour fading out from the left, and bronze hairlines above and below, like a plaque.
+	strip.base = strip:CreateTexture(nil, "BACKGROUND", nil, 0)
+	strip.base:SetAllPoints()
+	if HasAtlas("UI-Character-Info-Line-Bounce") then
+		strip.base:SetAtlas("UI-Character-Info-Line-Bounce")
+		strip.base:SetAlpha(0.7)
+	else
+		strip.base:SetColorTexture(0, 0, 0, 0.35)
+	end
+	strip.band = strip:CreateTexture(nil, "BACKGROUND", nil, 1)
+	strip.band:SetPoint("TOPLEFT")
+	strip.band:SetPoint("BOTTOMLEFT")
+	strip.band:SetPoint("RIGHT", strip, "CENTER", 40, 0)
 	strip.band:SetTexture("Interface\\Buttons\\WHITE8x8")
-	strip.edge = strip:CreateTexture(nil, "BORDER")
-	strip.edge:SetPoint("TOPLEFT")
-	strip.edge:SetPoint("BOTTOMLEFT")
-	strip.edge:SetWidth(2)
-	strip.edge:SetTexture("Interface\\Buttons\\WHITE8x8")
+	strip.band:SetBlendMode("ADD")
+	strip.lines = {}
+	for i, point in ipairs({ "TOP", "BOTTOM" }) do
+		local line = strip:CreateTexture(nil, "BORDER")
+		line:SetPoint(point .. "LEFT")
+		line:SetPoint(point .. "RIGHT")
+		line:SetHeight(1)
+		line:SetColorTexture(0.62, 0.48, 0.24, 0.7)
+		ns.Theme.Register(line, "header")
+		strip.lines[i] = line
+	end
 	strip.icon = strip:CreateTexture(nil, "ARTWORK")
 	strip.icon:SetSize(14, 14)
 	strip.icon:SetPoint("LEFT", PAD, 0)
@@ -1866,8 +2247,12 @@ local function ZoneStrip(parent)
 		local badge = Stats.ZoneBadge(zone, spot)
 		local mood = MOODS[badge.mood]
 		local r, g, b = mood.color[1], mood.color[2], mood.color[3]
-		self.band:SetVertexColor(r, g, b, 0.12)
-		self.edge:SetVertexColor(r, g, b, 0.9)
+		if self.band.SetGradient and CreateColor then
+			self.band:SetVertexColor(1, 1, 1, 1)
+			self.band:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0.22), CreateColor(r, g, b, 0))
+		else
+			self.band:SetVertexColor(r, g, b, 0.1)
+		end
 		if HasAtlas(mood.atlas) then
 			self.icon:SetAtlas(mood.atlas)
 		else
@@ -1876,9 +2261,13 @@ local function ZoneStrip(parent)
 		-- A long place name is cut short rather than running into the status.
 		self.place:SetWidth(0)
 		self.place:SetText(badge.place)
-		self.place:SetWidth(math.min(self.place:GetStringWidth() or 0, PLACE_MAX_WIDTH))
 		self.need:SetText(badge.need or "")
 		self.status:SetText(badge.status)
+		-- The place gets what the level and status leave (before the first layout, its usual most).
+		local width = self:GetWidth() or 0
+		local room = width > 0 and (width - PAD - 14 - 5 - 6 - (self.need:GetStringWidth() or 0) - 12
+			- (self.status:GetStringWidth() or 0) - PAD) or PLACE_MAX_WIDTH
+		self.place:SetWidth(math.max(40, math.min(self.place:GetStringWidth() or 0, PLACE_MAX_WIDTH, room)))
 		self.status:SetTextColor(r, g, b)
 		self.badge = badge
 		self.tip = Stats.ZoneVerdict(zone, spot)
@@ -1914,6 +2303,22 @@ local function StatRow(parent, index, y)
 	row.value = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	row.value:SetPoint("RIGHT", -PAD, 0)
 	row.value:SetJustifyH("RIGHT")
+	-- A row with more to say (`extra`: tip and click) takes the mouse; the others don't.
+	row:SetScript("OnEnter", function(self)
+		local extra = self.extra
+		if extra and extra.tip then
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			extra.tip(GameTooltip)
+			GameTooltip:Show()
+		end
+	end)
+	row:SetScript("OnLeave", GameTooltip_Hide)
+	row:SetScript("OnMouseUp", function(self, button)
+		local extra = self.extra
+		if extra and extra.click and button == "LeftButton" then
+			extra.click()
+		end
+	end)
 	return row
 end
 
@@ -2043,6 +2448,12 @@ local function ItemMenuFrame()
 			edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
 		f:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
 	end
+	-- The tooltip backdrop is see-through, and the list under the menu showed through its text:
+	-- a solid backing inside the border.
+	local backing = f:CreateTexture(nil, "BACKGROUND", nil, -8)
+	backing:SetPoint("TOPLEFT", 3, -3)
+	backing:SetPoint("BOTTOMRIGHT", -3, 3)
+	backing:SetColorTexture(0.04, 0.04, 0.06, 1)
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetClampedToScreen(true)
 	f:EnableMouse(true)
@@ -2100,7 +2511,14 @@ local function ShowMenu(title, entries)
 	for i = #entries + 1, #f.buttons do
 		f.buttons[i]:Hide()
 	end
-	f:SetSize(MENU_WIDTH, -y + MENU_PAD)
+	-- As wide as the longest line needs, so nothing is cut off.
+	local width = MENU_WIDTH
+	for i = 1, #entries do
+		width = math.max(width, f.buttons[i].text:GetStringWidth() + 2 * MENU_PAD + 8)
+	end
+	f.title:SetWordWrap(false)
+	width = math.max(width, f.title:GetStringWidth() + 2 * MENU_PAD + 4)
+	f:SetSize(math.min(width, 320), -y + MENU_PAD)
 	local scale = UIParent:GetEffectiveScale()
 	local x, cy = GetCursorPosition()
 	f:ClearAllPoints()
@@ -2127,6 +2545,15 @@ local function ShowItemMenu(itemID, name)
 	entries[#entries + 1] = { IsWanted(itemID) and "No longer wanted" or "Mark as wanted (alert on catch)", function()
 		ToggleWanted(itemID, name)
 	end }
+	local goal = Goal(itemID)
+	if goal then
+		entries[#entries + 1] = { string.format("Clear goal (%d/%d)", goal.got, goal.target), function()
+			SetGoal(itemID, nil, name)
+		end }
+	end
+	entries[#entries + 1] = { goal and "Set a new goal..." or "Set a catch goal...", function()
+		StaticPopup_Show("ONECAST_GOAL", name, nil, { itemID = itemID, name = name, default = goal and goal.target or 20 })
+	end }
 	entries[#entries + 1] = { "Wowhead link", function()
 		ShowWowhead("item", itemID, name)
 	end }
@@ -2136,6 +2563,10 @@ local function ShowItemMenu(itemID, name)
 	return ShowMenu(name, entries)
 end
 Stats.ShowItemMenu = ShowItemMenu
+-- For mini mode: the active goals, and a row's goal text.
+function Stats.Goals()
+	return charDB and charDB.goals or {}
+end
 
 local function ItemRow(parent, index, y)
 	local row = CreateFrame("Button", nil, parent)
@@ -2204,7 +2635,38 @@ local function ItemRow(parent, index, y)
 	end)
 	row:SetScript("OnEnter", function(self)
 		local t = self.spot
-		if t then
+		local h = self.session
+		if h then
+			-- A past session: everything it was.
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText((h.start and date("%A %d %B, %H:%M", h.start) or "Session") .. "  ·  " .. (h.zone or "?"))
+			GameTooltip:AddDoubleLine("Caught", string.format("%d of %d", h.catches, h.casts or h.catches), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine("Fishing time", FormatDuration(h.time), 1, 0.82, 0, 1, 1, 1)
+			local rate = h.time and h.time >= 60 and h.catches / h.time * 3600
+			GameTooltip:AddDoubleLine("Fish per hour", rate and string.format("%.0f", rate) or "-", 1, 0.82, 0, 1, 1, 1)
+			if (h.vendor or 0) > 0 then
+				GameTooltip:AddDoubleLine("Vendor value", Coins(h.vendor), 1, 0.82, 0, 1, 1, 1)
+			end
+			if (h.skill or 0) > 0 then
+				GameTooltip:AddDoubleLine("Skill gained", "+" .. h.skill, 1, 0.82, 0, 0.12, 1, 0)
+			end
+			if h.best then
+				local name = C_Item.GetItemNameByID(h.best) or ("item " .. h.best)
+				local color = QualityColor(C_Item.GetItemQualityByID(h.best))
+				GameTooltip:AddDoubleLine("Best catch", name, 1, 0.82, 0, color and color.r or 1, color and color.g or 1,
+					color and color.b or 1)
+			end
+			if h.items and #h.items > 0 then
+				GameTooltip:AddLine(" ")
+				for _, it in ipairs(h.items) do
+					local name = C_Item.GetItemNameByID(it.id) or ("item " .. it.id)
+					local color = QualityColor(C_Item.GetItemQualityByID(it.id))
+					GameTooltip:AddDoubleLine(name, "x" .. it.count, color and color.r or 1, color and color.g or 1,
+						color and color.b or 1, 1, 1, 1)
+				end
+			end
+			GameTooltip:Show()
+		elseif t then
 			-- A spot on the Farm tab: its numbers and what bites there.
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(self.itemName)
@@ -2259,7 +2721,7 @@ local function ItemRow(parent, index, y)
 			else
 				GameTooltip:AddLine("Click: Wowhead link", 0.6, 0.8, 1)
 			end
-			GameTooltip:AddLine("Right-click: more (wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
+			GameTooltip:AddLine("Right-click: more (goal, wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
 			GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.8, 1)
 			GameTooltip:Show()
 		end
@@ -2423,6 +2885,7 @@ ns.UI = {
 	HasAtlas = HasAtlas,
 	SizedFont = SizedFont,
 	CreateShell = CreateShell,
+	RankBar = function(parent, name) return RankBar(parent, name) end, -- Forever's Fishing bar: (parent, name), then :SetRank(fraction, "186/225")
 	SectionHeader = SectionHeader,
 	RowBackground = RowBackground,
 	StatRow = StatRow,
@@ -2544,7 +3007,9 @@ local function CreateWindow()
 	f.listToggle:SetPoint("RIGHT", -4, 1)
 	f.listToggle:SetScript("OnClick", function()
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-		if charDB.farmTarget then
+		if CurrentView() == "records" then
+			charDB.recordsList = charDB.recordsList ~= "sessions" and "sessions" or nil
+		elseif charDB.farmTarget then
 			charDB.farmTarget, charDB.farmList = nil, "fish"
 		else
 			charDB.farmList = charDB.farmList ~= "fish" and "fish" or nil
@@ -2553,7 +3018,10 @@ local function CreateWindow()
 	end)
 	f.listToggle:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		if charDB.farmTarget then
+		if CurrentView() == "records" then
+			GameTooltip:SetText(charDB.recordsList == "sessions" and "Show your notable catches"
+				or "Show your recent sessions")
+		elseif charDB.farmTarget then
 			GameTooltip:SetText("Back to all your fish")
 		elseif charDB.farmList == "fish" then
 			GameTooltip:SetText("Show each spot in this zone, best fish per hour first")
@@ -2741,6 +3209,8 @@ function Stats.Refresh()
 		if pair then
 			row.label:SetText(pair[1] .. ":")
 			row.value:SetText(pair[2])
+			row.extra = pair[3]
+			row:EnableMouse(pair[3] ~= nil)
 			row:Show()
 			shownStats = i
 		else
@@ -2757,7 +3227,7 @@ function Stats.Refresh()
 	local capacity = math.min(MAX_ROWS, math.floor((INSET_HEIGHT + rowsTop - 18) / ITEM_HEIGHT))
 	frame.listHeader.text:SetText(listTitle)
 	-- Scrolled with the mouse wheel; back to the top when the list itself changes.
-	local listKey = view .. ":" .. tostring(charDB.farmTarget) .. ":" .. tostring(charDB.farmList)
+	local listKey = view .. ":" .. tostring(charDB.farmTarget) .. ":" .. tostring(charDB.farmList) .. ":" .. tostring(charDB.recordsList)
 	if frame.listKey ~= listKey then
 		frame.listKey, frame.listOffset = listKey, 0
 	end
@@ -2765,8 +3235,12 @@ function Stats.Refresh()
 	frame.listOffset = math.max(0, math.min(frame.listOffset or 0, maxOffset))
 	frame.listCapacity, frame.listMax = capacity, maxOffset
 	local offset = frame.listOffset
-	frame.listToggle:SetShown(view == "farm")
-	frame.listToggle:SetText(charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
+	frame.listToggle:SetShown(view == "farm" or view == "records")
+	if view == "records" then
+		frame.listToggle:SetText(charDB.recordsList == "sessions" and "Notable" or "Sessions")
+	else
+		frame.listToggle:SetText(charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
+	end
 	for i, row in ipairs(frame.rows) do
 		local r = i <= capacity and rows[offset + i]
 		row:ClearAllPoints()
@@ -2776,10 +3250,11 @@ function Stats.Refresh()
 			local color = QualityColor(r.quality)
 			row.itemID = r.id
 			row.itemName = r.name
-			row.spot, row.zone, row.pick, row.missing, row.note = r.spot, r.zone, r.pick, r.missing, r.note
+			row.spot, row.zone, row.pick, row.missing, row.note, row.session = r.spot, r.zone, r.pick, r.missing, r.note, r.session
 			row.icon:SetTexture(r.icon)
 			row.icon:SetDesaturated(r.missing or false)
-			row.name:SetText((r.label or r.name or ("item:" .. r.id)) .. (r.id and IsWanted(r.id) and " |cffffd100*|r" or ""))
+			row.name:SetText((r.label or r.name or ("item:" .. r.id)) .. (r.id and IsWanted(r.id) and " |cffffd100*|r" or "")
+				.. (r.id and not r.spot and GoalText(r.id) or ""))
 			if r.missing then
 				row.name:SetTextColor(0.6, 0.6, 0.6)
 				row.border:SetVertexColor(0.5, 0.5, 0.5)
@@ -2793,7 +3268,7 @@ function Stats.Refresh()
 			row.right:SetText(r.right)
 			row:Show()
 		else
-			row.itemID, row.spot, row.zone, row.pick, row.missing, row.note = nil, nil, nil, nil, nil, nil
+			row.itemID, row.spot, row.zone, row.pick, row.missing, row.note, row.session = nil, nil, nil, nil, nil, nil, nil
 			row:Hide()
 		end
 	end

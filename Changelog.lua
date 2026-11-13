@@ -6,6 +6,53 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "0.9.0",
+		date = "13 November 2026",
+		sections = {
+			{ "New", {
+				{ "A light beam on your bobber.", "Turn on Mark your bobber and your bobber glows, with a column of light rising from it while the line is out and ripples on the water, so it stands out on busy water. It takes your theme's colour, or pick your own under Beam colour, including any colour you like with Custom (or /onecast beam). Marker chooses the beam, the glow alone, the game's gear icon, or the beam and the icon." },
+				{ "Themes with a sense of place.", "Each theme now brings its own scenery along the foot of every window, from Frostfire Ridge's snow to Blackrock Mountain, with particles drifting over it: snow on Winterspring, bubbles on Tidal and Murloc, embers on Ember, fireflies on Marsh and Moonlit, gold glints on Booty Bay. Each has an emblem in the window's title bar and its own water in the Fishing bar: molten metal on Ember, Alchemy's bubbling green on Deviate. Theme effects in the options keeps them still, or turns them off." },
+				{ "Mini mode.", "A small window in place of the stats while you fish: your skill, how the zone suits it in plain words, catches and fish per hour, your lure and your goals. It follows your theme. Turn it on under Stats window, or /onecast mini." },
+				{ "Skill-ups and what to catch next.", "When your Fishing goes up, +1 Fishing rises and fades on screen, over the mini bar if it's open. The Session tab has a Catch next line: the likeliest fish you're missing in a zone your skill already covers, here if there is one. Hover it for every one, click it to see them in the collection." },
+				{ "Fishing Extravaganza help.", "While the contest runs, the mini bar shows your Tastyfish and the time left, and holding 40 sets a waypoint to Riggle Bassbait in Booty Bay. /onecast riggle sets it any time." },
+				{ "Hide the tabs you don't use.", "Right-click a side tab to hide it; right-click any tab to bring them back. Options always stays." },
+				{ "Catch goals.", "Right-click any catch and set a goal, like 20 Stonescale Eels. Progress shows on its row and in mini mode, with a note halfway and an alert when you get there." },
+				{ "What's in a pool.", "Hover a fishing pool and its tooltip lists what it gives, with Classic's odds, and marks what you haven't caught yet." },
+				{ "A fisherman's journey.", "A new page for the four Fishing ranks, Apprentice to Artisan: where you stand, how far to your cap in catches, and for each rank how and where to learn it, what it needs, and where to fish while you're at it. Expert's book from Old Man Heming in Booty Bay and Nat Pagle's Artisan quest each have a map waypoint, and Nat's four fish are ticked off as you catch them. Its Gear view lists every fishing pole and piece of fishing gear, from the plain Fishing Pole to the Arcanite Fishing Pole and Forever's Master Angler's Fishing Hat: its Fishing bonus, whether you have it, and where it comes from. /onecast journey opens it." },
+				{ "A fishing wardrobe.", "A new page, laid out like the character sheet with you in the middle wearing it, to choose what you fish in: for each slot, the best Fishing bonus in your bags, an item you pick, or what you're wearing, and which pole. It goes on whenever the cast key puts your pole on, or with Wear it now, and comes off with your weapons. /onecast wardrobe opens it." },
+				{ "Session history.", "All-time records has a Sessions list: each past session's date, zone, catches and fish per hour, with its time, gold, skill gained and best catch on hover." },
+				{ "In reach, on the map and at the vendor.", "Showing: in reach in the collection lists the fish you're missing in zones your skill already covers. The world map shows a zone's fishing level, how your skill stands and your fish caught there, and follows the zone under the mouse on a continent. At a vendor, one click sells the grey junk you fished up and nothing else, or turn on selling it automatically." },
+				{ "A new Options page.", "One category at a time, chosen down the left, with each setting's full description, its value and its chat command on the right as you hover it. No more hunting for tooltips." },
+				{ "Naowh Forever's auction prices.", "Auction value and gold per hour now work with Naowh Forever's prices too, from its own scans and the prices it comes with, alongside Auctionator and TSM. The auction tooltips say which addon the prices come from, and with more than one installed, Auction prices from in the options picks which to use. Thanks to Zycko for asking!" },
+				{ "More treasure.", "The Mithril Bound, Iron Bound and Watertight Trunks from Floating Wreckage join the Treasure tab, and the Rockhide Strongfish joins the trophies." },
+			} },
+			{ "Changed", {
+				{ "Switch off what you don't use.", "Every feature that shows or says something has its own setting: item tooltips, pool tooltips and the world map strip separately (General, under Tooltips and map), the green dots on the tabs, the rare-catch sound, catch goal alerts, the new-for-your-collection line, and fishing junk at vendors (a button, selling automatically, or neither)." },
+				{ "Plainer words.", "The zone's status says what it means everywhere: No fish get away instead of Ready, 12 skill short, None got away yet, Watching for getaways." },
+				{ "A data report worth sharing.", "It flags anything you fish up that the collection doesn't have (not just fish), the first Forever catch of something OneCast only knew from Classic, where a Blueprint drops, and for the Fisherman's journey: where you learn a Fishing rank, Find Fish or Bait and Tackle (the trainer or quest), and fishing gear it doesn't list, with where it came from. Nothing to share means no report to copy, and a page that says what to look out for." },
+				{ "In every language.", "On German, French, Spanish, Russian, Korean and Chinese clients, pools are now recognised by the names you see on the water, for their tooltips and marks, and shown by those names wherever OneCast says where a catch's odds are best. The fishing outfit reads the Fishing bonus in your client's language, and the data report knows a fishing message in it. Zones, sub-zones and dungeons already followed your client's names." },
+				{ "An easier What's new.", "Each version's notes are laid out to read at a glance: every section in its own colour, each change's headline on its own line with the details under it, and the version you have marked Installed in the list." },
+			} },
+			{ "Fixed", {
+				{ "Remembering pools.", "Moving the mouse from the water straight onto a pool often went unnoticed, so its spot wasn't marked on the map. OneCast now sees every pool's tooltip as the game fills it." },
+				{ "The item menu.", "Right-clicking a catch opened a see-through menu with the list showing through it. It's solid now, and as wide as its longest line." },
+				{ "Snappier tooltips and collection.", "A catch's rarity is worked out once instead of on every tooltip and redraw." },
+			} },
+			{ "Reported by DevanHyrax", {
+				{ "The Fishing Hut's Blueprint.", "Reported to drop from Jammal'an the Prophet in the Sunken Temple. The Camp tab says so, as not yet confirmed, and the data report now notes where any Blueprint drops." },
+			} },
+			{ "Reported by Roezz", {
+				{ "The Mithril Bound Trunk.", "Fished up in Tanaris, it wasn't in the collection. That led to a check of everything Classic's fishing can give, which found three more." },
+			} },
+			{ "Reported by user_hzctcyub5il0ubj3", {
+				{ "Zephras Isle needs 25.", "Ten catches at skill 0-24 and none got away, with the starting zones' fish." },
+			} },
+			{ "Reported by user_wwbl1xmh9xl6rbb7", {
+				{ "City of Dalaran.", "Fished in Forever, it now has a place on the Zones tab while its level is worked out." },
+			} },
+		},
+	},
+	{
 		version = "0.8.2",
 		date = "13 November 2026",
 		sections = {

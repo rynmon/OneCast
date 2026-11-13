@@ -20,25 +20,31 @@ Each cast and reel is still one hardware press; nothing is automated.
 |---|---|
 | `Camp.lua` | Forever's camp fishing crafts, the Uncommon and Rare Fishing buffs, and catches made under them |
 | `Report.lua` | `/onecast report`: what's new to OneCast and the evidence for zone levels, as copyable text, and the report window |
-| `Themes.lua` | The window themes: a table of colours, and tinting what each window registers |
+| `Themes.lua` | The window themes: a table of colours, tinting what each window registers, and each theme's scene (scenery, particles, emblem, the Fishing bar's water) |
 | `OneCast.lua` | Cast button, reel key override, CVar leases, the options (described once in `OPTIONS`, `CHOICES`, `OPTION_MAIN` and `OPTION_PAGES` for both the game's panel and the window's Options tab), minimap button, slash commands |
-| `Gear.lua` | Equipping the pole from the bags and putting weapons back |
+| `Gear.lua` | Equipping the pole and any fishing gear from the bags, and putting weapons and gear back |
 | `Lure.lua` | Lure data, the character's choice, whether one is on the pole, and the presses that apply it |
 | `TackleBox.lua` | The tackle box button (secure, hidden in combat) and its settings window, built from the stats window's parts (`ns.UI`) |
-| `Pools.lua` | Remembering fishing pools from their tooltips, for the book's maps |
+| `Pools.lua` | Fishing pools' tooltips (what each gives) and remembering where you fished them, for the book's maps; pool names in other languages are put back into English first |
 | `Stats.lua` | Session, zone and lifetime stats, personal bests and notable catches, the stats window (Session, Spots and All-time records), and the parts every window is built from (`ns.UI`) |
 | `Prices.lua` | Handing the catch to Auctionator's search |
 | `ZoneLevels.lua` | Zone fishing levels (Classic Era data) and notes on Forever zones |
 | `ZoneNames.lua` | Area IDs for every zone name, translating the zone tables on non-English clients |
 | `FishData.lua` | Every fish and treasure in the collection: category, zones (most common first) and recipes |
-| `Odds.lua` | Each catch's chance per cast by zone and pool, from Classic's loot tables (generated), and its rarity tier |
+| `Odds.lua` | Each catch's chance per cast by zone and pool, from Classic's loot tables (generated), its rarity tier, what each pool gives, and pool names in each client language (from AzerothCore) |
 | `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats, and the "caught by" line on item tooltips |
 | `Extravaganza.lua` | The Stranglethorn Fishing Extravaganza: schedule (Classic's), Tastyfish counter and reminders |
 | `MapOverlays.lua` | Every explored-area overlay of each zone map, so the book's maps show fully revealed (generated from game data) |
 | `Book.lua` | The collection book window: fish grid, each fish's page with zones, map and recipes, and the Zones view of every zone's level |
 | `Changelog.lua` | Release notes, shown in the What's new window and used for releases |
 | `WhatsNew.lua` | The What's new window and the login chat line |
-| `Hub.lua` | One window for everything: the side tabs, each page in the same place at the window's scale, the grip, the lock, the Options tab and reopening after a `/reload` |
+| `Hub.lua` | One window for everything: the side tabs, each page in the same place at the window's scale, the grip, the lock, the Options tab (categories, settings and a details pane) and reopening after a `/reload` |
+| `Mini.lua` | Mini mode: a small themed window in place of the stats while you fish |
+| `WorldMap.lua` | The fishing strip on the world map, following the zone on show or under the mouse |
+| `Junk.lua` | Selling the grey junk you fished up at a vendor |
+| `Journey.lua` | The Fisherman's journey: the Fishing ranks, how and where each is learned, and where to fish at each |
+| `Wardrobe.lua` | The fishing wardrobe: each slot's choice, the pole, and your character wearing it |
+| `Bobber.lua` | The light beam on your bobber, drawn on the nameplate the game gives the soft-interact target |
 | `Media/*.tga` | Button glyphs: white with a dark outline, tinted gold in game |
 
 ### Details worth knowing
@@ -53,7 +59,7 @@ Each cast and reel is still one hardware press; nothing is automated.
 - **Spots, hours and skill-ups:** each zone's totals keep `spots` by sub-zone (`GetSubZoneText` at the cast). Lifetime items keep `hours`, catches by realm hour (`GetGameTime`), which the collection copies for the book's time of day. `OneCastCharDB.skill` counts catches since the last skill-up; the next-point estimate uses Classic's rule of thumb (1 catch per point to 75, then one more per 25 points).
 - **Session summary** prints after `ACTIVE_GAP` (2 minutes) without a cast, once per stretch of new catches.
 - **Zone levels** are keyed by English zone name, and `ZoneNames.lua` swaps those for the client's own at load, by area ID (`C_Map.GetAreaInfo`), so they match `GetRealZoneText` in any language. A new zone needs an area ID there. OneCast counts real getaways (`ERR_FISH_ESCAPED`), and zones without data are judged from them. `Stats.ZoneStatus` holds that judgement, and the stats window's zone strip, the book's Zones view and the data report all read it.
-- **Auction prices** come from Auctionator (`GetAuctionPriceByItemID`) or TSM (`dbmarket`). The scan hands every caught item to Auctionator's `MultiSearchExact`.
+- **Auction prices** come from Auctionator (`GetAuctionPriceByItemID`), TSM (`dbmarket`) or Naowh Forever (`NaowhForever.AuctionPrice`, its namespace; its stand-in for Auctionator's API is told apart by Auctionator not being loaded). The scan hands every caught item to Auctionator's `MultiSearchExact`.
 - **Wanted items** are account-wide (`OneCastDB.wanted`); stats are per character (`OneCastCharDB`).
 - **Collection:** `OneCastDB.collection.items[itemID].byChar[character]` holds each character's count and zones, copied from that character's `OneCastCharDB` at login and after each catch, so earlier catches count and nothing is counted twice. Any "Meat" trade good you fish up that isn't in `FishData.lua` joins the book as a discovered fish.
 

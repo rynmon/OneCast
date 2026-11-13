@@ -38,6 +38,17 @@ local defaults = {
 	loginMessage = true,
 	statsScale = 100, -- percent
 	autoEquip = true,
+	fishingOutfit = true,
+	statsMini = false,
+	junkMode = "button",
+	auctionSource = "auto",
+	poolTooltip = true,
+	mapStrip = true,
+	newCatchMessage = true,
+	goalAlerts = true,
+	alertSound = true,
+	tabBadges = true,
+	skillToast = true,
 	restoreOnCombat = true,
 	restoreDelay = 60, -- seconds without casting before weapons go back on; 0 = never
 	sessionSummary = true,
@@ -48,7 +59,11 @@ local defaults = {
 	lureVendorHint = true,
 	rememberPools = true,
 	bobberMarker = false,
+	bobberStyle = "beam",
+	beamColor = "theme",
+	bobberHeight = 0,
 	theme = "forever",
+	themeEffects = "all",
 	campReminder = true,
 	reportHint = true,
 }
@@ -65,7 +80,7 @@ local OPTIONS = {
 	{ cmd = "softinteract", key = "softInteract", label = "Soft-interact while fishing",
 		tooltip = "While the line is out, make the bobber the soft-interact target so the cast key reels it in." },
 	{ cmd = "bobbermarker", key = "bobberMarker", label = "Mark your bobber",
-		tooltip = "While the line is out, show the game's gear icon over your bobber, so you can tell it from other people's. It can't show when a fish bites: the game doesn't tell addons that." },
+		tooltip = "While the line is out, mark your bobber so you can tell it from other people's: a column of light in your theme's colour, the game's gear icon, or both (Marker, below). It can't show when a fish bites: the game doesn't tell addons that." },
 	{ cmd = "bagwarning", key = "bagWarning", label = "Warn when your bags are full",
 		tooltip = "Warn once when you cast with no free bag space, because a catch may not fit." },
 	{ cmd = "sound", key = "soundBoost", label = "Louder splash while fishing",
@@ -74,6 +89,8 @@ local OPTIONS = {
 		tooltip = "While your fishing pole is equipped, turn music, ambience and dialog down (or off) so the splash stands out. They go back to your own levels when your weapons go back on, or if you change them yourself." },
 	{ cmd = "autoequip", key = "autoEquip", label = "Auto-equip fishing pole",
 		tooltip = "If no pole is equipped, the cast key equips the best one in your bags first (press again to cast). Your weapons are saved and put back afterwards." },
+	{ cmd = "outfit", key = "fishingOutfit", label = "Wear fishing gear with the pole",
+		tooltip = "When the pole goes on, so does any gear in your bags with a Fishing bonus (a fishing hat, boots, gloves with the Fishing enchant), where it beats what you're wearing. What you had on goes back with your weapons." },
 	{ cmd = "combatgear", key = "restoreOnCombat", label = "Re-equip weapons when combat starts",
 		tooltip = "Try to put your weapons back the moment combat starts. Anything the game blocks in combat is finished when combat ends." },
 	{ cmd = "tacklebox", key = "tackleBox", label = "Show the tackle box button",
@@ -90,10 +107,20 @@ local OPTIONS = {
 		tooltip = "Stop OneCast's window being moved or resized by accident. Turn it off to move it again." },
 	{ cmd = "autoopen", key = "openOnCast", label = "Open stats when you cast",
 		tooltip = "Open the stats window when you start fishing. If you close it (X or minimap button), it stays closed until you take a 2-minute break from fishing." },
+	{ cmd = "mini", key = "statsMini", label = "Mini bar instead of the stats window",
+		tooltip = "When you cast, open a slim bar in place of the stats window: your skill and the zone, catches and fish per hour, your lure and any catch goals. Click it for the full stats. /onecast mini turns it on or off." },
 	{ cmd = "summary", key = "sessionSummary", label = "Session summary in chat",
 		tooltip = "After a 2-minute break from fishing, sum up the session in chat: catches, fish per hour, vendor value, skill gained and new fish for your collection." },
 	{ cmd = "autoloot", key = "autoLootHint", label = "Offer to turn on auto loot",
 		tooltip = "If auto loot is off when you catch something, offer once per login to turn it on, so catches go straight to your bags." },
+	{ cmd = "alertsound", key = "alertSound", label = "Play a sound with it",
+		tooltip = "The raid warning sound with each rare catch alert. Off, the alert shows without a sound." },
+	{ cmd = "skillup", key = "skillToast", label = "Skill-up pop-up",
+		tooltip = "When your Fishing goes up, \"+1 Fishing\" rises and fades on screen, over the mini bar if it's open." },
+	{ cmd = "goals", key = "goalAlerts", label = "Catch goal alerts",
+		tooltip = "Say in chat when you're halfway to a catch goal, and flash an alert when you reach it. Goals still count either way." },
+	{ cmd = "newcatch", key = "newCatchMessage", label = "Say when a catch is new for your collection",
+		tooltip = "A line in chat when you catch something none of your characters has caught before." },
 	{ cmd = "alert", key = "alert", label = "Rare catch alert",
 		tooltip = "Sound and a raid-warning flash when you catch something at or above the alert quality, or an item you've marked as wanted (right-click it in the stats window)." },
 	{ cmd = "pools", key = "rememberPools", label = "Remember fishing pools",
@@ -106,8 +133,14 @@ local OPTIONS = {
 		tooltip = "Say in chat shortly before the Stranglethorn Fishing Extravaganza starts, and when it does (Classic's schedule: Sundays 14:00-16:00 realm time)." },
 	{ cmd = "loginmessage", key = "loginMessage", label = "Version in chat at login",
 		tooltip = "Say OneCast's version in chat when you log in, with a link to What's new." },
-	{ cmd = "caughtby", key = "catchTooltip", label = "Rarity and who caught it, in item tooltips",
+	{ cmd = "caughtby", key = "catchTooltip", label = "Rarity and who caught it, on items",
 		tooltip = "On the tooltip of anything in the collection, wherever you see it (bags, chat links, the auction house), say how rare it is (Classic's odds per catch) and which of your characters caught it." },
+	{ cmd = "pooltips", key = "poolTooltip", label = "What a pool gives, on its tooltip",
+		tooltip = "Hover a fishing pool to see what it gives, with Classic's odds, and what you haven't caught yet." },
+	{ cmd = "map", key = "mapStrip", label = "Fishing levels on the world map",
+		tooltip = "A strip on the world map with the zone's fishing level, how your skill stands and your fish caught there. On a continent, it follows the zone under the mouse." },
+	{ cmd = "badges", key = "tabBadges", label = "Green dots on the side tabs",
+		tooltip = "A green dot on the Report tab when you've found something to share, and on What's new when there's a version you haven't read." },
 	{ cmd = "minimap", key = "minimapButton", label = "Show minimap button",
 		tooltip = "Show the OneCast button on the minimap. Drag it to move it." },
 }
@@ -116,9 +149,9 @@ local OPTIONS = {
 -- OPTIONS entry, or one of the sliders and dropdowns built in SetupSettings.
 local OPTION_PAGES = {
 	{ name = "Fishing",
-		{ "Casting", "doubleClick", "softInteract", "bobberMarker" },
-		{ "Pole and weapons", "autoEquip", "restoreDelay", "restoreOnCombat" },
-		{ "Reminders", "bagWarning", "autoLootHint" },
+		{ "Casting", "doubleClick", "softInteract", "bobberMarker", "bobberStyle", "beamColor", "bobberHeight" },
+		{ "Pole and weapons", "autoEquip", "fishingOutfit", "restoreDelay", "restoreOnCombat" },
+		{ "Reminders", "bagWarning", "autoLootHint", "junkMode" },
 	},
 	{ name = "Lures",
 		{ "Your lure", "lureChoice", "autoLure" },
@@ -128,15 +161,18 @@ local OPTION_PAGES = {
 		{ "While fishing", "soundBoost", "quietOthers", "quietLevel" },
 	},
 	{ name = "Stats and alerts",
-		{ "Stats window", "openOnCast", "closeOnDone", "fadeStats", "sessionSummary" },
-		{ "Alerts", "alert", "alertQuality", "extravaganza", "campReminder", "reportHint" },
-		{ "Collection", "rememberPools" },
+		{ "Stats window", "openOnCast", "statsMini", "closeOnDone", "fadeStats", "sessionSummary", "auctionSource" },
+		{ "Alerts", "alert", "alertSound", "alertQuality", "skillToast", "goalAlerts", "newCatchMessage", "extravaganza", "campReminder", "reportHint" },
 	},
 }
 -- Greyed out and indented while the option they belong to is off.
 local OPTION_PARENT = {
+	bobberStyle = "bobberMarker",
+	beamColor = "bobberMarker",
+	bobberHeight = "bobberMarker",
 	quietLevel = "quietOthers",
 	alertQuality = "alert",
+	alertSound = "alert",
 }
 
 local UpdateQuiet -- below: quiet other sounds while fishing
@@ -153,6 +189,80 @@ local CHOICES = {
 				list[#list + 1] = { id, ns.Theme.LIST[id].label }
 			end
 			return list
+		end,
+		onChange = function()
+			ns.Theme.Apply()
+		end },
+	bobberStyle = { label = "Marker", kind = "string",
+		tooltip = "How your bobber is marked: glowing with a light beam rising from it, in your theme's colour, the glow alone, the game's gear icon over it, or the beam and the icon.",
+		list = function()
+			return { { "beam", "Light beam" }, { "glow", "Glow" }, { "icon", "Gear icon" }, { "both", "Beam and icon" } }
+		end,
+		onChange = function()
+			if ns.Bobber then
+				ns.Bobber.Update()
+			end
+		end },
+	beamColor = { label = "Beam colour", kind = "string",
+		tooltip = "The light beam's colour. Theme follows your window theme (its particle colour, your class colour on Class Colours, arcane blue-violet on Forever); any other choice keeps that colour whatever the theme. Custom opens the colour picker (or /onecast beam).",
+		list = function()
+			local swatch = function(key, text)
+				local c = ns.Bobber and ns.Bobber.COLORS[key]
+				return c and string.format("|cff%02x%02x%02x%s|r", c[1] * 255, c[2] * 255, c[3] * 255, text) or text
+			end
+			return { { "theme", "Theme" }, { "arcane", swatch("arcane", "Arcane") }, { "gold", swatch("gold", "Gold") }, { "white", swatch("white", "White") },
+				{ "blue", swatch("blue", "Ice blue") }, { "teal", swatch("teal", "Teal") }, { "green", swatch("green", "Green") },
+				{ "red", swatch("red", "Red") }, { "purple", swatch("purple", "Purple") }, { "pink", swatch("pink", "Pink") },
+				{ "class", "Class colour" }, { "custom", "Custom..." } }
+		end,
+		onChange = function(_, value)
+			if not ns.Bobber then
+				return
+			end
+			ns.Bobber.Retint()
+			-- Stepping onto Custom opens the colour picker.
+			if value == "custom" then
+				ns.Bobber.PickColor()
+			end
+		end },
+	junkMode = { label = "Fishing junk at vendors", kind = "string",
+		tooltip = "The grey junk you've fished up, and nothing else, at a vendor: a button under the vendor window that sells it when you click, sold as soon as you open the vendor, or left alone.",
+		list = function()
+			return { { "button", "Sell button" }, { "auto", "Sell automatically" }, { "off", "Leave it" } }
+		end,
+		onChange = function()
+			if ns.Junk then
+				ns.Junk.UpdateButton()
+			end
+		end },
+	bobberHeight = { label = "Marker height", kind = "number", min = -100, max = 100, step = 5,
+		tooltip = "Moves the bobber's glow and beam up or down, if they don't sit right on your bobber. 0 is where OneCast puts them.",
+		format = function(value)
+			return (value > 0 and "+" or "") .. value
+		end,
+		onChange = function()
+			if ns.Bobber then
+				ns.Bobber.Replace()
+			end
+		end },
+	auctionSource = { label = "Auction prices from", kind = "string",
+		tooltip = "Which addon the stats take auction prices from, if you have more than one: Automatic takes Auctionator's, then TSM's, then Naowh Forever's, whichever has a price. Only the ones you have installed are listed.",
+		list = function()
+			local list = { { "auto", "Automatic" } }
+			for _, source in ipairs(ns.Stats and ns.Stats.PriceSources and ns.Stats.PriceSources() or {}) do
+				list[#list + 1] = { source.key, source.name }
+			end
+			return list
+		end,
+		onChange = function()
+			if ns.Stats then
+				ns.Stats.RefreshIfShown()
+			end
+		end },
+	themeEffects = { label = "Theme effects", kind = "string",
+		tooltip = "What a theme adds besides its colours: scenery along the foot of each window, particles drifting over it (bubbles, snow, embers, fireflies), an emblem in the title bar and its own water in the Fishing bar. Still keeps everything but the particles.",
+		list = function()
+			return { { "all", "Full" }, { "still", "Still" }, { "off", "Colours only" } }
 		end,
 		onChange = function()
 			ns.Theme.Apply()
@@ -213,8 +323,9 @@ local CHOICES = {
 
 -- The options on the main page, before OPTION_PAGES, for the window's Options page.
 local OPTION_MAIN = {
-	{ "Look", "theme", "tabSide", "statsScale" },
-	{ "General", "lockWindow", "minimapButton", "catchTooltip", "loginMessage" },
+	{ "Look", "theme", "themeEffects", "tabSide", "statsScale" },
+	{ "General", "lockWindow", "minimapButton", "tabBadges", "loginMessage" },
+	{ "Tooltips and map", "catchTooltip", "poolTooltip", "mapStrip", "rememberPools" },
 }
 
 -- CVars changed only for the length of a cast, and restored afterwards only if
@@ -240,6 +351,8 @@ _G.BINDING_HEADER_ONECAST = "OneCast"
 _G["BINDING_NAME_" .. BINDING_COMMAND] = "Cast / reel (one button fishing)"
 _G.BINDING_NAME_ONECAST_RESTORE = "Re-equip weapons"
 _G.BINDING_NAME_ONECAST_BOOK = "Fishing collection"
+_G.BINDING_NAME_ONECAST_WARDROBE = "Fishing wardrobe"
+_G.BINDING_NAME_ONECAST_JOURNEY = "Fisherman's journey"
 _G.BINDING_NAME_ONECAST_WINDOW = "OneCast window (the page you last used)"
 
 local db
@@ -714,6 +827,14 @@ local function SetupSettings()
 		lockWindow = function()
 			ns.Hub.UpdateLock()
 		end,
+		tabBadges = function()
+			ns.Hub.UpdateBadges()
+		end,
+		mapStrip = function()
+			if ns.WorldMap then
+				ns.WorldMap.Update()
+			end
+		end,
 	}
 
 	local initializers = {}
@@ -743,6 +864,7 @@ local function SetupSettings()
 	-- The main page: how it looks, the one key you need, and a way into every window.
 	Header(layout, "Look")
 	AddControl(category, "theme")
+	AddControl(category, "themeEffects")
 	AddControl(category, "tabSide")
 	AddControl(category, "statsScale")
 
@@ -768,18 +890,23 @@ local function SetupSettings()
 	for _, entry in ipairs({
 		{ "Stats window", "Open stats", function() ns.Stats.Toggle() end, "This session and your skill, where fish bite best, and your records." },
 		{ "Tackle box", "Open tackle box", function() ns.TackleBox.ToggleWindow() end, "Choose your lure and compare fish per hour with and without one." },
+		{ "Fishing wardrobe", "Open wardrobe", function() ns.Wardrobe.Show() end, "Choose what you wear to fish, slot by slot, and the pole." },
 		{ "Fishing collection", "Open collection", function() ns.Book.Show() end, "Every fish, which you've caught, and where to find the rest." },
+		{ "Fisherman's journey", "Open journey", function() ns.Journey.Show() end, "The Fishing ranks, where you stand, and where to learn the next." },
 		{ "Data report", "Open report", function() ns.Report.Show() end, "Your catches and getaways as text, to share so OneCast can learn Forever's real fishing levels." },
 		{ "What's new", "Version " .. ns.VERSION, function() ns.WhatsNew.Show() end, "See what changed in each version of OneCast." },
 	}) do
 		layout:AddInitializer(CreateSettingsButtonInitializer(entry[1], entry[2], entry[3], entry[4], false))
 	end
 
-	Header(layout, "General")
-	AddControl(category, "lockWindow")
-	AddControl(category, "minimapButton")
-	AddControl(category, "catchTooltip")
-	AddControl(category, "loginMessage")
+	-- The main page's other sections, as OPTION_MAIN lists them after Look.
+	for i = 2, #OPTION_MAIN do
+		local section = OPTION_MAIN[i]
+		Header(layout, section[1])
+		for k = 2, #section do
+			AddControl(category, section[k])
+		end
+	end
 
 	for _, pageInfo in ipairs(OPTION_PAGES) do
 		local page, pageLayout = Settings.RegisterVerticalLayoutSubcategory(category, pageInfo.name)
@@ -851,7 +978,9 @@ end
 local MENU = {
 	{ "Stats window", function() ns.Stats.Toggle() end },
 	{ "Tackle box", function() ns.TackleBox.ToggleWindow() end },
+	{ "Fishing wardrobe", function() ns.Wardrobe.Show() end },
 	{ "Fishing collection", function() ns.Book.Toggle() end },
+	{ "Fisherman's journey", function() ns.Journey.Show() end },
 	{ "Camp", function() ns.Book.ShowCamp() end },
 	{ "Data report", function() ns.Report.Toggle() end },
 	{ "What's new", function() ns.WhatsNew.Toggle() end },
@@ -1181,6 +1310,24 @@ SlashCmdList.ONECAST = function(msg)
 	elseif cmd == "keys" or cmd == "settings" then
 		OpenSettings() -- the game's options: the cast key is set there
 		return
+	elseif cmd == "riggle" then
+		-- A waypoint to Riggle Bassbait, for the Fishing Extravaganza.
+		if not ns.Extravaganza.Waypoint() then
+			ns.Print("couldn't set a waypoint right now (in combat, or the map isn't ready).")
+		end
+		return
+	elseif cmd == "journey" or cmd == "ranks" then
+		ns.Journey.Show()
+		return
+	elseif cmd == "wardrobe" then
+		ns.Wardrobe.Show()
+		return
+	elseif cmd == "beam" then
+		-- The bobber beam's colour, from the game's colour picker.
+		if ns.Bobber then
+			ns.Bobber.PickColor()
+		end
+		return
 	elseif cmd == "stats" then
 		ns.Stats.Toggle()
 		return
@@ -1249,6 +1396,10 @@ SlashCmdList.ONECAST = function(msg)
 	Print("v" .. ns.VERSION .. " | key: " .. BoundKeysText() .. " | spell: " .. tostring(fishingName))
 	Print("/onecast - open options (/onecast keys for the cast key)")
 	Print("/onecast new - what's new in each version")
+	Print("/onecast beam - pick your own colour for the bobber's light beam")
+	Print("/onecast wardrobe - choose what you wear to fish")
+	Print("/onecast journey - the Fishing ranks, and where to learn the next")
+	Print("/onecast riggle - a waypoint to Riggle Bassbait, for the Fishing Extravaganza")
 	Print("/onecast book - fishing collection (/onecast camp for its Camp tab)")
 	Print("/onecast report - your fishing data as text, to share and help fill in Forever's numbers")
 	Print("/onecast theme [" .. table.concat(ns.Theme.ORDER, "|") .. "] - window colours (no name: the next one)")

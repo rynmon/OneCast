@@ -19,6 +19,7 @@ ns.ZONE_AREA_IDS = {
 	["Blackfathom Deeps"] = 719,
 	["Blasted Lands"] = 4,
 	["Burning Steppes"] = 46,
+	["City of Dalaran"] = 16544, -- Forever's own; the zone that holds its Dalaran and Fel Grove
 	["Darkshore"] = 148,
 	["Darnassus"] = 1657,
 	["Deadwind Pass"] = 41,

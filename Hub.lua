@@ -22,8 +22,12 @@ local TABS = {
 		open = function() ns.Stats.Show() end },
 	{ key = "tackle", hint = "/onecast tackle", label = "Tackle box", icon = 466035,
 		open = function() ns.TackleBox.ShowWindow() end },
+	{ key = "wardrobe", hint = "/onecast wardrobe", label = "Fishing wardrobe", item = 19972, icon = "Interface\\Icons\\INV_Helmet_31",
+		open = function() ns.Wardrobe.Show() end },
 	{ key = "collection", hint = "/onecast book", label = "Fishing collection", icon = "Interface\\Icons\\INV_Misc_Book_09",
 		open = function() ns.Book.ShowCollection() end },
+	{ key = "journey", hint = "/onecast journey", label = "Fisherman's journey", item = 16083, icon = "Interface\\Icons\\Trade_Fishing",
+		open = function() ns.Journey.Show() end },
 	{ key = "camp", hint = "/onecast camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
 		open = function() ns.Book.ShowCamp() end },
 	{ key = "report", hint = "/onecast report", label = "Data report", icon = "Interface\\Icons\\INV_Letter_15",
@@ -89,9 +93,10 @@ function Hub.UpdateBadges()
 	if not (rail and rail:IsShown()) then
 		return
 	end
+	local on = not (ns.db and ns.db.tabBadges == false)
 	for _, tab in ipairs(rail.tabs) do
 		local badge = BADGES[tab.key]
-		tab.badge:SetShown(badge and badge() and true or false)
+		tab.badge:SetShown(on and badge and badge() and true or false)
 	end
 end
 
@@ -100,6 +105,7 @@ local function UpdateTabs()
 		return
 	end
 	local current = CurrentKey()
+	Hub.LayoutTabs()
 	for _, tab in ipairs(rail.tabs) do
 		tab:SetChecked(tab.key == current)
 	end
@@ -109,6 +115,63 @@ local function UpdateTabs()
 	Hub.UpdateBadges()
 end
 Hub.UpdateTabs = UpdateTabs
+
+-- Side tabs you've hidden (right-click one): ns.db.hiddenTabs[key] = true. Options can't be
+-- hidden, so every tab's menu can always bring the rest back.
+local function TabHidden(key)
+	return key ~= "options" and ns.db and ns.db.hiddenTabs and ns.db.hiddenTabs[key] or false
+end
+
+-- The tabs down the rail, closing up around the hidden ones. Hiding goes at once, even the open
+-- page's tab: the page itself stays open, and its command and key binding still open it.
+function Hub.LayoutTabs()
+	if not rail then
+		return
+	end
+	local y = 0
+	for _, tab in ipairs(rail.tabs) do
+		local shown = not TabHidden(tab.key)
+		tab:SetShown(shown)
+		if shown then
+			tab:ClearAllPoints()
+			tab:SetPoint("TOPLEFT", 0, -y)
+			y = y + TAB_SIZE + TAB_GAP
+		end
+	end
+	rail:SetHeight(math.max(TAB_SIZE, y))
+end
+
+local function HiddenCount()
+	local n = 0
+	for key in pairs(ns.db and ns.db.hiddenTabs or {}) do
+		if key ~= "options" then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+local function TabMenu(tab)
+	local entries = {}
+	if tab.key ~= "options" then
+		entries[#entries + 1] = { "Hide this tab", function()
+			ns.db.hiddenTabs = ns.db.hiddenTabs or {}
+			ns.db.hiddenTabs[tab.key] = true
+			ns.Print(tab.label .. " tab hidden. Right-click any tab to bring it back.")
+			Hub.LayoutTabs()
+		end }
+	end
+	local hidden = HiddenCount()
+	if hidden > 0 then
+		entries[#entries + 1] = { string.format("Show hidden tabs (%d)", hidden), function()
+			ns.db.hiddenTabs = nil
+			Hub.LayoutTabs()
+		end }
+	end
+	if #entries > 0 and ns.UI and ns.UI.ShowMenu then
+		ns.UI.ShowMenu(tab.label, entries)
+	end
+end
 
 local function CreateRail()
 	local r = CreateFrame("Frame", "OneCastHubTabs", UIParent)
@@ -151,7 +214,14 @@ local function CreateRail()
 		tab.badge:SetTexture("Interface\\COMMON\\Indicator-Green")
 		tab.badge:Hide()
 		tab.key, tab.label = def.key, def.label
-		tab:SetScript("OnClick", function(self)
+		tab:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		tab:SetScript("OnClick", function(self, button)
+			if button == "RightButton" then
+				self:SetChecked(not self:GetChecked()) -- a right-click doesn't choose the tab
+				TabMenu(self)
+				UpdateTabs()
+				return
+			end
 			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
 			Hub.TourSeen()
 			def.open()
@@ -167,6 +237,8 @@ local function CreateRail()
 			if key then
 				GameTooltip:AddLine(key .. " opens the page you last used", 0.6, 0.8, 1)
 			end
+			GameTooltip:AddLine(def.key == "options" and "Right-click: show hidden tabs"
+				or "Right-click: hide this tab", 0.6, 0.6, 0.6)
 			GameTooltip:Show()
 		end)
 		tab:SetScript("OnLeave", GameTooltip_Hide)
@@ -450,20 +522,18 @@ end
 -- Options ---------------------------------------------------------------------------------
 -- Every OneCast setting, in the window: built from the same description as the game's options
 -- panel (ns.OPTIONS, OPTION_CHOICES, OPTION_MAIN, OPTION_PAGES), and each row is that panel's own
--- setting, so the two always agree and a new option shows in both. As wide as the collection,
--- in two columns, in the panel's order. Only the cast key stays in the game's options: key
--- bindings are set there.
+-- setting, so the two always agree and a new option shows in both. As wide as the collection, a
+-- category at a time. Only the cast key stays in the game's options: key bindings are set there.
 
-local OPTIONS_WIDTH, ROW, HEADER, GAP = 840, 22, 28, 8 -- the stats window's spacing
-local EDGE, COLUMN_GAP = 10, 20
-local COLUMN_WIDTH = math.floor((OPTIONS_WIDTH - 10 - 2 * EDGE - COLUMN_GAP) / 2)
+local OPTIONS_WIDTH, ROW, HEADER, GAP = 840, 24, 26, 8
+local EDGE = 10
 local INDENT = 16 -- settings that belong to the one above
 -- Every label starts where a checkbox's does, and every value sits in the same place with its
--- arrows, so the rows line up down each column.
+-- arrows, so the rows line up down the page.
 local LABEL_LEFT = 2 + ROW + 4 -- after a checkbox: its inset, its size, a gap
-local VALUE_WIDTH = 130 -- leaves the longest label, indented, its full width
+local VALUE_WIDTH = 120 -- leaves the longest label, indented, its full width
 -- The arrows' whole width, so a slider starts where a row's first arrow does.
-local CONTROL_WIDTH = 2 + 24 + 4 + VALUE_WIDTH + 4 + 24
+local CONTROL_WIDTH = 2 + 22 + 2 + VALUE_WIDTH + 2 + 22
 local SLIDER_VALUE_WIDTH = 44
 -- Settings that change the window itself apply when the slider is let go, not while dragging:
 -- the window scale would otherwise resize the page under the mouse.
@@ -493,11 +563,29 @@ local function SetOption(key, value)
 	end
 end
 
-local function Tooltip(owner, title, text)
-	GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-	GameTooltip:SetText(title)
-	GameTooltip:AddLine(text, 1, 1, 1, true)
-	GameTooltip:Show()
+-- The page in three parts: categories down the left, the chosen one's settings in the middle
+-- (one compact row each, white labels, gold section headers), and on the right, on parchment,
+-- whatever setting the mouse is over: its full description, its value and its chat command.
+local NAV_WIDTH, DETAIL_WIDTH, PANE_GAP = 168, 250, 12
+local LIST_WIDTH = OPTIONS_WIDTH - 10 - 2 * EDGE - NAV_WIDTH - DETAIL_WIDTH - 2 * PANE_GAP
+local NAV_ROW = 34
+local CATEGORY = {
+	General = { icon = "Interface\\Icons\\INV_Misc_Gear_01", blurb = "How OneCast looks, and what it shows where." },
+	Fishing = { icon = "Interface\\Icons\\Trade_Fishing", blurb = "The cast key, your pole and fishing gear, and reminders while you're on the water." },
+	Lures = { item = 6533, icon = "Interface\\Icons\\INV_Misc_Orb_03", blurb = "Which lure OneCast uses on this character, and the tackle box button." },
+	Sound = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = "Hear the splash over everything else while your line is out." },
+	["Stats and alerts"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = "The stats window and mini bar, catch alerts, reminders and the collection." },
+}
+
+local function ArrowButton(parent, which)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(22, 22)
+	local base = "Interface\\Buttons\\UI-SpellbookIcon-" .. which .. "Page-"
+	b:SetNormalTexture(base .. "Up")
+	b:SetPushedTexture(base .. "Down")
+	b:SetDisabledTexture(base .. "Disabled")
+	b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+	return b
 end
 
 local function CreateOptions()
@@ -520,7 +608,7 @@ local function CreateOptions()
 	f.status:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", 62, 6)
 	f.status:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
 	f.status:SetJustifyH("LEFT")
-	f.status:SetText("Every OneCast setting. Changes apply straight away: hover one to see what it does.")
+	f.status:SetText("Every OneCast setting. Changes apply straight away.")
 
 	local content = inset
 	f.content = content
@@ -532,78 +620,173 @@ local function CreateOptions()
 	local choices = ns.OPTION_CHOICES or {}
 	local parents = ns.OPTION_PARENT or {}
 
-	-- Two columns, each with its own place to add the next row.
-	local columns = { { x = EDGE, y = -GAP }, { x = EDGE + COLUMN_WIDTH + COLUMN_GAP, y = -GAP } }
-	local column = columns[1]
-	local index = 0
-	f.rows, f.checks, f.choiceRows = {}, {}, {}
+	-- The details on the right: parchment, in the theme's ink.
+	local detail = CreateFrame("Frame", nil, content)
+	detail:SetPoint("TOPRIGHT", -EDGE, -GAP)
+	detail:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
+	detail:SetWidth(DETAIL_WIDTH)
+	local paper = detail:CreateTexture(nil, "BACKGROUND")
+	paper:SetAllPoints()
+	if UI.HasAtlas("QuestBG-Parchment") then
+		paper:SetAtlas("QuestBG-Parchment")
+	else
+		paper:SetTexture("Interface\\QuestFrame\\QuestBG")
+		paper:SetTexCoord(0, 0.586, 0, 0.65)
+	end
+	ns.Theme.Register(paper, "parchment")
+	local edge = detail:CreateTexture(nil, "BORDER")
+	edge:SetColorTexture(0.55, 0.40, 0.15, 0.8)
+	edge:SetPoint("TOPLEFT")
+	edge:SetPoint("BOTTOMLEFT")
+	edge:SetWidth(3)
+	local function Ink(size, font)
+		local fs = detail:CreateFontString(nil, "OVERLAY")
+		UI.SizedFont(fs, font or QuestFont, size)
+		fs:SetShadowOffset(0, 0)
+		fs:SetJustifyH("LEFT")
+		fs:SetWidth(DETAIL_WIDTH - 32)
+		return fs
+	end
+	detail.title = Ink(17, QuestTitleFont or QuestFont)
+	detail.title:SetPoint("TOPLEFT", 18, -18)
+	detail.text = Ink(13)
+	detail.text:SetPoint("TOPLEFT", detail.title, "BOTTOMLEFT", 0, -10)
+	detail.text:SetSpacing(3)
+	detail.now = Ink(12)
+	detail.now:SetPoint("TOPLEFT", detail.text, "BOTTOMLEFT", 0, -14)
+	detail.cmd = Ink(11)
+	detail.cmd:SetPoint("TOPLEFT", detail.now, "BOTTOMLEFT", 0, -6)
+	f.detail = detail
+
+	local function InkDetail()
+		local theme = ns.Theme.Current()
+		for _, fs in ipairs({ detail.title, detail.text, detail.now }) do
+			fs:SetTextColor(theme.ink[1], theme.ink[2], theme.ink[3])
+		end
+		detail.cmd:SetTextColor(theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3])
+	end
+	InkDetail()
+	ns.Theme.OnChange(InkDetail)
+
+	-- What the details show: a setting (title, text, its value now, its command), or a category.
+	local function ShowDetail(title, text, now, cmd)
+		local lead = ns.Theme.Current().lead or ""
+		detail.title:SetText(title or "")
+		detail.text:SetText(text or "")
+		detail.now:SetText(now and (lead .. "Now:|r " .. now) or "")
+		detail.cmd:SetText(cmd and ("Chat command: /onecast " .. cmd) or "")
+	end
+	f.ShowDetail = ShowDetail
+
+	-- The categories down the left.
+	local nav = CreateFrame("Frame", nil, content)
+	nav:SetPoint("TOPLEFT", EDGE, -GAP)
+	nav:SetPoint("BOTTOMLEFT", EDGE, EDGE)
+	nav:SetWidth(NAV_WIDTH)
+	local navBg = nav:CreateTexture(nil, "BACKGROUND")
+	navBg:SetAllPoints()
+	navBg:SetColorTexture(0, 0, 0, 0.25)
+	local divider = content:CreateTexture(nil, "BORDER")
+	divider:SetColorTexture(0.62, 0.48, 0.24, 0.5)
+	divider:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP / 2, 0)
+	divider:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", PANE_GAP / 2, 0)
+	divider:SetWidth(1)
+	ns.Theme.Register(divider, "header")
+
+	local pages = {}
+	f.rows, f.checks, f.choiceRows, f.pages, f.navButtons, f.pageHeights = {}, {}, {}, {}, {}, {}
+	local page, y, index -- the page being built, where its next row goes, and the row's index
 
 	local function Line(key)
 		index = index + 1
 		local indent = parents[key] and INDENT or 0
-		local line = CreateFrame("Frame", nil, content)
+		local line = CreateFrame("Frame", nil, page)
 		line:SetHeight(ROW)
-		line:SetPoint("TOPLEFT", column.x + indent, column.y)
-		line:SetWidth(COLUMN_WIDTH - indent)
+		line:SetPoint("TOPLEFT", indent, y)
+		line:SetWidth(LIST_WIDTH - indent)
 		UI.RowBackground(line, index)
+		local hover = line:CreateTexture(nil, "BACKGROUND", nil, 2)
+		hover:SetAllPoints()
+		hover:SetColorTexture(1, 0.82, 0.3, 0.08)
+		hover:Hide()
+		line.hover = hover
 		line.key, line.parent = key, parents[key]
 		f.rows[#f.rows + 1] = line
-		column.y = column.y - ROW
+		y = y - ROW
 		return line
+	end
+
+	local function Hover(line, title, text, now, cmd)
+		line.hover:Show()
+		ShowDetail(title, text, now, cmd)
+	end
+	local function Unhover(line)
+		line.hover:Hide()
 	end
 
 	local function CheckRow(opt)
 		local line = Line(opt.key)
+		line:EnableMouse(true)
 		local check = CreateFrame("CheckButton", nil, line, "UICheckButtonTemplate")
 		check:SetSize(ROW, ROW)
 		check:SetPoint("LEFT", 2, 0)
-		check.label = line:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		check.label = line:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		check.label:SetPoint("LEFT", LABEL_LEFT, 0)
 		check.label:SetPoint("RIGHT", -6, 0)
 		check.label:SetJustifyH("LEFT")
 		check.label:SetWordWrap(false)
 		check.label:SetText(opt.label)
 		check.opt = opt
+		local function Now()
+			return OptionValue(opt.key, opt.char) and "on" or "off"
+		end
 		check:SetScript("OnClick", function(self)
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			SetOption(opt.key, self:GetChecked() and true or false)
 			f:Refresh() -- settings that belong to this one follow it
+			ShowDetail(opt.label, opt.tooltip, Now(), opt.cmd)
 		end)
-		check:SetScript("OnEnter", function(self)
-			Tooltip(self, opt.label, opt.tooltip)
+		local function Enter()
+			Hover(line, opt.label, opt.tooltip, Now(), opt.cmd)
+		end
+		check:SetScript("OnEnter", Enter)
+		check:SetScript("OnLeave", function() Unhover(line) end)
+		line:SetScript("OnEnter", Enter)
+		line:SetScript("OnLeave", Unhover)
+		-- The label ticks the box too.
+		line:SetScript("OnMouseUp", function(_, button)
+			if button == "LeftButton" and check:IsEnabled() then
+				check:SetChecked(not check:GetChecked())
+				check:GetScript("OnClick")(check)
+			end
 		end)
-		check:SetScript("OnLeave", GameTooltip_Hide)
 		line.Update = function()
 			check:SetChecked(OptionValue(opt.key, opt.char) and true or false)
 		end
 		line.SetActive = function(_, on)
 			check:SetEnabled(on)
-			check.label:SetAlpha(on and 1 or 0.5)
+			check.label:SetAlpha(on and 1 or 0.45)
 		end
 		f.checks[#f.checks + 1] = check
 		return line
 	end
 
-	-- A setting with a value: ‹ value ›, stepping through its list or its range.
+	-- A setting with a value: the game's page arrows either side of it.
 	local function ChoiceRow(key, spec)
 		local line = Line(key)
 		line:EnableMouse(true)
-		local text = line:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		local text = line:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		text:SetPoint("LEFT", LABEL_LEFT, 0)
 		text:SetText(spec.label)
-		local nextButton = CreateFrame("Button", nil, line, "UIPanelButtonTemplate")
-		nextButton:SetSize(24, 20)
+		local nextButton = ArrowButton(line, "Next")
 		nextButton:SetPoint("RIGHT", -2, 0)
-		nextButton:SetText(">")
-		local value = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		value:SetPoint("RIGHT", nextButton, "LEFT", -4, 0)
+		local value = line:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		value:SetPoint("RIGHT", nextButton, "LEFT", -2, 0)
 		value:SetJustifyH("CENTER")
 		value:SetWordWrap(false)
-		local prevButton = CreateFrame("Button", nil, line, "UIPanelButtonTemplate")
-		prevButton:SetSize(24, 20)
-		prevButton:SetText("<")
-		prevButton:SetPoint("RIGHT", value, "LEFT", -4, 0)
-		value:SetWidth(VALUE_WIDTH) -- the same for every row, so the arrows line up
+		value:SetWidth(VALUE_WIDTH)
+		local prevButton = ArrowButton(line, "Prev")
+		prevButton:SetPoint("RIGHT", value, "LEFT", -2, 0)
 		text:SetPoint("RIGHT", prevButton, "LEFT", -6, 0)
 		text:SetJustifyH("LEFT")
 		text:SetWordWrap(false)
@@ -623,6 +806,9 @@ local function CreateOptions()
 			end
 			return spec.format and spec.format(v) or tostring(v)
 		end
+		local function Enter()
+			Hover(line, spec.label, spec.tooltip, Show(Current()))
+		end
 		local function Step(delta)
 			local v = Current()
 			if spec.list then
@@ -640,6 +826,7 @@ local function CreateOptions()
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			SetOption(key, v)
 			line.Update()
+			Enter()
 		end
 		prevButton:SetScript("OnClick", function()
 			Step(-1)
@@ -648,24 +835,19 @@ local function CreateOptions()
 			Step(1)
 		end)
 		for _, b in ipairs({ prevButton, nextButton }) do
-			ns.Theme.Register(b, "button")
+			b:SetScript("OnEnter", Enter)
+			b:SetScript("OnLeave", function() Unhover(line) end)
 		end
-		line:SetScript("OnEnter", function(self)
-			Tooltip(self, spec.label, spec.tooltip)
-			-- The whole value, in case the row had to cut it short.
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddDoubleLine("Now", Show(Current()), 1, 0.82, 0, 1, 1, 1)
-			GameTooltip:Show()
-		end)
-		line:SetScript("OnLeave", GameTooltip_Hide)
+		line:SetScript("OnEnter", Enter)
+		line:SetScript("OnLeave", Unhover)
 		line.Update = function()
 			value:SetText(Show(Current()))
 		end
 		line.SetActive = function(_, on)
 			prevButton:SetEnabled(on)
 			nextButton:SetEnabled(on)
-			text:SetAlpha(on and 1 or 0.5)
-			value:SetAlpha(on and 1 or 0.5)
+			text:SetAlpha(on and 1 or 0.45)
+			value:SetAlpha(on and 1 or 0.45)
 		end
 		f.choiceRows[#f.choiceRows + 1] = line
 		return line
@@ -675,10 +857,10 @@ local function CreateOptions()
 	local function SliderRow(key, spec)
 		local line = Line(key)
 		line:EnableMouse(true)
-		local text = line:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		local text = line:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		text:SetPoint("LEFT", LABEL_LEFT, 0)
 		text:SetText(spec.label)
-		local value = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		local value = line:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		value:SetPoint("RIGHT", -2, 0)
 		value:SetWidth(SLIDER_VALUE_WIDTH)
 		value:SetJustifyH("RIGHT")
@@ -704,6 +886,9 @@ local function CreateOptions()
 		local function Snap(v)
 			return math.floor((v - spec.min) / spec.step + 0.5) * spec.step + spec.min
 		end
+		local function Enter()
+			Hover(line, spec.label, spec.tooltip, Show(tonumber(OptionValue(key, spec.char)) or spec.min))
+		end
 		local updating = false
 		slider:SetScript("OnValueChanged", function(_, v, userInput)
 			if updating then
@@ -720,10 +905,8 @@ local function CreateOptions()
 				SetOption(key, Snap(self:GetValue()))
 			end
 		end)
-		line:SetScript("OnEnter", function(self)
-			Tooltip(self, spec.label, spec.tooltip)
-		end)
-		line:SetScript("OnLeave", GameTooltip_Hide)
+		line:SetScript("OnEnter", Enter)
+		line:SetScript("OnLeave", Unhover)
 		line.Update = function()
 			local v = tonumber(OptionValue(key, spec.char)) or spec.min
 			updating = true
@@ -733,21 +916,21 @@ local function CreateOptions()
 		end
 		line.SetActive = function(_, on)
 			slider:SetEnabled(on)
-			slider:SetAlpha(on and 1 or 0.5)
-			text:SetAlpha(on and 1 or 0.5)
-			value:SetAlpha(on and 1 or 0.5)
+			slider:SetAlpha(on and 1 or 0.45)
+			text:SetAlpha(on and 1 or 0.45)
+			value:SetAlpha(on and 1 or 0.45)
 		end
 		f.choiceRows[#f.choiceRows + 1] = line
 		return line
 	end
 
 	local function Section(section)
-		local header = UI.SectionHeader(content, column.y)
+		local header = UI.SectionHeader(page, y)
 		header:ClearAllPoints()
-		header:SetPoint("TOPLEFT", column.x, column.y)
-		header:SetWidth(COLUMN_WIDTH)
+		header:SetPoint("TOPLEFT", 0, y)
+		header:SetWidth(LIST_WIDTH)
 		header.text:SetText(section[1])
-		column.y = column.y - HEADER
+		y = y - HEADER - 2
 		index = 0
 		for i = 2, #section do
 			local key = section[i]
@@ -763,40 +946,74 @@ local function CreateOptions()
 				f.sideRow = row
 			end
 		end
-		column.y = column.y - GAP
+		y = y - GAP - 4
 	end
-	local sections = {}
-	for _, section in ipairs(ns.OPTION_MAIN or {}) do
-		sections[#sections + 1] = section
-	end
-	-- Each page of the options panel is a section here, its own sections run together.
-	for _, page in ipairs(ns.OPTION_PAGES or {}) do
-		local keys = { page.name }
-		for _, section in ipairs(page) do
-			for i = 2, #section do
-				keys[#keys + 1] = section[i]
-			end
+
+	-- The categories: General (the main page's sections), then each page of the options panel.
+	local categories = { { name = "General", sections = ns.OPTION_MAIN or {} } }
+	for _, p in ipairs(ns.OPTION_PAGES or {}) do
+		local sections = {}
+		for _, section in ipairs(p) do
+			sections[#sections + 1] = section
 		end
-		sections[#sections + 1] = keys
+		categories[#categories + 1] = { name = p.name, sections = sections }
 	end
-	-- In order, down the left column until about half, then the right: a section goes left while
-	-- its middle would still be in the left's half.
-	local heights, total = {}, 0
-	for i, section in ipairs(sections) do
-		heights[i] = HEADER + (#section - 1) * ROW + GAP
-		total = total + heights[i]
-	end
-	local left = 0
-	for i, section in ipairs(sections) do
-		if column == columns[1] and left + heights[i] / 2 > total / 2 then
-			column = columns[2]
+
+	local function Select(name)
+		for _, cat in ipairs(categories) do
+			local on = cat.name == name
+			pages[cat.name]:SetShown(on)
+			f.navButtons[cat.name].selected:SetShown(on)
+			f.navButtons[cat.name].label:SetFontObject(on and "GameFontHighlight" or "GameFontNormal")
 		end
-		if column == columns[1] then
-			left = left + heights[i]
+		if ns.db then
+			ns.db.optionsPage = name
 		end
-		Section(section)
+		local info = CATEGORY[name] or {}
+		ShowDetail(name, info.blurb or "", nil, nil)
 	end
-	f.columnHeights = { -columns[1].y, -columns[2].y }
+	f.Select = Select
+
+	for i, cat in ipairs(categories) do
+		page = CreateFrame("Frame", nil, content)
+		page:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP, 0)
+		page:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", PANE_GAP, 0)
+		page:SetWidth(LIST_WIDTH)
+		page:Hide()
+		pages[cat.name] = page
+		f.pages[#f.pages + 1] = page
+		y = 0
+		for _, section in ipairs(cat.sections) do
+			Section(section)
+		end
+		f.pageHeights[cat.name] = -y
+
+		local info = CATEGORY[cat.name] or {}
+		local b = CreateFrame("Button", nil, nav)
+		b:SetHeight(NAV_ROW)
+		b:SetPoint("TOPLEFT", 4, -4 - (i - 1) * (NAV_ROW + 2))
+		b:SetPoint("TOPRIGHT", -4, -4 - (i - 1) * (NAV_ROW + 2))
+		b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+		b.selected = b:CreateTexture(nil, "BACKGROUND")
+		b.selected:SetAllPoints()
+		b.selected:SetColorTexture(1, 0.82, 0.3, 0.16)
+		b.selected:Hide()
+		b.icon = b:CreateTexture(nil, "ARTWORK")
+		b.icon:SetSize(24, 24)
+		b.icon:SetPoint("LEFT", 6, 0)
+		b.icon:SetTexture(info.item and C_Item.GetItemIconByID(info.item) or info.icon)
+		b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		b.label = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
+		b.label:SetPoint("RIGHT", -4, 0)
+		b.label:SetJustifyH("LEFT")
+		b.label:SetText(cat.name)
+		b:SetScript("OnClick", function()
+			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			Select(cat.name)
+		end)
+		f.navButtons[cat.name] = b
+	end
 
 	-- The one thing that stays in the game's options: your cast key.
 	local keys = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -830,6 +1047,8 @@ local function CreateOptions()
 	f:SetScript("OnShow", function(self)
 		self:Refresh()
 	end)
+	local first = ns.db and ns.db.optionsPage
+	Select(pages[first or ""] and first or categories[1].name)
 	f:Hide()
 	Hub.Attach("options", f)
 	return f

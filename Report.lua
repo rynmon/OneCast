@@ -94,6 +94,38 @@ local function ItemName(id, item)
 	return (type(item) == "table" and item.name) or C_Item.GetItemNameByID(id) or ("item " .. id)
 end
 
+-- What Classic's fishing gives that the collection leaves out on purpose: junk, potions, herbs
+-- and reagents (checked against CMaNGOS's fishing and pool loot, 13 November 2026), and the
+-- Electropeller, a quest drop. Anything else fished up that the collection lacks is news.
+local NOT_COLLECTED = {
+	[6456] = true, [6297] = true, [6301] = true, [6455] = true, [6457] = true, -- junk
+	[118] = true, [858] = true, [929] = true, [1710] = true, [3928] = true, [13446] = true, -- healing potions
+	[2455] = true, [3385] = true, [3827] = true, [6149] = true, [13443] = true, -- mana potions
+	[3820] = true, [2447] = true, [3857] = true, [7070] = true, [7079] = true, [7080] = true, -- herbs, reagents
+	[6718] = true, -- Electropeller
+}
+
+-- Weapons and armour: a mob's drop looted right after a cast can be logged as a catch (a Flanged
+-- Mace "fished up" in Elwynn Forest), and all the fishable gear known is in the collection already.
+local function IsGear(id)
+	local classID = select(6, C_Item.GetItemInfoInstant(id))
+	return classID == 2 or classID == 4
+end
+
+-- A collection item OneCast only knows from Classic: no Forever zones, only `more` ones marked
+-- "classic". The first Forever catch of one confirms it's still there.
+local function ClassicOnly(fish)
+	if fish.zones and fish.zones[1] then
+		return false
+	end
+	for _, extra in ipairs(fish.more or {}) do
+		if extra[2] ~= "classic" then
+			return false
+		end
+	end
+	return fish.more and fish.more[1] ~= nil
+end
+
 -- Every finding, as { key, text, zone }: the key stays the same while the finding does. The
 -- minimap button, stats window, book and this window can all ask in one redraw, so the list is
 -- worked out once a frame. Callers may sort it, so each gets its own copy.
@@ -174,8 +206,81 @@ Findings = function()
 				where[#where + 1] = string.format("%s x%d", zone, item.count)
 			end
 		end
-		add("fish:" .. entry.id, string.format("%s, which isn't in OneCast's collection%s", entry.name or ("item " .. entry.id),
-			#where > 0 and (" (caught in " .. table.concat(where, ", ") .. ")") or ""))
+		add("fish:" .. entry.id, string.format("%s (%d), which isn't in OneCast's collection%s", entry.name or ("item " .. entry.id),
+			entry.id, #where > 0 and (" (caught in " .. table.concat(where, ", ") .. ")") or ""))
+	end
+	-- Anything else fished up that the collection lacks (treasure, gear, junk new to Forever), and
+	-- the first Forever catch of anything OneCast only knows from Classic.
+	local other, confirmed = {}, {}
+	for _, zone in ipairs(zoneNames) do
+		for id, item in pairs(OneCastCharDB.zoneStats[zone].items or {}) do
+			if (item.count or 0) > 0 then
+				local fish = ns.FISH_BY_ID and ns.FISH_BY_ID[id]
+				local list
+				if not fish and not NOT_COLLECTED[id] and not (ns.Collection and ns.Collection.IsFish(id)) and not IsGear(id) then
+					list = other
+				elseif fish and ClassicOnly(fish) then
+					list = confirmed
+				end
+				if list then
+					list[id] = list[id] or { name = ItemName(id, item), where = {} }
+					table.insert(list[id].where, string.format("%s x%d", zone, item.count))
+				end
+			end
+		end
+	end
+	for _, list in ipairs({ other, confirmed }) do
+		local ids = {}
+		for id in pairs(list) do
+			ids[#ids + 1] = id
+		end
+		table.sort(ids)
+		for _, id in ipairs(ids) do
+			local e = list[id]
+			if list == other then
+				add("item:" .. id, string.format("%s (%d) fished up in %s, which isn't in OneCast's collection",
+					e.name, id, table.concat(e.where, ", ")))
+			else
+				add("confirm:" .. id, string.format("%s (%d) caught in %s: OneCast only had Classic's data for it",
+					e.name, id, table.concat(e.where, ", ")))
+			end
+		end
+	end
+	-- For the Fisherman's journey: where ranks and fishing spells are learned, and fishing gear
+	-- it doesn't list.
+	for _, f in ipairs(ns.Journey and ns.Journey.Findings and ns.Journey.Findings() or {}) do
+		add(f.key, f.text)
+	end
+	-- Where a Blueprint or Seasonal Fish Steaks dropped, unless it's the source already confirmed.
+	local drops = OneCastCharDB.campDrops or {}
+	local dropIDs = {}
+	for id in pairs(drops) do
+		dropIDs[#dropIDs + 1] = id
+	end
+	table.sort(dropIDs)
+	for _, id in ipairs(dropIDs) do
+		local known
+		for _, craft in ipairs(ns.Camp and ns.Camp.CRAFTS or {}) do
+			if craft.blueprint == id then
+				known = craft.blueprintKnown
+			end
+		end
+		local keys = {}
+		for key in pairs(drops[id]) do
+			keys[#keys + 1] = key
+		end
+		table.sort(keys)
+		for _, key in ipairs(keys) do
+			local d = drops[id][key]
+			local isKnown = known and ((d.npc and d.npc == known.npc) or (d.name and d.name == known.name))
+			if not isKnown then
+				local from = d.name and (d.npc and string.format("%s [%d]", d.name, d.npc) or d.name)
+					or (d.npc and string.format("creature %d", d.npc)) or (d.object and "a chest or object") or "somewhere"
+				local name = ns.Camp.TRACKED_DROPS[id] or ItemName(id)
+				add("drop:" .. id .. ":" .. key, string.format("%s (%d) dropped from %s in %s%s", name, id, from, d.zone,
+					d.count > 1 and string.format(" (x%d)", d.count) or ""))
+			end
+		end
 	end
 	for _, craft in ipairs(ns.Camp and ns.Camp.CRAFTS or {}) do
 		local r = craft.buff and ns.Camp.Record(craft.key)
@@ -412,6 +517,7 @@ Report.WHERE = {
 	{ label = "GitHub", url = "https://github.com/rynmon/OneCast/issues/new?template=data-report.yml" },
 }
 local HINT = "Ctrl+C copies the report once it's selected."
+local HINT_NOTHING = "Keep fishing: anything new shows up here, ready to share."
 local SELECTED = "|cffffd100Selected! Now press Ctrl+C to copy.|r"
 local COPIED = "|cff1eff00Report copied!|r Now copy a link, open it in your browser and paste."
 local LINK_COPIED = "|cff1eff00Link copied!|r Paste it in your browser's address bar."
@@ -552,12 +658,152 @@ local function InkShare(panel)
 	panel:SetHeight(height)
 end
 
+-- With nothing found: an emblem, a headline, what's been counted so far, and what OneCast is
+-- looking for on parchment, so the page says what to do instead of standing empty.
+local LOOKING_FOR = {
+	{ icon = "Interface\\Icons\\INV_Misc_Map_01", title = "A zone with no known level",
+		text = "Ten catches somewhere OneCast has no fishing level for." },
+	{ icon = "Interface\\Icons\\Trade_Fishing", title = "A fish getting away where it shouldn't",
+		text = "Above a zone's listed level, or never below it." },
+	{ icon = "Interface\\Icons\\INV_Box_02", title = "A catch OneCast doesn't have",
+		text = "A new fish or treasure, or one it can't place yet." },
+	{ item = 279965, icon = "Interface\\Icons\\Spell_Fire_Fire", title = "Fishing with a camp buff",
+		text = "Five catches with Uncommon or Rare Fishing on." },
+	{ item = 273119, icon = "Interface\\Icons\\INV_Scroll_03", title = "Where a Blueprint drops",
+		text = "Loot one, and OneCast notes who dropped it." },
+	{ item = 16083, icon = "Interface\\Icons\\INV_Misc_Book_09", title = "Fishing ranks and gear",
+		text = "Where ranks are taught, and new fishing gear." },
+}
+local LOOK_ROW = 38
+
+local function EmptyState(parent)
+	local panel = CreateFrame("Frame", nil, parent)
+	panel:SetSize(WINDOW_WIDTH - 10 - 2 * EDGE - 24, 10)
+
+	-- The emblem: the fishing icon in a round frame.
+	local emblem = panel:CreateTexture(nil, "ARTWORK")
+	emblem:SetSize(52, 52)
+	emblem:SetPoint("TOP", 0, -4)
+	emblem:SetTexture("Interface\\Icons\\Trade_Fishing")
+	if panel.CreateMaskTexture then
+		local mask = panel:CreateMaskTexture()
+		mask:SetAllPoints(emblem)
+		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		emblem:AddMaskTexture(mask)
+	end
+	-- A gold ring round it: a slightly bigger gold disc behind, cut round the same way.
+	local ring = panel:CreateTexture(nil, "BORDER")
+	ring:SetSize(60, 60)
+	ring:SetPoint("CENTER", emblem, "CENTER")
+	ring:SetColorTexture(0.85, 0.65, 0.25, 0.9)
+	if panel.CreateMaskTexture then
+		local mask = panel:CreateMaskTexture()
+		mask:SetAllPoints(ring)
+		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		ring:AddMaskTexture(mask)
+	else
+		ring:Hide()
+	end
+
+	panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	panel.title:SetPoint("TOP", emblem, "BOTTOM", 0, -12)
+	panel.title:SetText("Nothing new to share yet")
+	panel.sub = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	panel.sub:SetPoint("TOP", panel.title, "BOTTOM", 0, -6)
+	panel.sub:SetText("Everything you've fished matches what OneCast knows.")
+	panel.count = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	panel.count:SetPoint("TOP", panel.sub, "BOTTOM", 0, -6)
+
+	-- What to look out for, on parchment like the share steps.
+	local paper = CreateFrame("Frame", nil, panel)
+	paper:SetPoint("TOP", panel.count, "BOTTOM", 0, -16)
+	paper:SetPoint("LEFT", panel, "LEFT")
+	paper:SetPoint("RIGHT", panel, "RIGHT")
+	paper:SetHeight(SHARE_PAD + 20 + #LOOKING_FOR * LOOK_ROW + SHARE_PAD - 6)
+	local bg = paper:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints()
+	if ns.UI.HasAtlas("QuestBG-Parchment") then
+		bg:SetAtlas("QuestBG-Parchment")
+	else
+		bg:SetTexture("Interface\\QuestFrame\\QuestBG")
+		bg:SetTexCoord(0, 0.586, 0, 0.65)
+	end
+	ns.Theme.Register(bg, "parchment")
+	local edge = paper:CreateTexture(nil, "BORDER")
+	edge:SetColorTexture(0.55, 0.40, 0.15, 0.8)
+	edge:SetPoint("TOPLEFT")
+	edge:SetPoint("BOTTOMLEFT")
+	edge:SetWidth(3)
+	panel.texts, panel.softs = {}, {}
+	paper.heading = Ink(paper:CreateFontString(nil, "OVERLAY"), 14)
+	paper.heading:SetPoint("TOPLEFT", SHARE_PAD, -SHARE_PAD)
+	paper.heading:SetText("OneCast is looking for")
+	panel.texts[#panel.texts + 1] = paper.heading
+	for i, look in ipairs(LOOKING_FOR) do
+		local top = -(SHARE_PAD + 24 + (i - 1) * LOOK_ROW)
+		local icon = paper:CreateTexture(nil, "ARTWORK")
+		icon:SetSize(26, 26)
+		icon:SetPoint("TOPLEFT", SHARE_PAD + 2, top)
+		icon:SetTexture(look.item and C_Item.GetItemIconByID(look.item) or look.icon)
+		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		local title = Ink(paper:CreateFontString(nil, "OVERLAY"), 12)
+		title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, 0)
+		title:SetPoint("RIGHT", paper, "RIGHT", -SHARE_PAD, 0)
+		title:SetWordWrap(false)
+		title:SetText(look.title)
+		local text = Ink(paper:CreateFontString(nil, "OVERLAY"), 11)
+		text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -2)
+		text:SetPoint("RIGHT", paper, "RIGHT", -SHARE_PAD, 0)
+		text:SetWordWrap(false)
+		text:SetText(look.text)
+		panel.texts[#panel.texts + 1] = title
+		panel.softs[#panel.softs + 1] = text
+	end
+	panel.paper = paper
+	panel:SetHeight(4 + 52 + 12 + 18 + 6 + 14 + 6 + 12 + 16 + paper:GetHeight())
+	return panel
+end
+
+local function InkEmpty(panel)
+	local theme = ns.Theme.Current()
+	for _, fs in ipairs(panel.texts) do
+		fs:SetTextColor(theme.ink[1], theme.ink[2], theme.ink[3])
+	end
+	for _, fs in ipairs(panel.softs) do
+		fs:SetTextColor(theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3])
+	end
+end
+
+-- "Keeping count: 1,204 catches and 37 getaways in 12 zones on this character."
+local function CountLine()
+	local catches, escapes, zones = 0, 0, 0
+	for _, z in pairs(OneCastCharDB and OneCastCharDB.zoneStats or {}) do
+		if (z.catches or 0) > 0 or (z.escapes or 0) > 0 then
+			zones = zones + 1
+		end
+		catches = catches + (z.catches or 0)
+		escapes = escapes + (z.escapes or 0)
+	end
+	if catches == 0 and escapes == 0 then
+		return "Go fishing: OneCast keeps count as you do."
+	end
+	local function n(v, one, many)
+		return (BreakUpLargeNumbers and BreakUpLargeNumbers(v) or tostring(v)) .. " " .. (v == 1 and one or many)
+	end
+	return string.format("Keeping count: %s and %s in %s on this character.",
+		n(catches, "catch", "catches"), n(escapes, "getaway", "getaways"), n(zones, "zone", "zones"))
+end
+
 -- What a finding is about, for its row's icon: the fish's own, the craft's, or a map.
 local MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
 local function FindingIcon(key)
 	local kind, a = key:match("^(%a+):([^:]+)")
-	if kind == "place" or kind == "fish" then
+	if kind == "place" or kind == "fish" or kind == "item" or kind == "confirm" or kind == "drop" then
 		return C_Item.GetItemIconByID(tonumber(a)) or MAP_ICON
+	elseif kind == "journey" then
+		-- Gear by its own icon; ranks and spells by the Fisherman's journey's book.
+		local id = a == "gear" and tonumber(key:match("^journey:gear:(%d+)") or "")
+		return C_Item.GetItemIconByID(id or 16083) or MAP_ICON
 	elseif kind == "camp" then
 		for _, craft in ipairs(ns.Camp and ns.Camp.CRAFTS or {}) do
 			if craft.key == a then
@@ -573,6 +819,10 @@ local KIND_LABEL = {
 	above = "Level may be higher",
 	below = "Level may be lower",
 	place = "Where a fish is found",
+	item = "Not in the collection",
+	confirm = "Seen in Forever",
+	drop = "Where it drops",
+	journey = "For the Fisherman's journey",
 	fish = "A fish OneCast doesn't have",
 	camp = "What a camp buff gives",
 }
@@ -655,15 +905,11 @@ local function CreateWindow()
 	for i = 1, NEW_ROWS do
 		f.rows[i] = FindingRow(inset, i, y - (i - 1) * NEW_ROW_HEIGHT)
 	end
-	f.empty = inset:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.empty:SetPoint("TOPLEFT", EDGE + 12, y - 16)
-	f.empty:SetPoint("RIGHT", -(EDGE + 12), 0)
-	f.empty:SetJustifyH("CENTER")
-	f.empty:SetWordWrap(true)
-	f.empty:SetSpacing(3)
-	f.empty:SetText("Nothing new yet: everything you've fished matches what OneCast knows.\n"
-		.. "|cff9d9d9dA zone with no known level, a fish getting away above a listed level, a fish the collection "
-		.. "doesn't have or can't place, or catches with a camp buff will show here.|r")
+	f.empty = EmptyState(inset)
+	-- Centred in the room under the header.
+	f.empty:SetPoint("CENTER", inset, "CENTER", 0, y / 2)
+	InkEmpty(f.empty)
+	f.empty:Hide()
 	f.listTop = y
 
 	-- 2. Share it: placed under however much the list above shows (PlaceShare).
@@ -678,10 +924,12 @@ local function CreateWindow()
 	textHeader:SetPoint("TOPLEFT", f.share, "BOTTOMLEFT", 0, -GAP)
 	textHeader:SetPoint("TOPRIGHT", f.share, "BOTTOMRIGHT", 0, -GAP)
 	textHeader.text:SetText("Report text")
+	f.textHeader = textHeader
 	local box = UI.TryCreate("Frame", nil, inset, "InsetFrameTemplate") or CreateFrame("Frame", nil, inset)
 	box:SetPoint("TOPLEFT", textHeader, "BOTTOMLEFT", 0, -HEADER_GAP)
 	box:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
 	ns.Theme.Panel(box)
+	f.textBox = box
 	-- The game's slim modern scroll bar, or the classic one where that template is missing.
 	local scroll = UI.TryCreate("ScrollFrame", "OneCastReportScroll", box, "ScrollFrameTemplate")
 		or UI.TryCreate("ScrollFrame", "OneCastReportScroll", box, "UIPanelScrollFrameTemplate")
@@ -801,7 +1049,17 @@ FillFindings = function(f)
 			row:Hide()
 		end
 	end
-	f.empty:SetShown(#findings == 0)
+	-- Nothing found means nothing worth sending: no share steps and no report text until there is.
+	local nothing = #findings == 0
+	f.nothing = nothing
+	f.empty:SetShown(nothing)
+	if nothing then
+		f.empty.count:SetText(CountLine())
+	end
+	f.shareHeader:SetShown(not nothing)
+	f.share:SetShown(not nothing)
+	f.textHeader:SetShown(not nothing)
+	f.textBox:SetShown(not nothing)
 	PlaceShare(f, math.min(#findings, NEW_ROWS))
 end
 
@@ -810,13 +1068,14 @@ local function Fill(f)
 	f.text = Report.Text()
 	f.box:SetText(f.text)
 	f.box:SetCursorPosition(0)
-	f.hint:SetText(HINT)
+	f.hint:SetText(f.nothing and HINT_NOTHING or HINT)
 	InkShare(f.share)
 end
 
 ns.Theme.OnChange(function()
 	if frame then
 		InkShare(frame.share)
+		InkEmpty(frame.empty)
 	end
 end)
 

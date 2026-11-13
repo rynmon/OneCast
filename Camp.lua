@@ -12,8 +12,8 @@
 -- requirement), the 15-minute features, the hour-long buffs and the shared hour cooldown.
 -- Where the Blueprints, the Fish Bowl recipe and Seasonal Fish Steaks come from isn't in it:
 -- `blueprintFrom` is from player reports (10 November 2026). The Rack's Blueprint dropping from
--- Gelihast is reported by several guides, which disagree only on the drop rate; no source for
--- the Hut's had been found.
+-- Gelihast is reported by several guides, which disagree only on the drop rate. The Hut's
+-- dropping from Jammal'an the Prophet is one player's report, via a Wowhead comment (13 November 2026).
 
 local _, ns = ...
 
@@ -27,11 +27,12 @@ Camp.CRAFTS = {
 	{ key = "rack", name = "Fishing Rack", recipe = 1262990, item = 279965, skill = 140,
 		blueprint = 273141, blueprintName = "Blueprint: Fishing Rack", buff = 1280341, buffName = "Uncommon Fishing",
 		blueprintFrom = "drops from Gelihast in Blackfathom Deeps, not on every kill. Other players can trade it to you.",
+		blueprintKnown = { name = "Gelihast", npc = 6243 }, -- confirmed: a drop from it isn't news
 		reagents = { { 4470, 2, "Simple Wood" }, { 8925, 1, "Crystal Vial" }, { 8365, 2, "Raw Mithril Head Trout" } },
 		does = "Placed by a campfire, it gives Uncommon Fishing for an hour: extra rewards while you fish. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
 	{ key = "hut", name = "Fishing Hut", recipe = 1262998, item = 279966, skill = 300,
 		blueprint = 273119, blueprintName = "Blueprint: Fishing Hut", buff = 1280342, buffName = "Rare Fishing",
-		blueprintFrom = "where it comes from isn't known yet. Nobody has reported finding one.",
+		blueprintFrom = "reported to drop from Jammal'an the Prophet in the Sunken Temple (one player's report, not yet confirmed). Other players can trade it to you.",
 		reagents = { { 4470, 5, "Simple Wood" }, { 14048, 2, "Bolt of Runecloth" }, { 273295, 1, "Seasonal Fish Steaks" } },
 		does = "Placed by a campfire, it gives Rare Fishing for an hour: greater extra rewards while you fish. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
 }
@@ -117,6 +118,61 @@ function Camp.OnCatch(zone, loot)
 	end
 end
 
+-- Where the camp items whose source is unconfirmed drop: any loot window holding a Blueprint or
+-- Seasonal Fish Steaks is recorded, with the creature it came from, for the data report.
+-- OneCastCharDB.campDrops[itemID][sourceKey] = { zone, name, npc, count }.
+Camp.TRACKED_DROPS = { [273295] = "Seasonal Fish Steaks" }
+for _, craft in ipairs(Camp.CRAFTS) do
+	if craft.blueprint then
+		Camp.TRACKED_DROPS[craft.blueprint] = craft.blueprintName
+	end
+end
+
+local function Secret(v)
+	return issecretvalue and issecretvalue(v)
+end
+
+function Camp.OnLootReady()
+	if not OneCastCharDB or not GetNumLootItems then
+		return
+	end
+	for slot = 1, GetNumLootItems() do
+		local link = GetLootSlotLink(slot)
+		local id = link and not Secret(link) and tonumber(link:match("item:(%d+)"))
+		if id and Camp.TRACKED_DROPS[id] then
+			local guid = GetLootSourceInfo and GetLootSourceInfo(slot)
+			if Secret(guid) then
+				guid = nil
+			end
+			local kind, npc = nil, nil
+			if guid then
+				kind = guid:match("^(%a+)")
+				-- Creature-0-[server]-[instance]-[zone]-[npc ID]-[spawn]
+				npc = tonumber(guid:match("^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)") or "")
+			end
+			local name
+			local targetGUID = UnitGUID("target")
+			if guid and targetGUID and not Secret(targetGUID) and targetGUID == guid then
+				name = UnitName("target")
+			end
+			local zone = GetRealZoneText() or "?"
+			local key = (kind == "Creature" and npc) and ("npc" .. npc) or ((kind or "unknown") .. ":" .. zone)
+			local drops = OneCastCharDB.campDrops or {}
+			OneCastCharDB.campDrops = drops
+			drops[id] = drops[id] or {}
+			local d = drops[id][key] or { zone = zone, count = 0 }
+			drops[id][key] = d
+			d.count = d.count + 1
+			d.name = d.name or (not Secret(name) and name) or nil
+			d.npc = d.npc or (kind == "Creature" and npc) or nil
+			d.object = kind == "GameObject" or nil
+			if ns.Report and ns.Report.Check then
+				ns.Report.Check()
+			end
+		end
+	end
+end
+
 -- "Rare Fishing  ·  42m", for the stats window and minimap tooltip, or nil with no buff on.
 function Camp.StatusText()
 	local craft, left = Camp.ActiveBuff()
@@ -164,6 +220,7 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterUnitEvent("UNIT_AURA", "player")
 events:RegisterEvent("BAG_UPDATE_DELAYED")
+events:RegisterEvent("LOOT_READY")
 -- A recipe learned: Forever calls it LEARNED_SPELL_IN_SKILL_LINE, older clients LEARNED_SPELL_IN_TAB.
 ns.RegisterAnyEvent(events, { "LEARNED_SPELL_IN_SKILL_LINE", "LEARNED_SPELL_IN_TAB" })
 events:SetScript("OnEvent", function(_, event)
@@ -174,6 +231,8 @@ events:SetScript("OnEvent", function(_, event)
 		if had ~= nil then
 			CheckBuff()
 		end
+	elseif event == "LOOT_READY" then
+		Camp.OnLootReady()
 	elseif ns.Book and ns.Book.RefreshCampIfShown then
 		-- Reagents or a recipe changed: only the Camp tab shows those.
 		ns.Book.RefreshCampIfShown()

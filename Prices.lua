@@ -22,6 +22,11 @@ function Prices.CanScan()
 	return api ~= nil and (api.MultiSearchExact or api.MultiSearch) ~= nil
 end
 
+-- Naowh Forever scans the auction house itself.
+function Prices.NaowhScans()
+	return type(_G.NaowhForever) == "table" and type(_G.NaowhForever.AuctionPrice) == "function"
+end
+
 function Prices.IsAuctionOpen()
 	return auctionOpen
 end
@@ -44,7 +49,8 @@ end
 
 function Prices.Scan()
 	if not Prices.CanScan() then
-		ns.Print("scanning needs Auctionator installed.")
+		ns.Print(Prices.NaowhScans() and "Naowh Forever scans the auction house itself: open it and its prices update."
+			or "scanning needs Auctionator installed.")
 		return
 	end
 	if not auctionOpen then
@@ -67,7 +73,18 @@ function Prices.Scan()
 end
 
 -- Redraw the stats window whenever Auctionator's price database changes.
+local naowhHooked = false
 local function RegisterForUpdates()
+	-- Naowh Forever says when its prices change through its own namespace.
+	local naowh = _G.NaowhForever
+	if not naowhHooked and type(naowh) == "table" and type(naowh.AuctionPricesChanged) == "function" then
+		naowhHooked = true
+		hooksecurefunc(naowh, "AuctionPricesChanged", function()
+			if ns.Stats and ns.Stats.RefreshIfShown then
+				ns.Stats.RefreshIfShown()
+			end
+		end)
+	end
 	local api = API()
 	if registered or not api or not api.RegisterForDBUpdate then
 		return
