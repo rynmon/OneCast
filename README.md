@@ -14,10 +14,7 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 ## Features
 
 ### 🎣 One-button fishing
-![Your bobber marked with a column of light and a glowing ring on the water, in Stormwind's canals at night](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/bobber-beam.png?v=0.9.0)
-
 - One key casts, then the same key reels in your bobber using the game's soft-interact.
-- Optionally, **mark your bobber** with a **column of light** rising from it, in your theme's colour or one you pick, or with the game's gear icon, so you can tell your splash from other people's.
 - With no pole on, the key equips the best one in your bags.
 - Your weapons are remembered and put back after a break (you choose how long), when combat starts, or with one click.
 - Your keys go straight back to normal when the line comes in or combat starts.
@@ -32,15 +29,17 @@ A stats window that opens as you cast, with three tabs:
 - **Spots:** is this zone worth it? Its fish and gold per hour and every lake, coast and river you've fished here, best first. Click one for a waypoint. Pick a fish (or Ctrl-click one anywhere) to see where it bites best, how often you get it here, and when you last caught it.
 - **All-time records:** personal bests (fish per hour, gold per hour, skill in a session, longest session), your notable catches (rares, wanted fish and new ones for your collection) and lifetime totals.
 
+And around it:
 - **Skill-ups and Catch next:** +1 Fishing pops up on screen as your skill rises, and the Session tab suggests the likeliest fish you're missing in a zone your skill covers.
-- **Mini mode:** a small window in place of the stats while you fish, with your skill, the zone, your catch rate, lure and goals.
-
-  ![Mini mode: your Fishing skill, whether fish get away in this zone, and your catches and fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/mini.png?v=0.9.0)
 - **Catch goals:** right-click a catch and set one, like 20 Stonescale Eels, with progress on its row and an alert when you get there.
 - **Session history** on the All-time records tab: every past session's date, zone, catches and rate.
 - A **session summary** in chat when you take a break.
 - Click any catch to open it in the collection. **Right-click** for everything else: where it bites best, mark it as wanted, its **WoW Forever Wowhead** page or a chat link. The same clicks work in the collection.
 - Long lists scroll with the mouse wheel.
+
+**Mini mode:** prefer something smaller? A slim bar in place of the stats while you fish, with your skill, the zone, your catch rate, lure and goals.
+
+![Mini mode: your Fishing skill, whether fish get away in this zone, and your catches and fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/mini.png?v=0.9.0)
 
 ### 🧰 The tackle box
 ![The tackle box window: choose a lure, apply it with the cast key, and compare fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/tackle-box.png?v=0.9.0)
@@ -50,6 +49,13 @@ A stats window that opens as you cast, with three tabs:
 - Left-click to apply, use the Apply lure key, or turn on **Apply with the cast key** so your key applies the lure, then casts on the next press.
 - Compare your **fish per hour with and without a lure**.
 - Get a nudge at a vendor selling your lure when you have fewer than 5.
+
+### 🌟 Your bobber, marked
+![Your bobber marked with a column of light and a glowing ring on the water, in Stormwind's canals at night](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/bobber-beam.png?v=0.9.0)
+
+- Turn on **Mark your bobber** and a **column of light** rises from your bobber, with a glowing ring on the water, so you can tell your splash from other people's.
+- It takes your theme's colour, or pick your own with `/onecast beam`.
+- Prefer it quieter? Choose the glow alone, the game's gear icon, or the beam and the icon together.
 
 ### 📖 The fishing collection
 ![The collection book: every fish, with the ones you've caught in colour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/collection.png?v=0.9.0)
