@@ -53,6 +53,7 @@ local defaults = {
 	restoreDelay = 60, -- seconds without casting before weapons go back on; 0 = never
 	sessionSummary = true,
 	autoLootHint = true,
+	autoLootFishing = false,
 	extravaganza = true,
 	bagWarning = true,
 	tackleBox = true,
@@ -111,6 +112,8 @@ local OPTIONS = {
 		tooltip = "When you cast, open a slim bar in place of the stats window: your skill and the zone, catches and fish per hour, your lure and any catch goals. Click it for the full stats. /onecast mini turns it on or off." },
 	{ cmd = "summary", key = "sessionSummary", label = "Session summary in chat",
 		tooltip = "After a 2-minute break from fishing, sum up the session in chat: catches, fish per hour, vendor value, skill gained and new fish for your collection." },
+	{ cmd = "fishloot", key = "autoLootFishing", label = "Auto loot while fishing",
+		tooltip = "Turn the game's auto loot on while your fishing pole is equipped, so catches go straight to your bags, and back to how you had it when your weapons go back on. Auto loot that's already on stays on." },
 	{ cmd = "autoloot", key = "autoLootHint", label = "Offer to turn on auto loot",
 		tooltip = "If auto loot is off when you catch something, offer once per login to turn it on, so catches go straight to your bags." },
 	{ cmd = "alertsound", key = "alertSound", label = "Play a sound with it",
@@ -151,7 +154,7 @@ local OPTION_PAGES = {
 	{ name = "Fishing",
 		{ "Casting", "doubleClick", "softInteract", "bobberMarker", "bobberStyle", "beamColor", "bobberHeight" },
 		{ "Pole and weapons", "autoEquip", "fishingOutfit", "restoreDelay", "restoreOnCombat" },
-		{ "Reminders", "bagWarning", "autoLootHint", "junkMode" },
+		{ "Loot and bags", "autoLootFishing", "autoLootHint", "bagWarning", "junkMode" },
 	},
 	{ name = "Lures",
 		{ "Your lure", "lureChoice", "autoLure" },
@@ -176,6 +179,7 @@ local OPTION_PARENT = {
 }
 
 local UpdateQuiet -- below: quiet other sounds while fishing
+local UpdateLoot -- below: auto loot while fishing
 
 -- Every setting that isn't a checkbox, described once: the options panel and the window's Options
 -- page are both built from this. A `list` setting is a dropdown of { value, text } pairs; the others
@@ -361,7 +365,7 @@ local fishing = false
 local lastRightClick = 0
 -- Borrowed CVars by group, each cvar -> { original = value, ours = value }: "cast" for the
 -- length of one cast, "quiet" for as long as the pole is equipped. No CVar is in both.
-local leases = { cast = {}, quiet = {} }
+local leases = { cast = {}, quiet = {}, loot = {} }
 -- Turned down while the pole is on, to quietLevel percent of the player's own volume.
 local QUIET_CVARS = { "Sound_MusicVolume", "Sound_AmbienceVolume", "Sound_DialogVolume" }
 
@@ -541,6 +545,18 @@ function UpdateQuiet(reapply)
 		LeaseCVars("quiet", cvars)
 	end
 end
+
+-- Auto loot on while a pole is equipped, if the option is on; back as it was after.
+function UpdateLoot()
+	local want = db and db.autoLootFishing and HasFishingPole()
+	local active = next(leases.loot) ~= nil
+	if active and not want then
+		ReleaseCVars("loot")
+	elseif want and not active then
+		LeaseCVars("loot", { autoLootDefault = "1" })
+	end
+end
+ns.UpdateLoot = UpdateLoot
 
 -- Warn once each time the bags fill up, when a line goes out.
 local bagsFullWarned = false
@@ -817,6 +833,9 @@ local function SetupSettings()
 		minimapButton = UpdateMinimapVisibility,
 		quietOthers = function()
 			UpdateQuiet()
+		end,
+		autoLootFishing = function()
+			UpdateLoot()
 		end,
 		tackleBox = function()
 			ns.Lure.OnSettingChanged()
@@ -1250,6 +1269,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 		ApplyFishingSpell()
 		if event == "PLAYER_LOGIN" then
 			UpdateQuiet() -- logged in with the pole on
+			UpdateLoot()
 		end
 		if event == "PLAYER_LOGIN" and not GetBindingKey(BINDING_COMMAND) then
 			Print("bind a key under Options > Keybindings > AddOns > OneCast, or double right-click with a pole. /onecast for options.")
@@ -1294,10 +1314,12 @@ events:SetScript("OnEvent", function(_, event, ...)
 		end
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" then
 		UpdateQuiet()
+		UpdateLoot()
 	elseif event == "PLAYER_LOGOUT" then
 		-- CVars are saved on logout; never save ours.
 		ReleaseCVars("cast")
 		ReleaseCVars("quiet")
+		ReleaseCVars("loot")
 	end
 end)
 

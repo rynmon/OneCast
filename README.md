@@ -21,7 +21,8 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 - With no pole on, the key equips the best one in your bags.
 - Your weapons are remembered and put back after a break (you choose how long), when combat starts, or with one click.
 - Your keys go straight back to normal when the line comes in or combat starts.
-- Warns you when you cast with full bags, and offers to turn on auto loot if it's off.
+- **Auto loot while fishing:** auto loot comes on with your pole and goes back to how you had it after, so catches go straight to your bags without changing how you loot the rest of the time.
+- Warns you when you cast with full bags.
 
 ### 📊 Session stats
 ![The stats window's Session tab: Forever's own Fishing bar, the zone's status, fish and gold per hour, what to catch next, and this session's catches](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/stats.png?v=0.9.0)
@@ -153,6 +154,7 @@ A stats window that opens as you cast, with three tabs:
 | `/onecast theme` | Switch window theme (or `/onecast theme dark`) |
 | `/onecast reset` | Start a new session |
 | `/onecast mini` | Mini mode on or off |
+| `/onecast fishloot` | Auto loot while fishing on or off |
 | `/onecast beam` | Pick your own colour for the bobber's light beam |
 | `/onecast wardrobe` | Choose what you wear to fish |
 | `/onecast journey` | The Fishing ranks, and where to learn the next |

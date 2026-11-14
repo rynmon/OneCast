@@ -6,6 +6,15 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "0.9.1",
+		date = "14 November 2026",
+		sections = {
+			{ "New", {
+				{ "Auto loot while fishing.", "Turn it on under Fishing in the options (or /onecast fishloot) and auto loot comes on when your fishing pole does, so catches go straight to your bags, then goes back to how you had it when your weapons go back on. If you already keep auto loot on, it stays on. The offer to turn on auto loot now turns it on just while you fish. Thanks to JesterClown for the idea!" },
+			} },
+		},
+	},
+	{
 		version = "0.9.0",
 		date = "13 November 2026",
 		sections = {

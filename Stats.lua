@@ -649,13 +649,16 @@ StaticPopupDialogs["ONECAST_RESET_SESSION"] = {
 }
 
 StaticPopupDialogs["ONECAST_AUTOLOOT"] = {
-	text = "Auto loot is off, so every catch opens a loot window you have to click.\n\nTurn on auto loot so catches go straight to your bags? You can change it back in Options > Controls.",
-	button1 = "Turn on",
+	text = "Auto loot is off, so every catch opens a loot window you have to click.\n\nTurn on auto loot while you fish, so catches go straight to your bags? It goes back off when your weapons go back on. To keep it on all the time, use Options > Controls.",
+	button1 = "While fishing",
 	button2 = "Not now",
 	button3 = "Don't ask again",
 	OnAccept = function()
-		C_CVar.SetCVar("autoLootDefault", "1")
-		ns.Print("auto loot is on.")
+		ns.db.autoLootFishing = true
+		if ns.UpdateLoot then
+			ns.UpdateLoot()
+		end
+		ns.Print("auto loot is on while you fish. Change it under Fishing in OneCast's options.")
 	end,
 	OnAlt = function()
 		ns.db.autoLootHint = false
@@ -667,7 +670,7 @@ StaticPopupDialogs["ONECAST_AUTOLOOT"] = {
 }
 
 local function OfferAutoLoot(autoLooted)
-	if autoLootOffered or autoLooted or not (ns.db and ns.db.autoLootHint) then
+	if autoLootOffered or autoLooted or not (ns.db and ns.db.autoLootHint) or ns.db.autoLootFishing then
 		return
 	end
 	if C_CVar.GetCVar("autoLootDefault") == "1" then
