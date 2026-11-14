@@ -23,13 +23,23 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 - Your keys go straight back to normal when the line comes in or combat starts.
 - Warns you when you cast with full bags, and offers to turn on auto loot if it's off.
 
-### 👒 The fishing wardrobe
-![The fishing wardrobe: each slot's fishing item around your character wearing the outfit, the pole, and your Fishing with it on](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/wardrobe.png?v=0.9.0)
+### 📊 Session stats
+![The stats window's Session tab: Forever's own Fishing bar, the zone's status, fish and gold per hour, what to catch next, and this session's catches](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/stats.png?v=0.9.0)
 
-- Choose what you fish in, slot by slot, on a page laid out like the character sheet, with your character wearing it. Drag to turn them, scroll to zoom.
-- Each slot takes the best Fishing bonus in your bags, an item you pick, or what you're wearing. Pick the pole too.
-- See your Fishing with the outfit against what you wear now, and which slots would change.
-- It goes on with the pole when the cast key equips it, and comes off with your weapons. Or put it on and take it off yourself.
+A stats window that opens as you cast, with three tabs:
+- **Session:** this session's catches, **fish per hour** and **gold per hour**. Also your skill gained and how fast, and about how long until the next point and your rank's cap. The catch list shows each fish's share, then the zone's fish you haven't caught yet.
+- **Spots:** is this zone worth it? Its fish and gold per hour and every lake, coast and river you've fished here, best first. Click one for a waypoint. Pick a fish (or Ctrl-click one anywhere) to see where it bites best, how often you get it here, and when you last caught it.
+- **All-time records:** personal bests (fish per hour, gold per hour, skill in a session, longest session), your notable catches (rares, wanted fish and new ones for your collection) and lifetime totals.
+
+- **Skill-ups and Catch next:** +1 Fishing pops up on screen as your skill rises, and the Session tab suggests the likeliest fish you're missing in a zone your skill covers.
+- **Mini mode:** a small window in place of the stats while you fish, with your skill, the zone, your catch rate, lure and goals.
+
+  ![Mini mode: your Fishing skill, whether fish get away in this zone, and your catches and fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/mini.png?v=0.9.0)
+- **Catch goals:** right-click a catch and set one, like 20 Stonescale Eels, with progress on its row and an alert when you get there.
+- **Session history** on the All-time records tab: every past session's date, zone, catches and rate.
+- A **session summary** in chat when you take a break.
+- Click any catch to open it in the collection. **Right-click** for everything else: where it bites best, mark it as wanted, its **WoW Forever Wowhead** page or a chat link. The same clicks work in the collection.
+- Long lists scroll with the mouse wheel.
 
 ### 🧰 The tackle box
 ![The tackle box window: choose a lure, apply it with the cast key, and compare fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/tackle-box.png?v=0.9.0)
@@ -57,15 +67,6 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 - **What's in a pool:** hover a fishing pool and its tooltip lists what it gives, with Classic's odds, and what you haven't caught yet.
 - **Remembered pools:** hover over a fishing pool with your pole on and cast, and the spot you fished it from is marked on the book's zone maps.
 
-### 🧭 Fisherman's journey
-![The Ranks tab: Apprentice to Artisan, each with how to learn it, where to fish and what it needs, and your progress to your cap](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/journey.png?v=0.9.0)
-
-- **Ranks:** the four Fishing ranks, Apprentice to Artisan. Where you stand and how many catches to your cap, and for each rank how and where to learn it, what it needs, and where to fish at that stage.
-- **Show on map** sets a waypoint to Expert's book in Booty Bay and to Nat Pagle for the Artisan quest. Nat's four fish tick off as you catch them.
-- **Gear:** every fishing pole and piece of fishing gear, with its Fishing bonus, whether you have it, and where it comes from.
-
-![The Gear tab: every fishing pole, hat, boots and enchant, with its Fishing bonus, where it comes from and whether you have it](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/journey-gear.png?v=0.9.0)
-
 ### 🗺️ Where to fish next
 ![The Zones tab: every zone by the Fishing skill it needs, checked against yours](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/zones.png?v=0.8.0)
 
@@ -75,24 +76,6 @@ Prefer the mouse? **Double right-click** the water with a pole equipped to cast,
 - Zones without a known level are judged from your own catches and getaways. A getaway can also flag a listed level as too low, and 10 catches in a row clear it again.
 - **On the world map:** a zone's fishing level, how your skill stands and your fish caught there. On a continent, it follows the zone under the mouse.
 
-### 📊 Session stats
-![The stats window's Session tab: Forever's own Fishing bar, the zone's status, fish and gold per hour, what to catch next, and this session's catches](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/stats.png?v=0.9.0)
-
-A stats window that opens as you cast, with three tabs:
-- **Session:** this session's catches, **fish per hour** and **gold per hour**. Also your skill gained and how fast, and about how long until the next point and your rank's cap. The catch list shows each fish's share, then the zone's fish you haven't caught yet.
-- **Spots:** is this zone worth it? Its fish and gold per hour and every lake, coast and river you've fished here, best first. Click one for a waypoint. Pick a fish (or Ctrl-click one anywhere) to see where it bites best, how often you get it here, and when you last caught it.
-- **All-time records:** personal bests (fish per hour, gold per hour, skill in a session, longest session), your notable catches (rares, wanted fish and new ones for your collection) and lifetime totals.
-
-- **Skill-ups and Catch next:** +1 Fishing pops up on screen as your skill rises, and the Session tab suggests the likeliest fish you're missing in a zone your skill covers.
-- **Mini mode:** a small window in place of the stats while you fish, with your skill, the zone, your catch rate, lure and goals.
-
-  ![Mini mode: your Fishing skill, whether fish get away in this zone, and your catches and fish per hour](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/mini.png?v=0.9.0)
-- **Catch goals:** right-click a catch and set one, like 20 Stonescale Eels, with progress on its row and an alert when you get there.
-- **Session history** on the All-time records tab: every past session's date, zone, catches and rate.
-- A **session summary** in chat when you take a break.
-- Click any catch to open it in the collection. **Right-click** for everything else: where it bites best, mark it as wanted, its **WoW Forever Wowhead** page or a chat link. The same clicks work in the collection.
-- Long lists scroll with the mouse wheel.
-
 ### 💰 What your catch is worth
 - Vendor value of everything caught, and per hour of fishing.
 - **Sell your fishing junk** at a vendor in one click, or automatically: only the grey items you fished up.
@@ -101,6 +84,23 @@ A stats window that opens as you cast, with three tabs:
 ### ✨ Rare catch alerts
 - A raid-warning flash and sound for anything green or better (you choose the quality).
 - Right-click any fish and choose **Mark as wanted** to get alerted when you catch it.
+
+### 👒 The fishing wardrobe
+![The fishing wardrobe: each slot's fishing item around your character wearing the outfit, the pole, and your Fishing with it on](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/wardrobe.png?v=0.9.0)
+
+- Choose what you fish in, slot by slot, on a page laid out like the character sheet, with your character wearing it. Drag to turn them, scroll to zoom.
+- Each slot takes the best Fishing bonus in your bags, an item you pick, or what you're wearing. Pick the pole too.
+- See your Fishing with the outfit against what you wear now, and which slots would change.
+- It goes on with the pole when the cast key equips it, and comes off with your weapons. Or put it on and take it off yourself.
+
+### 🧭 Fisherman's journey
+![The Ranks tab: Apprentice to Artisan, each with how to learn it, where to fish and what it needs, and your progress to your cap](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/journey.png?v=0.9.0)
+
+- **Ranks:** the four Fishing ranks, Apprentice to Artisan. Where you stand and how many catches to your cap, and for each rank how and where to learn it, what it needs, and where to fish at that stage.
+- **Show on map** sets a waypoint to Expert's book in Booty Bay and to Nat Pagle for the Artisan quest. Nat's four fish tick off as you catch them.
+- **Gear:** every fishing pole and piece of fishing gear, with its Fishing bonus, whether you have it, and where it comes from.
+
+![The Gear tab: every fishing pole, hat, boots and enchant, with its Fishing bonus, where it comes from and whether you have it](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/journey-gear.png?v=0.9.0)
 
 ### 🏕️ Fishing at camp
 ![The Camp tab: the Fish Bowl, Fishing Rack and Fishing Hut, what each needs and does, and your camp right now](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/camp.png?v=0.8.0)
