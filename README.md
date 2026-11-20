@@ -62,7 +62,7 @@ And around it:
 ![Your bobber marked with a column of light and a glowing ring on the water, in Stormwind's canals at night](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/bobber-beam.png?v=0.9.0)
 
 - Turn on **Mark your bobber** and a **column of light** rises from it, with a glowing ring on the water, so you can tell your splash from everyone else's.
-- Pick its colour: arcane, gold, ice blue, your class colour and more.
+- Pick its colour (arcane, gold, ice blue, your class colour and more, or any colour you like), the glow alone or the game's gear icon instead, and raise or lower it to sit right on your bobber.
 
 ### 📖 The fishing collection
 ![The collection book: every fish, with the ones you've caught in colour and how many](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/collection.png?v=1.0.0b)
@@ -128,6 +128,10 @@ And around it:
 - A countdown to Stranglethorn's Sunday contest, a Tastyfish counter while it runs (in the mini bar too), and an alert and a waypoint to Riggle Bassbait the moment you hold 40.
 - What it's all for: the first 50 winners get the Arcanite Fishing Pole and a coin for one of Jang's prizes, and each rare contest fish's page says what Fishbot 5000 trades it for.
 - Chat reminders shortly before it starts and when it does.
+
+### 🌅 Just you and the water
+- Turn on **Hide the game's interface while fishing** and, while your line is out, the interface fades away, leaving the water, your bobber and OneCast's own windows (Done fishing included).
+- It comes back the moment the pole comes off, combat starts, you move or a window opens. Keys and bindings work as ever.
 
 ### 🔊 Hear the splash
 - Sound effects turn up while your line is out.

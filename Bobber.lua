@@ -1,5 +1,6 @@
 -- OneCast's bobber beam: your bobber glowing, with a column of light rising from it while the
--- line is out, so it stands out on busy water, in the colour you choose (Beam colour).
+-- line is out, so it stands out on busy water, in the colour you choose (Beam colour). Or the
+-- glow alone, the game's gear icon, or both (Marker), raised or lowered to sit right (Marker height).
 --
 -- Addons can't draw in the world or ask where an object is on screen. But with the game's
 -- interact icons on (Mark your bobber), the soft-interact target, your bobber, gets a
@@ -17,7 +18,7 @@ local RING = "PowerSwirlAnimation-YellowRing"
 local SPARK = "Interface\\Cooldown\\star4"
 local SIZE = 90            -- the beam's base size before the camera zoom scales it
 -- The plate floats above the object it follows: the glow's middle comes down this far (in
--- sizes) to sit on the bobber.
+-- sizes) to sit on the bobber, plus "Marker height" (bobberHeight, -100 to 100, in hundredths).
 local DROP = 0.55
 local ZOOM_NEAR, ZOOM_FAR = 15, 10 -- the camera zoom the size is right at, and the bobber's distance
 local SCALE_MIN, SCALE_MAX = 0.45, 2.2
@@ -32,9 +33,10 @@ local function Secret(v)
 	return issecretvalue and issecretvalue(v)
 end
 
--- With "Mark your bobber" on, the beam: there's one style.
+-- With "Mark your bobber" on, how it's marked: "beam", "glow", "icon" (the game's gear icon
+-- alone) or "both" (the beam and the icon).
 local function Style()
-	return ns.db and ns.db.bobberMarker and "beam" or nil
+	return ns.db and ns.db.bobberMarker and (ns.db.bobberStyle or "beam") or nil
 end
 
 local function WantBeam()
@@ -69,7 +71,8 @@ local function IsBobber(unit)
 	return not Secret(picked) and picked == true and ns.IsFishing and ns.IsFishing() or false
 end
 
--- The beam's colour: your choice under Beam colour, arcane blue-violet by default.
+-- The beam's colour: your choice under Beam colour, arcane blue-violet by default, or your own
+-- from the colour picker (Custom).
 Bobber.COLORS = {
 	arcane = { 0.42, 0.38, 1 }, gold = { 1, 0.82, 0.35 }, white = { 0.95, 0.97, 1 }, blue = { 0.45, 0.75, 1 }, teal = { 0.35, 1, 0.9 },
 	green = { 0.45, 1, 0.3 }, red = { 1, 0.35, 0.25 }, purple = { 0.75, 0.45, 1 }, pink = { 1, 0.5, 0.8 },
@@ -87,6 +90,9 @@ local function Colors()
 	local c
 	if choice == "class" then
 		c = ClassColor()
+	elseif choice == "custom" then
+		local saved = ns.db.beamCustom
+		c = type(saved) == "table" and { saved[1], saved[2], saved[3] } or Bobber.COLORS.arcane
 	else
 		c = Bobber.COLORS[choice] or Bobber.COLORS.arcane
 	end
@@ -94,6 +100,39 @@ local function Colors()
 end
 
 Bobber.Colors = Colors
+
+local function RefreshOptions()
+	if OneCastOptionsWindow and OneCastOptionsWindow:IsShown() and OneCastOptionsWindow.Refresh then
+		OneCastOptionsWindow:Refresh()
+	end
+end
+
+-- Your own colour, from the game's colour picker: the beam follows it as you drag, and
+-- Cancel puts back what it was.
+function Bobber.PickColor()
+	if not (ColorPickerFrame and ColorPickerFrame.SetupColorPickerAndShow) or not ns.db then
+		return
+	end
+	local before = type(ns.db.beamCustom) == "table" and { unpack(ns.db.beamCustom) } or nil
+	local beforeChoice = ns.db.beamColor
+	local start = before or Colors()
+	ColorPickerFrame:SetupColorPickerAndShow({
+		r = start[1], g = start[2], b = start[3], hasOpacity = false,
+		swatchFunc = function()
+			local r, g, b = ColorPickerFrame:GetColorRGB()
+			ns.db.beamCustom = { r, g, b }
+			ns.db.beamColor = "custom"
+			Bobber.Retint()
+			RefreshOptions()
+		end,
+		cancelFunc = function()
+			ns.db.beamCustom = before
+			ns.db.beamColor = beforeChoice
+			Bobber.Retint()
+			RefreshOptions()
+		end,
+	})
+end
 
 
 -- Recolour every beam on show: the colour setting changed.
@@ -228,9 +267,18 @@ function Bobber.Draw(f, elapsed)
 	Place(f, f.core, 0, 0, 0.7 * S, 0.2 * S, 0.9 * a)
 	Place(f, f.halo, 0, 0.04 * S, 0.42 * S * swell, 0.42 * S * swell, 0.7 * a)
 	Place(f, f.heart, 0, 0.04 * S, 0.16 * S, 0.16 * S, breath * a)
-	-- A thin, intense column, fading to nothing high above.
-	Place(f, f.outer, 0, tall / 2, 0.26 * S, tall, 0.6 * breath * a)
-	Place(f, f.inner, 0, tall * 0.45, 0.06 * S, tall * 0.9, breath * a)
+	if f.glowOnly then
+		-- The glow alone: no column, no sparks; the ripples stay.
+		f.outer:Hide()
+		f.inner:Hide()
+		for _, m in ipairs(f.motes) do
+			m.tex:Hide()
+		end
+	else
+		-- A thin, intense column, fading to nothing high above.
+		Place(f, f.outer, 0, tall / 2, 0.26 * S, tall, 0.6 * breath * a)
+		Place(f, f.inner, 0, tall * 0.45, 0.06 * S, tall * 0.9, breath * a)
+	end
 	-- A ripple spreads over the water every 2.2 seconds.
 	if not f.noRing then
 		local u = (c % 2.2) / 1.2
@@ -242,7 +290,7 @@ function Bobber.Draw(f, elapsed)
 		end
 	end
 	-- Sparks drifting up the column.
-	for _, m in ipairs(f.motes) do
+	for _, m in ipairs(f.glowOnly and {} or f.motes) do
 		m.age = m.age + elapsed
 		if m.age >= m.life then
 			m.age, m.life = 0, 1.5 + math.random()
@@ -271,8 +319,16 @@ end
 -- Where the glow's middle goes: down from the plate onto the bobber. In the frame's own units,
 -- so it scales with the zoom like everything else in it.
 function Bobber.Place(f, namePlate)
+	local height = (ns.db and tonumber(ns.db.bobberHeight)) or 0
 	f:ClearAllPoints()
-	f:SetPoint("CENTER", namePlate, "BOTTOM", 0, -DROP * SIZE)
+	f:SetPoint("CENTER", namePlate, "BOTTOM", 0, (height / 100 - DROP) * SIZE)
+end
+
+-- The height setting changed: move every glow on show.
+function Bobber.Replace()
+	for namePlate, f in pairs(Bobber._beams) do
+		Bobber.Place(f, namePlate)
+	end
 end
 
 
@@ -302,6 +358,7 @@ local function Attach(namePlate)
 	Tint(f)
 	f:Show()
 	f.noBeam = not WantBeam()
+	f.glowOnly = Style() == "glow"
 	-- With a controller, its fishing button where the game's Interact button was.
 	local key = PromptKey()
 	local atlas = key and ns.Controller.Atlas(key)
@@ -315,7 +372,8 @@ local function Attach(namePlate)
 	else
 		f.prompt:Hide()
 	end
-	FadeIcon(namePlate.UnitFrame, atlas ~= nil or Style() == "beam")
+	-- The game's gear icon stays for "Gear icon" and "Beam and icon"; else it's faded out.
+	FadeIcon(namePlate.UnitFrame, atlas ~= nil or Style() == "beam" or Style() == "glow")
 end
 
 -- Every plate: the bobber's gets the beam while you fish, any other loses it.

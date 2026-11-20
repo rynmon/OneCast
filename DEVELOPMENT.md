@@ -47,6 +47,7 @@ Each cast and reel is still one hardware press; nothing is automated.
 | `RecipeSellers.lua` | Who sells each fish recipe and where they stand (generated from Classic's vendors and Forever's maps) |
 | `Search.lua` | One search across catches, zones, pools, recipes, gear, ranks and settings |
 | `Controller.lua` | Controller support: the fishing and window buttons, window navigation in the gamepad interface, button icons and rumble |
+| `CleanView.lua` | "Hide the game's interface while fishing": UIParent faded (never hidden: that taints Blizzard's frames), OneCast's own frames and the tooltips kept |
 | `Onboarding.lua` | The welcome window and the cast key capture, bound with the game's own `SetBinding` |
 | `Bobber.lua` | The light beam on your bobber, drawn on the nameplate the game gives the soft-interact target |
 | `Media/*.tga` | Button glyphs: white with a dark outline, tinted gold in game |

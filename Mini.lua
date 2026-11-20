@@ -311,6 +311,9 @@ end
 
 function Mini.Show(auto)
 	frame = frame or Create()
+	if ns.CleanView then
+		ns.CleanView.KeepNew()
+	end
 	autoOpened = auto and true or false
 	frame:Show()
 	Mini.Refresh()

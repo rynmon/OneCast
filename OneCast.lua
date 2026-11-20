@@ -76,6 +76,9 @@ local defaults = {
 	rememberPools = true,
 	bobberMarker = false,
 	beamColor = "arcane",
+	bobberStyle = "beam",
+	cleanView = false,
+	bobberHeight = 0,
 	campReminder = true,
 }
 -- Per character: skill and bags differ, and lures get used up.
@@ -96,6 +99,8 @@ local OPTIONS = {
 		tooltip = "With a fishing pole equipped, double right-click the world to cast. Right-click the bobber to reel in." },
 	{ cmd = "softinteract", key = "softInteract", label = "Soft-interact while fishing",
 		tooltip = "While the line is out, make the bobber the soft-interact target so the cast key reels it in." },
+	{ cmd = "clean", key = "cleanView", label = "Hide the game's interface while fishing",
+		tooltip = "While your line is out, the game's interface fades away, leaving the water, your bobber and OneCast's own windows (the stats with Done fishing, the mini bar, the tackle box). It comes back when the pole comes off, combat starts, you move, or a window opens. Keys and bindings work as ever." },
 	{ cmd = "bobbermarker", key = "bobberMarker", label = "Mark your bobber",
 		tooltip = "While the line is out, your bobber glows with a column of light rising from it, so you can tell it from other people's on busy water (Beam colour, below). It can't show when a fish bites: the game doesn't tell addons that." },
 	{ cmd = "bagwarning", key = "bagWarning", label = "Warn when your bags are full",
@@ -191,8 +196,9 @@ local OPTION_PAGES = {
 		{ "Tackle box", "tackleBox", "lureVendorHint" },
 	},
 	{ name = "While fishing",
-		{ "Your bobber", "bobberMarker", "beamColor" },
+		{ "Your bobber", "bobberMarker", "bobberStyle", "beamColor", "bobberHeight" },
 		{ "Sound", "soundBoost", "quietOthers", "quietLevel" },
+		{ "Immersion", "cleanView" },
 	},
 	{ name = "Controller",
 		{ "Fishing button", "padFishing", "padButton", "padStart", "padWindow" },
@@ -211,6 +217,8 @@ local OPTION_PAGES = {
 -- Greyed out and indented while the option they belong to is off.
 local OPTION_PARENT = {
 	beamColor = "bobberMarker",
+	bobberStyle = "bobberMarker",
+	bobberHeight = "bobberMarker",
 	quietLevel = "quietOthers",
 	padButton = "padFishing",
 	padStart = "padFishing",
@@ -226,8 +234,28 @@ local UpdateLoot -- below: auto loot while fishing
 -- page are both built from this. A `list` setting is a dropdown of { value, text } pairs; the others
 -- are sliders from `min` to `max` in `step`s, shown with `format`. `char` keeps it per character.
 local CHOICES = {
+	bobberStyle = { label = "Marker", kind = "string",
+		tooltip = "How your bobber is marked: glowing with a light beam rising from it, the glow alone, the game's gear icon over it, or the beam and the icon.",
+		list = function()
+			return { { "beam", "Light beam" }, { "glow", "Glow" }, { "icon", "Gear icon" }, { "both", "Beam and icon" } }
+		end,
+		onChange = function()
+			if ns.Bobber then
+				ns.Bobber.Update()
+			end
+		end },
+	bobberHeight = { label = "Marker height", kind = "number", min = -100, max = 100, step = 5,
+		tooltip = "Moves the bobber's glow and beam up or down, if they don't sit right on your bobber. 0 is where OneCast puts them.",
+		format = function(value)
+			return (value > 0 and "+" or "") .. value
+		end,
+		onChange = function()
+			if ns.Bobber then
+				ns.Bobber.Replace()
+			end
+		end },
 	beamColor = { label = "Beam colour", kind = "string",
-		tooltip = "The colour of your bobber's glow and light beam.",
+		tooltip = "The colour of your bobber's glow and light beam. Custom opens the colour picker (or /onecast beam).",
 		list = function()
 			local swatch = function(key, text)
 				local c = ns.Bobber and ns.Bobber.COLORS[key]
@@ -236,11 +264,16 @@ local CHOICES = {
 			return { { "arcane", swatch("arcane", "Arcane") }, { "gold", swatch("gold", "Gold") }, { "white", swatch("white", "White") },
 				{ "blue", swatch("blue", "Ice blue") }, { "teal", swatch("teal", "Teal") }, { "green", swatch("green", "Green") },
 				{ "red", swatch("red", "Red") }, { "purple", swatch("purple", "Purple") }, { "pink", swatch("pink", "Pink") },
-				{ "class", "Class colour" } }
+				{ "class", "Class colour" }, { "custom", "Custom..." } }
 		end,
-		onChange = function()
-			if ns.Bobber then
-				ns.Bobber.Retint()
+		onChange = function(_, value)
+			if not ns.Bobber then
+				return
+			end
+			ns.Bobber.Retint()
+			-- Stepping onto Custom opens the colour picker.
+			if value == "custom" then
+				ns.Bobber.PickColor()
 			end
 		end },
 	auctionSource = { label = "Auction prices from", kind = "string",
@@ -1373,13 +1406,13 @@ events:SetScript("OnEvent", function(_, event, ...)
 			ns.db = db
 			-- Settings of features 1.0 removed (themes, milestones, the clean view, the bobber's
 			-- styles and height, the auction source, the report's chat hints): gone from the saves.
-			for _, key in ipairs({ "theme", "themeEffects", "bobberStyle", "bobberHeight", "beamCustom",
-				"cleanView", "reportHint", "milestones", "milestonesSeeded", "milestonesOn",
+			for _, key in ipairs({ "theme", "themeEffects",
+				"reportHint", "milestones", "milestonesSeeded", "milestonesOn",
 				"milestoneAlerts", "sellJunk" }) do
 				db[key] = nil
 			end
 			-- A beam colour that followed the theme, or a custom one: the default now.
-			if db.beamColor == "theme" or db.beamColor == "custom" then
+			if db.beamColor == "theme" then
 				db.beamColor = defaults.beamColor
 			end
 			OneCastCharDB = OneCastCharDB or {}
@@ -1466,6 +1499,12 @@ SlashCmdList.ONECAST = function(msg)
 		return
 	elseif cmd == "keys" or cmd == "settings" then
 		OpenSettings() -- the game's options: the cast key is set there
+		return
+	elseif cmd == "beam" then
+		-- The bobber beam's own colour, from the game's colour picker.
+		if ns.Bobber then
+			ns.Bobber.PickColor()
+		end
 		return
 	elseif cmd == "riggle" then
 		-- A waypoint to Riggle Bassbait, for the Fishing Extravaganza.
@@ -1566,6 +1605,7 @@ SlashCmdList.ONECAST = function(msg)
 	Print("/onecast wardrobe - choose what you wear to fish")
 	Print("/onecast journey - the Fishing ranks, and where to learn the next")
 	Print("/onecast riggle - a waypoint to Riggle Bassbait, for the Fishing Extravaganza")
+	Print("/onecast beam - pick your own colour for the bobber's beam")
 	Print("/onecast book - fishing collection (/onecast camp for its Camp tab)")
 	Print("/onecast report - your fishing data as text, to share and help fill in Forever's numbers")
 	Print("/onecast tackle - tackle box (/onecast tackle reset moves its button back)")

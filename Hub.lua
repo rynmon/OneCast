@@ -475,6 +475,9 @@ function Hub.Attach(key, frame, currentKey)
 	end
 	ns.UI.CloseOwn(frame) -- its X works in combat too
 	ns.UI.EscapeCloses(frame, true)
+	if ns.CleanView then
+		ns.CleanView.KeepNew() -- built while the interface is faded: it stays on screen
+	end
 	frame:SetClampedToScreen(true)
 	AddGrip(frame)
 	-- A locked window doesn't move.

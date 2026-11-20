@@ -6,6 +6,18 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.0.5",
+		date = "20 November 2026",
+		sections = {
+			{ "Reported by TionTales", {
+				{ "Hide the game's interface while fishing.", "A new setting under While fishing > Immersion: while your line is out, the game's interface fades away, leaving the water, your bobber and OneCast's own windows, Done fishing included. It comes back when the pole comes off, combat starts, you move, or a window opens, and keys work as ever. Off by default." },
+			} },
+			{ "Reported by lunnati", {
+				{ "Your bobber marker, your way again.", "The marker's options from 0.9 are back under While fishing > Your bobber: Marker (the light beam, the glow alone, the game's gear icon, or the beam and the icon), Marker height to raise or lower it onto your bobber, and a Custom beam colour from the colour picker (or /onecast beam). 1.0 had cleared these settings, so set them again once." },
+			} },
+		},
+	},
+	{
 		version = "1.0.4",
 		date = "18 November 2026",
 		sections = {
