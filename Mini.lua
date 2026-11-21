@@ -80,14 +80,14 @@ local function Create()
 	band:SetPoint("TOPLEFT", BORDER, -BORDER)
 	band:SetPoint("RIGHT", done or close, "LEFT", 0, 0)
 	band:SetHeight(BAND_HEIGHT)
-	if UI and UI.HasAtlas and UI.HasAtlas("UI-Character-Info-Title") then
-		band:SetAtlas("UI-Character-Info-Title")
+	if UI and UI.HasAtlas and UI.HasAtlas("common-button-list-collapseExpand") then
+		band:SetAtlas("common-button-list-collapseExpand") -- the group finder's category bar, as the windows' headings
 	else
 		band:SetColorTexture(0.25, 0.18, 0.10, 0.95)
 	end
 	f.band = band
 	f.titleText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	f.titleText:SetPoint("CENTER", band, "CENTER", 0, 1)
+	f.titleText:SetPoint("LEFT", band, "LEFT", 10, 0) -- at the left, as the windows' headings
 
 	local inset = CreateFrame("Frame", nil, f)
 	inset:SetPoint("TOPLEFT", BORDER, -TITLE_HEIGHT)
@@ -309,8 +309,16 @@ function Mini.Refresh()
 	frame:SetHeight(TITLE_HEIGHT + BOTTOM + 6 + lines * 12 + (lines - 1) * 3 + 7 + (last and (LATEST_HEIGHT + 4) or 0))
 end
 
+-- "Larger text": the bar bigger with it, as the windows are.
+function Mini.ApplyScale()
+	if frame then
+		frame:SetScale(ns.TextScale and ns.TextScale() or 1)
+	end
+end
+
 function Mini.Show(auto)
 	frame = frame or Create()
+	Mini.ApplyScale()
 	if ns.CleanView then
 		ns.CleanView.KeepNew()
 	end

@@ -498,15 +498,16 @@ end
 
 -- The window ------------------------------------------------------------------------------
 -- Two columns. On the left, what you've found, each with what it means in full. On the right,
--- how to share it (the steps, with the button and links in them, on parchment like the book's
--- pages), and the report text itself under them.
+-- how to share it (the steps, with the button and links in them, on a card like the window's
+-- others), and the report text itself under them.
 
 local WINDOW_WIDTH = 820
 local EDGE, GAP, HEADER_HEIGHT, HEADER_GAP = 10, 8, 24, 4
 local FOUND_WIDTH = 430 -- the left column
 local SIDE_LEFT = EDGE + FOUND_WIDTH + 2 * GAP -- where the right column starts
 local SIDE_WIDTH = WINDOW_WIDTH - 10 - SIDE_LEFT - EDGE
-local NEW_ROWS, NEW_ROW_HEIGHT = 9, 48
+local NEW_ROWS, NEW_ROW_HEIGHT = 9, 48 -- rows made, and the least each is (they grow to fit)
+local GOLD = "|cffffd100"
 local SHARE_PAD = 12
 local LINK_HEIGHT, LINK_GAP = 20, 4
 -- Where reports go. The GitHub link opens the repo's Data report issue form.
@@ -552,42 +553,29 @@ local function LinkBox(parent, url, onCopy)
 	return box
 end
 
--- Parchment text in its ink.
-local function Ink(fs, size, font)
-	ns.UI.SizedFont(fs, font or QuestFont, size)
-	fs:SetShadowOffset(0, 0)
+-- Text on a card: OneCast's own small print, or its gold heading.
+local function Ink(fs, heading)
+	fs:SetFontObject(heading and "GameFontNormal" or "OneCastFontHighlightSmall")
 	fs:SetJustifyH("LEFT")
 	return fs
 end
 
 -- Share it: three numbered steps, each with what it needs right there, and what a report holds.
 local function SharePanel(f, parent)
-	local panel = CreateFrame("Frame", nil, parent)
-	local bg = panel:CreateTexture(nil, "BACKGROUND")
-	bg:SetAllPoints()
-	if ns.UI.HasAtlas("QuestBG-Parchment") then
-		bg:SetAtlas("QuestBG-Parchment")
-	else
-		bg:SetTexture("Interface\\QuestFrame\\QuestBG")
-		bg:SetTexCoord(0, 0.586, 0, 0.65)
-	end
-	local edge = panel:CreateTexture(nil, "BORDER")
-	edge:SetColorTexture(0.55, 0.40, 0.15, 0.8)
-	edge:SetPoint("TOPLEFT")
-	edge:SetPoint("BOTTOMLEFT")
-	edge:SetWidth(3)
+	local panel = ns.UI.Card(parent)
+	panel:SetColor(1, 0.82, 0, 0.12)
 
 	local width = SIDE_WIDTH - 2 * SHARE_PAD
 	panel.texts = {}
-	local function Text(size, font)
-		local fs = Ink(panel:CreateFontString(nil, "OVERLAY"), size, font)
+	local function Text()
+		local fs = Ink(panel:CreateFontString(nil, "OVERLAY"))
 		fs:SetWidth(width)
 		panel.texts[#panel.texts + 1] = fs
 		return fs
 	end
 
 	-- 1. Select it, and copy.
-	panel.step1 = Text(12)
+	panel.step1 = Text()
 	panel.step1:SetPoint("TOPLEFT", SHARE_PAD, -SHARE_PAD)
 	local select = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
 	select:SetSize(130, 22)
@@ -604,13 +592,14 @@ local function SharePanel(f, parent)
 	f.select = select
 
 	-- 2. Where to post it.
-	panel.step2 = Text(12)
+	panel.step2 = Text()
 	panel.step2:SetPoint("TOPLEFT", select, "BOTTOMLEFT", -16, -10)
 	panel.links = {}
 	local previous = panel.step2
 	for i, where in ipairs(Report.WHERE) do
-		local label = Text(12)
+		local label = Text()
 		label:SetSize(74, LINK_HEIGHT)
+		label:SetFontObject("OneCastFontNormalSmall")
 		label:SetText(where.label)
 		label:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", i == 1 and 16 or 0, i == 1 and -4 or -LINK_GAP)
 		local box = LinkBox(panel, where.url, function()
@@ -623,11 +612,11 @@ local function SharePanel(f, parent)
 	end
 
 	-- 3. Post it.
-	panel.step3 = Text(12)
+	panel.step3 = Text()
 	panel.step3:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", -16, -10)
 
 	-- What's in a report, and what isn't: said plainly, at the foot.
-	panel.privacy = Text(11)
+	panel.privacy = Text()
 	panel.privacy:SetPoint("TOPLEFT", panel.step3, "BOTTOMLEFT", 0, -8)
 	panel.privacy:SetText("A report holds fishing numbers only: no character name, realm, guild, account or anything "
 		.. "else that could identify you, and nothing is sent unless you paste it yourself.")
@@ -638,16 +627,12 @@ local STEP1 = "%s1.|r  Select your report, then press %sCtrl+C|r to copy it."
 local STEP2 = "%s2.|r  Click a link, press %sCtrl+C|r, and open it in your browser."
 local STEP3 = "%s3.|r  Paste it into a new comment or issue, and post it. Thank you!"
 
--- The panel's in the book's ink, and it's sized to its text.
+-- The steps, their numbers and keys in gold, and the panel sized to its text.
 local function InkShare(panel)
-	local theme = ns.Theme.Current()
-	for _, fs in ipairs(panel.texts) do
-		fs:SetTextColor(theme.ink[1], theme.ink[2], theme.ink[3])
-	end
-	panel.privacy:SetTextColor(theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3])
-	panel.step1:SetText(string.format(STEP1, theme.lead, theme.lead))
-	panel.step2:SetText(string.format(STEP2, theme.lead, theme.lead))
-	panel.step3:SetText(string.format(STEP3, theme.lead))
+	panel.privacy:SetTextColor(0.66, 0.66, 0.66)
+	panel.step1:SetText(string.format(STEP1, GOLD, GOLD))
+	panel.step2:SetText(string.format(STEP2, GOLD, GOLD))
+	panel.step3:SetText(string.format(STEP3, GOLD))
 	local height = SHARE_PAD + panel.step1:GetStringHeight() + 4 + 22 + 10 + panel.step2:GetStringHeight() + 4
 		+ #panel.links * (LINK_HEIGHT + LINK_GAP) - LINK_GAP + 10 + panel.step3:GetStringHeight()
 		+ 8 + panel.privacy:GetStringHeight() + SHARE_PAD
@@ -710,27 +695,15 @@ local function EmptyState(parent)
 	panel.count = panel:CreateFontString(nil, "OVERLAY", "OneCastFontDisableSmall")
 	panel.count:SetPoint("TOP", panel.sub, "BOTTOM", 0, -6)
 
-	-- What to look out for, on parchment like the share steps.
-	local paper = CreateFrame("Frame", nil, panel)
+	-- What to look out for, on a card like the share steps.
+	local paper = ns.UI.Card(panel)
+	paper:SetColor(1, 0.82, 0, 0.12)
 	paper:SetPoint("TOP", panel.count, "BOTTOM", 0, -16)
 	paper:SetPoint("LEFT", panel, "LEFT")
 	paper:SetPoint("RIGHT", panel, "RIGHT")
 	paper:SetHeight(SHARE_PAD + 20 + #LOOKING_FOR * LOOK_ROW + SHARE_PAD - 6)
-	local bg = paper:CreateTexture(nil, "BACKGROUND")
-	bg:SetAllPoints()
-	if ns.UI.HasAtlas("QuestBG-Parchment") then
-		bg:SetAtlas("QuestBG-Parchment")
-	else
-		bg:SetTexture("Interface\\QuestFrame\\QuestBG")
-		bg:SetTexCoord(0, 0.586, 0, 0.65)
-	end
-	local edge = paper:CreateTexture(nil, "BORDER")
-	edge:SetColorTexture(0.55, 0.40, 0.15, 0.8)
-	edge:SetPoint("TOPLEFT")
-	edge:SetPoint("BOTTOMLEFT")
-	edge:SetWidth(3)
 	panel.texts, panel.softs = {}, {}
-	paper.heading = Ink(paper:CreateFontString(nil, "OVERLAY"), 14)
+	paper.heading = Ink(paper:CreateFontString(nil, "OVERLAY"), true)
 	paper.heading:SetPoint("TOPLEFT", SHARE_PAD, -SHARE_PAD)
 	paper.heading:SetText("OneCast is looking for")
 	panel.texts[#panel.texts + 1] = paper.heading
@@ -741,12 +714,13 @@ local function EmptyState(parent)
 		icon:SetPoint("TOPLEFT", SHARE_PAD + 2, top)
 		icon:SetTexture(look.item and C_Item.GetItemIconByID(look.item) or look.icon)
 		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-		local title = Ink(paper:CreateFontString(nil, "OVERLAY"), 12)
+		local title = Ink(paper:CreateFontString(nil, "OVERLAY"))
+		title:SetFontObject("GameFontHighlight")
 		title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, 0)
 		title:SetPoint("RIGHT", paper, "RIGHT", -SHARE_PAD, 0)
 		title:SetWordWrap(false)
 		title:SetText(look.title)
-		local text = Ink(paper:CreateFontString(nil, "OVERLAY"), 11)
+		local text = Ink(paper:CreateFontString(nil, "OVERLAY"))
 		text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -2)
 		text:SetPoint("RIGHT", paper, "RIGHT", -SHARE_PAD, 0)
 		text:SetWordWrap(false)
@@ -760,12 +734,8 @@ local function EmptyState(parent)
 end
 
 local function InkEmpty(panel)
-	local theme = ns.Theme.Current()
-	for _, fs in ipairs(panel.texts) do
-		fs:SetTextColor(theme.ink[1], theme.ink[2], theme.ink[3])
-	end
 	for _, fs in ipairs(panel.softs) do
-		fs:SetTextColor(theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3])
+		fs:SetTextColor(0.78, 0.78, 0.78)
 	end
 end
 
@@ -838,10 +808,9 @@ local function FindingTitle(finding)
 end
 
 local function FindingRow(parent, index, y)
-	local row = CreateFrame("Frame", nil, parent)
+	local row = ns.UI.Card(parent)
 	row:SetPoint("TOPLEFT", EDGE, y)
 	row:SetSize(FOUND_WIDTH, NEW_ROW_HEIGHT - 2)
-	ns.UI.RowBackground(row, index)
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(34, 34)
 	row.icon:SetPoint("TOPLEFT", 6, -6)
@@ -856,16 +825,13 @@ local function FindingRow(parent, index, y)
 	row.title:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, 1)
 	row.title:SetPoint("RIGHT", row.kind, "LEFT", -6, 0)
 	row.title:SetJustifyH("LEFT")
-	row.title:SetWordWrap(false)
+	row.title:SetWordWrap(true) -- never cut short: the row grows instead
 	row.text = row:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	row.text:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -3)
 	row.text:SetPoint("RIGHT", -8, 0)
 	row.text:SetJustifyH("LEFT")
 	row.text:SetJustifyV("TOP")
 	row.text:SetWordWrap(true)
-	if row.text.SetMaxLines then
-		row.text:SetMaxLines(2)
-	end
 	row.text:SetSpacing(1)
 	row.text:SetTextColor(0.82, 0.82, 0.82)
 	row:EnableMouse(true)
@@ -898,7 +864,18 @@ local function FillFindingRow(row, finding, shared)
 	row.title:SetText(FindingTitle(finding))
 	row.text:SetText(finding.detail or finding.text)
 	row.tag:SetText(shared and "|cff9d9d9dShared|r" or "|cff20ff20New|r")
+	if shared then
+		row:SetColor(0.5, 0.5, 0.5, 0.06)
+	else
+		row:SetColor(0.12, 1, 0, 0.14)
+	end
 	row:Show()
+end
+
+-- How tall a row needs to be for what it says.
+local function RowHeight(row)
+	local words = (row.title:GetStringHeight() or 14) + 3 + (row.text:GetStringHeight() or 12)
+	return math.max(NEW_ROW_HEIGHT - 2, 6 + words + 8)
 end
 
 local frame
@@ -1064,25 +1041,43 @@ FillFindings = function(f)
 		or "What you've found")
 	f.status:SetText(fresh > 0 and string.format("You've found %d thing%s OneCast doesn't know yet.", fresh, fresh == 1 and "" or "s")
 		or "Help fill in Forever's real fishing numbers.")
-	local shown = math.min(#findings, NEW_ROWS)
-	if #findings > NEW_ROWS then
-		shown = NEW_ROWS - 1
-	end
+	-- Down the column, each as tall as it needs, while there's room; the rest in the text.
+	local bottom = -(ns.UI.PAGE_HEIGHT - 60 - 28 - EDGE)
+	local y = f.listTop
+	local shown = 0
 	for i, row in ipairs(f.rows) do
 		local finding = findings[i]
-		if i <= shown and finding then
+		row:Hide()
+		if finding then
 			FillFindingRow(row, finding, shared[finding.key])
-		elseif i == shown + 1 and #findings > shown then
-			row.icon:Hide()
-			row.title:SetText(string.format("|cff9d9d9dAnd %d more|r", #findings - shown))
-			row.text:SetText("|cff9d9d9dThey're all in the report text below.|r")
-			row.kind:SetText("")
-			row.tag:SetText("")
-			row.finding = nil
-			row:Show()
-		else
-			row:Hide()
+			row.text:SetWidth(FOUND_WIDTH - 54 - 8)
+			local h = RowHeight(row)
+			-- Room for this one, and for the "and more" row if any are left after it.
+			local more = #findings > i and NEW_ROW_HEIGHT or 0
+			if y - h - more < bottom or i == NEW_ROWS and #findings > NEW_ROWS then
+				row:Hide()
+				break
+			end
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", EDGE, y)
+			row:SetHeight(h)
+			y = y - h - 2
+			shown = i
 		end
+	end
+	if #findings > shown then
+		local row = f.rows[shown + 1]
+		row.icon:Hide()
+		row.title:SetText(string.format("|cff9d9d9dAnd %d more|r", #findings - shown))
+		row.text:SetText("|cff9d9d9dThey're all in the report text beside this.|r")
+		row.kind:SetText("")
+		row.tag:SetText("")
+		row.finding = nil
+		row:SetColor(0.5, 0.5, 0.5, 0)
+		row:ClearAllPoints()
+		row:SetPoint("TOPLEFT", EDGE, y)
+		row:SetHeight(NEW_ROW_HEIGHT - 2)
+		row:Show()
 	end
 	-- Nothing found means nothing worth sending: no share steps and no report text until there is.
 	local nothing = #findings == 0

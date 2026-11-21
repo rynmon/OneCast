@@ -181,6 +181,30 @@ function Lure.IsActive()
 	return Lure.Left() > 0
 end
 
+-- Luremaster, in WoW Forever's Legacy tree: while a lure is on, a chance of an extra fish. Its
+-- chance (50 at rank 2 of 2) and spell, or nil if this character hasn't learned it. The chance is
+-- read from the spell's own words; its other rank is a spell close by with the same name.
+Lure.LUREMASTER = 1225455
+Lure.LUREMASTER_MAX = 50
+local LUREMASTER_NEAR = { 1225455, 1225454, 1225456, 1225453, 1225457 }
+function Lure.Luremaster()
+	local GetName = C_Spell and C_Spell.GetSpellName
+	local name = GetName and GetName(Lure.LUREMASTER)
+	if type(name) ~= "string" then
+		return nil
+	end
+	for _, id in ipairs(LUREMASTER_NEAR) do
+		local known = (IsPlayerSpell and IsPlayerSpell(id) == true)
+			or (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and type(C_UnitAuras.GetPlayerAuraBySpellID(id)) == "table")
+		if known and (id == Lure.LUREMASTER or GetName(id) == name) then
+			local words = C_Spell.GetSpellDescription and C_Spell.GetSpellDescription(id)
+			local chance = type(words) == "string" and tonumber(words:match("(%d+)%%"))
+			return chance or (id == Lure.LUREMASTER and Lure.LUREMASTER_MAX or Lure.LUREMASTER_MAX / 2), id
+		end
+	end
+	return nil
+end
+
 -- The lure to show: the one on the pole, or with none on, the one chosen. Nil if there's a lure
 -- on but we don't know which (it went on before OneCast could see it): never guess, because
 -- naming the chosen lure could claim a bigger bonus than the pole really has.

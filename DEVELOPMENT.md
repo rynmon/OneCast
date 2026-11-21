@@ -18,15 +18,15 @@ Each cast and reel is still one hardware press; nothing is automated.
 
 | File | What it holds |
 |---|---|
-| `Camp.lua` | Forever's camp fishing crafts, the Uncommon and Rare Fishing buffs, and catches made under them |
+| `Camp.lua` | Forever's camp fishing crafts, the Uncommon and Rare Fishing buffs, catches made under them, and the Camp page |
 | `Report.lua` | `/onecast report`: what's new to OneCast and the evidence for zone levels, as copyable text, and the report window |
-| `Themes.lua` | The text colours for the parchment pages and highlights (`Theme.Current()`), so every page inks the same |
 | `OneCast.lua` | Cast button, reel key override, CVar leases, the options (described once in `OPTIONS`, `CHOICES`, `OPTION_MAIN` and `OPTION_PAGES` for both the game's panel and the window's Options tab), minimap button, slash commands |
 | `Gear.lua` | Equipping the pole and any fishing gear from the bags, and putting weapons and gear back |
+| `Food.lua` | Fishing food: Forever's cooked fish that raise Fishing while Well Fed, the buff's time left, the reminder and the zone hint |
 | `Lure.lua` | Lure data, the character's choice, whether one is on the pole, and the presses that apply it |
 | `TackleBox.lua` | The tackle box button (secure, hidden in combat) and its settings window, built from the stats window's parts (`ns.UI`) |
 | `Pools.lua` | Fishing pools' tooltips (what each gives) and remembering where you fished them, for the book's maps; pool names in other languages are put back into English first |
-| `Stats.lua` | Session, zone and lifetime stats, personal bests and notable catches, the stats window (Session, Spots and All-time records), and the parts every window is built from (`ns.UI`) |
+| `Stats.lua` | Session, zone and lifetime stats, personal bests and notable catches, the stats window (Session, Spots and Records), and the parts every window is built from (`ns.UI`) |
 | `Prices.lua` | Handing the catch to Auctionator's search |
 | `ZoneLevels.lua` | Zone fishing levels (Classic Era data) and notes on Forever zones |
 | `ZoneNames.lua` | Area IDs for every zone name, translating the zone tables on non-English clients |
@@ -35,7 +35,7 @@ Each cast and reel is still one hardware press; nothing is automated.
 | `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats, and the "caught by" line on item tooltips |
 | `Extravaganza.lua` | The Stranglethorn Fishing Extravaganza: schedule, Tastyfish counter, reminders, and Forever's prizes |
 | `MapOverlays.lua` | Every explored-area overlay of each zone map, so the book's maps show fully revealed (generated from game data) |
-| `Book.lua` | The collection book window: fish grid, each fish's page with zones, map and recipes, the Zones ladder of every zone's level, and the Camp tab |
+| `Book.lua` | The collection book window: fish grid, each fish's page with zones, map and recipes, and the Zones ladder of every zone's level |
 | `Changelog.lua` | Release notes, shown in the What's new window and used for releases |
 | `WhatsNew.lua` | The What's new window and the login chat line |
 | `Hub.lua` | One window for everything: the side tabs, each page in the same place at the window's scale, the grip, the lock, the Options tab (categories, settings and a details pane) and reopening after a `/reload` |

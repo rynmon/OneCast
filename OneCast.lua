@@ -23,6 +23,7 @@ ns.BINDING_COMMAND = BINDING_COMMAND
 local defaults = {
 	largerText = false,      -- accessibility: OneCast's small print at the normal size
 	glyphSize = "normal",    -- accessibility: controller button icons, normal, large or largest
+	rowShading = "strong",   -- accessibility: every other row of a list shaded, off, light or strong
 	collectionTicks = true,  -- accessibility: a tick on what you've caught
 	reduceMotion = false,    -- accessibility: OneCast's animations stopped
 	doubleClick = true,
@@ -78,6 +79,9 @@ local defaults = {
 	beamColor = "arcane",
 	bobberStyle = "beam",
 	cleanView = false,
+	foodReminder = true,
+	sessionStart = "manual", -- when a new session starts: only with Reset, by default
+	sessionBreak = 30,       -- minutes away from fishing, for sessionStart "break"
 	bobberHeight = 0,
 	campReminder = true,
 }
@@ -90,7 +94,7 @@ local charDefaults = {
 -- Checkboxes in the settings panel, each also toggled by /onecast <cmd>.
 local OPTIONS = {
 	{ cmd = "largetext", key = "largerText", label = "Larger text",
-		tooltip = "OneCast's small print (descriptions, hints, labels and counts) at the game's normal text size instead of its small one, in every OneCast window. Long lines may be cut shorter: hover them for the whole text. The collection's pages follow the next time they're drawn." },
+		tooltip = "Every OneCast window, and the mini bar, 15% bigger, on top of Window scale: the text grows with the room around it, so nothing is squeezed." },
 	{ cmd = "ticks", key = "collectionTicks", label = "Ticks on what you've caught",
 		tooltip = "A green tick on each catch you've caught in the collection, and on fishing gear you have. Off, what you have shows in full colour and what you don't is greyed, with nothing over the icon." },
 	{ cmd = "motion", key = "reduceMotion", label = "Reduce motion",
@@ -99,6 +103,8 @@ local OPTIONS = {
 		tooltip = "With a fishing pole equipped, double right-click the world to cast. Right-click the bobber to reel in." },
 	{ cmd = "softinteract", key = "softInteract", label = "Soft-interact while fishing",
 		tooltip = "While the line is out, make the bobber the soft-interact target so the cast key reels it in." },
+	{ cmd = "foodreminder", key = "foodReminder", label = "Fishing food reminders",
+		tooltip = "While your pole is on, say in chat when your fishing food's Well Fed wears off, and which food in your bags to eat. Some cooked fish raise your Fishing skill for 15 minutes; the tackle box has a button to eat the best you have." },
 	{ cmd = "clean", key = "cleanView", label = "Hide the game's interface while fishing",
 		tooltip = "While your line is out, the game's interface fades away, leaving the water, your bobber and OneCast's own windows (the stats with Done fishing, the mini bar, the tackle box). It comes back when the pole comes off, combat starts, you move, or a window opens. Keys and bindings work as ever." },
 	{ cmd = "bobbermarker", key = "bobberMarker", label = "Mark your bobber",
@@ -164,7 +170,7 @@ local OPTIONS = {
 	{ cmd = "pools", key = "rememberPools", label = "Remember fishing pools",
 		tooltip = "Hover over a fishing pool with your pole on and cast, and the spot you fished it from is marked on the collection book's zone maps. Pools move, so a mark shows where one has been. English pool names only. /onecast forgetpools clears them." },
 	{ cmd = "campreminder", key = "campReminder", label = "Camp buff reminders",
-		tooltip = "Say in chat when the Uncommon or Rare Fishing buff from a Fishing Rack or Fishing Hut wears off. The collection book's Camp tab has more on camps." },
+		tooltip = "Say in chat when the Uncommon or Rare Fishing buff from a Fishing Rack or Fishing Hut wears off. The Camp page has more on camps." },
 	{ cmd = "extravaganza", key = "extravaganza", label = "Fishing Extravaganza reminders",
 		tooltip = "Say in chat shortly before the Stranglethorn Fishing Extravaganza starts, and when it does (Sundays 14:00-16:00 realm time)." },
 	{ cmd = "loginmessage", key = "loginMessage", label = "Version in chat at login",
@@ -205,17 +211,22 @@ local OPTION_PAGES = {
 		{ "Feedback", "padHints", "padRumble" },
 	},
 	{ name = "Accessibility",
-		{ "Text and buttons", "largerText", "glyphSize" },
+		{ "Text and buttons", "largerText", "rowShading", "glyphSize" },
 		{ "Collection and gear", "collectionTicks" },
 		{ "Motion", "reduceMotion" },
 	},
-	{ name = "Stats and alerts",
-		{ "Windows", "openOnCast", "openOnPole", "statsMini", "closeOnDone", "doneCloses", "escapeCloses", "fadeStats", "sessionSummary" },
-		{ "Alerts and reminders", "alert", "alertSound", "alertQuality", "skillToast", "goalAlerts", "newCatchMessage", "extravaganza", "campReminder" },
+	{ name = "Stats and sessions",
+		{ "Windows", "openOnCast", "openOnPole", "statsMini", "closeOnDone", "doneCloses", "escapeCloses", "fadeStats" },
+		{ "Sessions", "sessionStart", "sessionBreak", "sessionSummary" },
+	},
+	{ name = "Alerts",
+		{ "Alerts and reminders", "alert", "alertSound", "alertQuality", "skillToast", "goalAlerts", "newCatchMessage", "extravaganza", "campReminder", "foodReminder" },
 	},
 }
 -- Greyed out and indented while the option they belong to is off.
+-- { key, value }: the setting belongs to that choice, and is greyed out unless it's chosen.
 local OPTION_PARENT = {
+	sessionBreak = { "sessionStart", "break" },
 	beamColor = "bobberMarker",
 	bobberStyle = "bobberMarker",
 	bobberHeight = "bobberMarker",
@@ -234,6 +245,21 @@ local UpdateLoot -- below: auto loot while fishing
 -- page are both built from this. A `list` setting is a dropdown of { value, text } pairs; the others
 -- are sliders from `min` to `max` in `step`s, shown with `format`. `char` keeps it per character.
 local CHOICES = {
+	sessionStart = { label = "Start a new session", kind = "string",
+		tooltip = "When OneCast starts a new session by itself. The one before goes into your session history (the Records tab), so you can still see how it went. Reset always starts one.",
+		list = function()
+			return { { "manual", "Only when I press Reset" }, { "break", "After a break from fishing" },
+				{ "login", "Each time I log in" }, { "day", "Each new day" }, { "done", "When I press Done fishing" } }
+		end },
+	sessionBreak = { label = "Break length", kind = "number", min = 10, max = 240, step = 5,
+		tooltip = "With After a break from fishing: how long without a cast before your next cast starts a new session.",
+		format = function(value)
+			if value >= 60 then
+				local h, m = math.floor(value / 60), value % 60
+				return m > 0 and string.format("%dh %02dm", h, m) or (h .. "h")
+			end
+			return value .. " min"
+		end },
 	bobberStyle = { label = "Marker", kind = "string",
 		tooltip = "How your bobber is marked: glowing with a light beam rising from it, the glow alone, the game's gear icon over it, or the beam and the icon.",
 		list = function()
@@ -342,6 +368,16 @@ local CHOICES = {
 				ns.Controller.Update()
 			end
 		end },
+	rowShading = { label = "Row shading", kind = "string",
+		tooltip = "Shades every other row of OneCast's lists (stats, catches and options), so your eye can follow a row across, and the backing of the headline numbers. Light is fainter; Off leaves the rows plain.",
+		list = function()
+			return { { "off", "Off" }, { "light", "Light" }, { "strong", "Strong" } }
+		end,
+		onChange = function()
+			if ns.UI and ns.UI.ApplyRowShading then
+				ns.UI.ApplyRowShading()
+			end
+		end },
 	glyphSize = { label = "Controller button size", kind = "string",
 		tooltip = "How big OneCast draws your controller's buttons: in the button guide under each window, over your bobber, in the welcome and in tooltips.",
 		list = function()
@@ -385,7 +421,7 @@ local CHOICES = {
 		format = function(value)
 			return value == 0 and "Never" or (value .. " s")
 		end },
-	quietLevel = { label = "Other sounds while fishing", kind = "number", min = 0, max = 100, step = 5,
+	quietLevel = { label = "Other sounds", kind = "number", min = 0, max = 100, step = 5,
 		tooltip = "How loud music, ambience and dialog stay while your pole is equipped, as a share of your own volume. 0 mutes them.",
 		format = function(value)
 			return value == 0 and "Muted" or (value .. "%")
@@ -455,10 +491,11 @@ local reelOwner = CreateFrame("Frame")
 local clickOwner = CreateFrame("Frame")
 
 -- OneCast's small print -------------------------------------------------------------------------
--- Its own font objects, which every OneCast window uses in place of the game's small fonts. A
--- font object's changes reach every text that uses it, so the text size changes everywhere at
--- once. By default a point bigger than the game's small fonts (10 is hard to read), and its grey
--- a little lighter for contrast; with "Larger text" on, the game's normal sizes.
+-- Its own font objects, which every OneCast window uses for its text. A font object's changes
+-- reach every text that uses it. The game's own fonts at their own sizes (GameFontHighlight and
+-- the like), as its group finder and Seeker LFG use them, with the grey a little lighter for
+-- contrast. "Larger text" doesn't change them: it scales the windows (ns.TextScale), so the
+-- text grows with the room around it and nothing gets squeezed.
 local SMALL_FONTS = {
 	{ "OneCastFontHighlightSmall", "GameFontHighlightSmall", "GameFontHighlight" },
 	{ "OneCastFontNormalSmall", "GameFontNormalSmall", "GameFontNormal" },
@@ -476,16 +513,17 @@ function ns.LargerText()
 	return ns.db and ns.db.largerText and true or false
 end
 
+-- "Larger text": every OneCast window this much bigger, on top of its Window scale.
+local LARGER_TEXT_SCALE = 1.15
+function ns.TextScale()
+	return ns.LargerText() and LARGER_TEXT_SCALE or 1
+end
+
 function ns.ApplyTextSize()
-	local large = ns.LargerText()
 	for _, spec in ipairs(SMALL_FONTS) do
-		local font, from = _G[spec[1]], _G[large and spec[3] or spec[2]]
+		local font, from = _G[spec[1]], _G[spec[3]] or _G[spec[2]]
 		if font and from and font.CopyFontObject then
 			font:CopyFontObject(from)
-			local path, size, flags = font:GetFont()
-			if path and size and not large then
-				font:SetFont(path, size + 1, flags)
-			end
 			if spec[4] then
 				font:SetTextColor(spec[4][1], spec[4][2], spec[4][3])
 			end
@@ -1061,9 +1099,12 @@ local function SetupSettings()
 			ns.Hub.UpdateBadges()
 		end,
 		largerText = function()
-			ns.ApplyTextSize()
-			if ns.Book and ns.Book.RefreshIfShown then
-				ns.Book.RefreshIfShown()
+			-- The windows, bigger or back: Window scale times the text scale.
+			if ns.Stats and ns.Stats.SetScale then
+				ns.Stats.SetScale(db.statsScale or 100)
+			end
+			if ns.Mini and ns.Mini.ApplyScale then
+				ns.Mini.ApplyScale()
 			end
 		end,
 		collectionTicks = function()
@@ -1158,7 +1199,7 @@ local MENU = {
 	{ "Fishing wardrobe", function() ns.Wardrobe.Show() end },
 	{ "Fishing collection", function() ns.Book.Toggle() end },
 	{ "Fisherman's journey", function() ns.Journey.Show() end },
-	{ "Camp", function() ns.Book.ShowCamp() end },
+	{ "Camp", function() ns.Camp.ShowPage() end },
 	{ "Data report", function() ns.Report.Toggle() end },
 	{ "What's new", function() ns.WhatsNew.Toggle() end },
 	false, -- a divider
@@ -1557,7 +1598,7 @@ SlashCmdList.ONECAST = function(msg)
 		ns.Book.Toggle()
 		return
 	elseif cmd == "camp" then
-		ns.Book.ShowCamp()
+		ns.Camp.ShowPage()
 		return
 	elseif cmd == "report" then
 		ns.Report.Show()
@@ -1606,7 +1647,7 @@ SlashCmdList.ONECAST = function(msg)
 	Print("/onecast journey - the Fishing ranks, and where to learn the next")
 	Print("/onecast riggle - a waypoint to Riggle Bassbait, for the Fishing Extravaganza")
 	Print("/onecast beam - pick your own colour for the bobber's beam")
-	Print("/onecast book - fishing collection (/onecast camp for its Camp tab)")
+	Print("/onecast book - fishing collection (/onecast camp for the Camp page)")
 	Print("/onecast report - your fishing data as text, to share and help fill in Forever's numbers")
 	Print("/onecast tackle - tackle box (/onecast tackle reset moves its button back)")
 	Print("/onecast stats - stats window (or /onecast session|spots|alltime for a tab)")

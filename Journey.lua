@@ -20,7 +20,8 @@ ns.Journey = Journey
 
 local WIDTH = 660
 local EDGE, GAP = 10, 8
-local CARD_HEIGHT = 98
+local CARD_HEIGHT = 98 -- before its first paint: then as tall as it needs
+local RANKS_TOP = -GAP - 28 - 29 - 8 -- the Ranks header, under the Fishing bar
 local GOOD, GREY, GOLD = "|cff20ff20", "|cff9d9d9d", "|cffffd100"
 local GearCard, PaintGearCard, GearBest, PaintGearBest -- the Gear view's cards, below
 
@@ -137,17 +138,11 @@ local function NeedsText(r)
 end
 
 local function Card(parent, r, y)
-	local c = CreateFrame("Frame", nil, parent)
+	-- The window's card: the headline numbers' backing, a bar down the left in the rank's colour.
+	local c = ns.UI.Card(parent)
 	c:SetPoint("TOPLEFT", EDGE, y)
 	c:SetPoint("TOPRIGHT", -EDGE, y)
 	c:SetHeight(CARD_HEIGHT - 6)
-	c.bg = c:CreateTexture(nil, "BACKGROUND")
-	c.bg:SetAllPoints()
-	c.bg:SetColorTexture(1, 1, 1, 0.04)
-	c.edge = c:CreateTexture(nil, "BORDER")
-	c.edge:SetPoint("TOPLEFT")
-	c.edge:SetPoint("BOTTOMLEFT")
-	c.edge:SetWidth(3)
 	c.icon = c:CreateTexture(nil, "ARTWORK")
 	c.icon:SetSize(40, 40)
 	c.icon:SetPoint("TOPLEFT", 12, -8)
@@ -161,7 +156,7 @@ local function Card(parent, r, y)
 	else
 		c.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
 	end
-	c.title = c:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	c.title = c:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	c.title:SetPoint("TOPLEFT", c.icon, "TOPRIGHT", 12, 0)
 	c.status = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	c.status:SetPoint("TOPRIGHT", -12, -10)
@@ -175,15 +170,14 @@ local function Card(parent, r, y)
 	c.zones:SetPoint("TOPLEFT", c.how, "BOTTOMLEFT", 0, -4)
 	c.zones:SetPoint("RIGHT", -12, 0)
 	c.zones:SetJustifyH("LEFT")
-	c.zones:SetWordWrap(false)
+	c.zones:SetWordWrap(true) -- never cut short: the card grows instead
 	c.extra = c:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	c.extra:SetPoint("TOPLEFT", c.zones, "BOTTOMLEFT", 0, -4)
 	c.extra:SetPoint("RIGHT", -12, 0)
 	c.extra:SetJustifyH("LEFT")
-	c.extra:SetWordWrap(false)
+	c.extra:SetWordWrap(true)
 	if r.where then
-		c.map = CreateFrame("Button", nil, c, "UIPanelButtonTemplate")
-		c.map:SetSize(112, 22)
+		c.map = ns.UI.GoldButton(c, 112, 22)
 		c.map:SetPoint("TOPRIGHT", c.status, "BOTTOMRIGHT", 2, -6)
 		c.map:SetText("Show on map")
 		c.map:SetScript("OnClick", function()
@@ -240,8 +234,7 @@ local function Paint(c, index, current, rank)
 		c.status:SetText(GREY .. "Later|r")
 		color = { 0.5, 0.5, 0.5 }
 	end
-	c.edge:SetColorTexture(color[1], color[2], color[3], 0.9)
-	c.bg:SetColorTexture(color[1], color[2], color[3], nextUp and 0.1 or 0.04)
+	c:SetColor(color[1], color[2], color[3], nextUp and 0.22 or learned and 0.1 or 0)
 	c.how:SetText((learned and GREY or "|cffffffff") .. r.how .. "|r")
 	SetZones(c.zones, r)
 	if r.natFish then
@@ -257,6 +250,10 @@ local function Paint(c, index, current, rank)
 	else
 		c.extra:SetText(GOLD .. "Needs:|r " .. NeedsText(r))
 	end
+	-- As tall as its lines need, and never less than its icon.
+	local text = 8 + (c.title:GetStringHeight() or 14) + 6 + (c.how:GetStringHeight() or 12) + 4
+		+ (c.zones:GetStringHeight() or 12) + 4 + (c.extra:GetStringHeight() or 12) + 10
+	return math.max(text, 8 + 40 + 10)
 end
 
 -- Fishing gear: poles first, then what you wear. `from` is where it comes from: Forever's own
@@ -264,29 +261,29 @@ end
 -- database (vendors, quest rewards and loot). The bonus is read from the game's own tooltip, so
 -- it's Forever's.
 Journey.GEAR = {
-	{ id = 6256, short = "Fishing vendors everywhere", kind = "Pole", from = "Sold by fishing vendors all over Azeroth.", forever = true },
-	{ id = 6365, short = "Fishing vendors, Booty Bay", kind = "Pole", from = "Sold by some fishing vendors, among them Old Man Heming in Booty Bay.", forever = true },
-	{ id = 12225, short = "Alliance quest, Darkshore", faction = "Alliance", kind = "Pole", from = "Reward from The Family and the Fishing Pole, an Alliance quest in Darkshore (level 10).",
+	{ id = 6256, name = "Fishing Pole", short = "Fishing vendors everywhere", kind = "Pole", from = "Sold by fishing vendors all over Azeroth.", forever = true },
+	{ id = 6365, name = "Strong Fishing Pole", short = "Fishing vendors, Booty Bay", kind = "Pole", from = "Sold by some fishing vendors, among them Old Man Heming in Booty Bay.", forever = true },
+	{ id = 12225, name = "Blump Family Fishing Pole", short = "Alliance quest, Darkshore", faction = "Alliance", kind = "Pole", from = "Reward from The Family and the Fishing Pole, an Alliance quest in Darkshore (level 10).",
 		where = { map = 1439, x = 0.360, y = 0.448, label = "Gubber Blump, Auberdine" }, source = { "quest", 1141, "The Family and the Fishing Pole" } },
-	{ id = 6367, short = "Shellfish Traps", kind = "Pole", from = "Found in Shellfish Traps under the water, now and then." },
-	{ id = 19022, short = "Horde quest, The Hinterlands", faction = "Horde", kind = "Pole", from = "Reward from Snapjaws, Mon!, a Horde quest in The Hinterlands (level 44).",
+	{ id = 6367, name = "Big Iron Fishing Pole", short = "Shellfish Traps", kind = "Pole", from = "Found in Shellfish Traps under the water, now and then." },
+	{ id = 19022, name = "Nat Pagle's Extreme Angler FC-5000", short = "Horde quest, The Hinterlands", faction = "Horde", kind = "Pole", from = "Reward from Snapjaws, Mon!, a Horde quest in The Hinterlands (level 44).",
 		where = { map = 1425, x = 0.802, y = 0.814, label = "Katoom the Angler, Revantusk Village" }, source = { "quest", 7815, "Snapjaws, Mon!" } },
-	{ id = 19970, short = "Extravaganza: first 50 winners", kind = "Pole", from = "The Fishing Extravaganza's prize: the first 50 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week.",
+	{ id = 19970, name = "Arcanite Fishing Pole", short = "Extravaganza: first 50 winners", kind = "Pole", from = "The Fishing Extravaganza's prize: the first 50 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Riggle Bassbait, Booty Bay" }, source = { "quest", 8193, "Master Angler" } },
-	{ id = 285094, short = "Lord Angler, Dustwallow Marsh", kind = "Pole", from = "New in Forever: dropped by Lord Angler, a rare level 44 by the shipwreck in Dustwallow Marsh's bay (about 1 kill in 4).", forever = true,
+	{ id = 285094, name = "Ravaged Fishing Pole", short = "Lord Angler, Dustwallow Marsh", kind = "Pole", from = "New in Forever: dropped by Lord Angler, a rare level 44 by the shipwreck in Dustwallow Marsh's bay (about 1 kill in 4).", forever = true,
 		where = { map = 1445, x = 0.560, y = 0.618, label = "Lord Angler (rare), Dustwallow Marsh" }, source = { "npc", 14236, "Lord Angler" } },
-	{ id = 276203, short = "Vendor, Riverglades", kind = "Pole", from = "New in Forever: sold in Riverglades.", forever = true, ifBonus = true },
-	{ id = 276272, short = "Extravaganza coin, from Jang", kind = "Head", from = "New in Forever: Jang in Booty Bay trades it for an Extravagant Extravaganza Coin, the Fishing Extravaganza winners' prize.", forever = true,
+	{ id = 276203, name = "Primitive Fishing Pole", short = "Vendor, Riverglades", kind = "Pole", from = "New in Forever: sold in Riverglades.", forever = true, ifBonus = true },
+	{ id = 276272, name = "Master Angler's Fishing Hat", short = "Extravaganza coin, from Jang", kind = "Head", from = "New in Forever: Jang in Booty Bay trades it for an Extravagant Extravaganza Coin, the Fishing Extravaganza winners' prize.", forever = true,
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Jang, Booty Bay" }, source = { "npc", 15078, "Jang" } },
-	{ id = 259846, short = "Source not known yet", kind = "Head", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
-	{ id = 244229, short = "Source not known yet", kind = "Shoulder", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
-	{ id = 19972, short = "Extravaganza: Keefer's Angelfish", kind = "Head", from = "Fishing Extravaganza: hand a Keefer's Angelfish to Fishbot 5000 in Booty Bay.",
+	{ id = 259846, name = "Wide-Brimmed Fishing Hat", short = "Source not known yet", kind = "Head", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
+	{ id = 244229, name = "Angler's Mantle", short = "Source not known yet", kind = "Shoulder", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
+	{ id = 19972, name = "Lucky Fishing Hat", short = "Extravaganza: Keefer's Angelfish", kind = "Head", from = "Fishing Extravaganza: hand a Keefer's Angelfish to Fishbot 5000 in Booty Bay.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8221, "Rare Fish - Keefer's Angelfish" } },
-	{ id = 19969, short = "Extravaganza: Brownell's Racer", kind = "Feet", from = "Fishing Extravaganza: hand a Brownell's Blue Striped Racer to Fishbot 5000 in Booty Bay.",
+	{ id = 19969, name = "Nat Pagle's Extreme Anglin' Boots", short = "Extravaganza: Brownell's Racer", kind = "Feet", from = "Fishing Extravaganza: hand a Brownell's Blue Striped Racer to Fishbot 5000 in Booty Bay.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8225, "Rare Fish - Brownell's Blue Striped Racer" } },
-	{ id = 19971, short = "Extravaganza: Dezian Queenfish", kind = "Line", bonus = 5, from = "Fishing Extravaganza: hand a Dezian Queenfish to Fishbot 5000 in Booty Bay. Used on your pole, it gives the pole +5 Fishing for good.",
+	{ id = 19971, name = "High Test Eternium Fishing Line", short = "Extravaganza: Dezian Queenfish", kind = "Line", bonus = 5, from = "Fishing Extravaganza: hand a Dezian Queenfish to Fishbot 5000 in Booty Bay. Used on your pole, it gives the pole +5 Fishing for good.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8224, "Rare Fish - Dezian Queenfish" } },
-	{ id = 273495, short = "Enchanters (Enchanting 145)", kind = "Hands", from = "The +2 Fishing enchant for your gloves: an enchanter with Formula: Enchant Gloves - Fishing (Enchanting 145) can put it on. Forever's enchant as an item is only on the test realm so far.", forever = true,
+	{ id = 273495, name = "Enchant Gloves - Fishing", short = "Enchanters (Enchanting 145)", kind = "Hands", from = "The +2 Fishing enchant for your gloves: an enchanter with Formula: Enchant Gloves - Fishing (Enchanting 145) can put it on. Forever's enchant as an item is only on the test realm so far.", forever = true,
 		source = { "item", 11152, "Formula: Enchant Gloves - Fishing" } },
 }
 -- where: { map = uiMapID, x, y, label }, the spot to go to for it; source: { "quest", "npc" or
@@ -294,6 +291,7 @@ Journey.GEAR = {
 -- ifBonus: Forever's new items whose Fishing bonus its data doesn't say. They show once the
 -- game's tooltip for them has one, so a cosmetic hat or mantle never joins the list.
 -- bonus: the Fishing bonus where the tooltip doesn't give it as "+N" (the fishing line's).
+-- name: until the game has the item (one you've never had isn't loaded until it's asked for).
 
 -- Who sells the vendor poles: CMaNGOS's Classic vendors, at their spots in Wowhead's Forever data
 -- (16 November 2026). [item] = { { npc, name, side (A, H or B), uiMapID, x, y }, ... }.
@@ -485,29 +483,25 @@ local function Atlas(texture, name, useSize)
 end
 
 -- Gear cards ------------------------------------------------------------------------------------
--- A piece of fishing gear on the Legacy Challenges' card: its icon in the game's frame, its name
+-- A piece of fishing gear on the window's card, its bar green once you have it: its icon, its name
 -- in its quality's colour, where it comes from in a few words, and its Fishing bonus large on the
 -- right with whether you have it under it. The full source is in its tooltip.
 local SLOT_ORDER = { "Pole", "Head", "Hands", "Feet" }
 
 GearCard = function(parent, g)
-	local card = CreateFrame("Button", nil, parent)
+	local card = ns.UI.Card(parent, "Button")
 	card.gear = g
-	card.bg = card:CreateTexture(nil, "BACKGROUND")
-	card.bg:SetAllPoints()
 	card.selected = card:CreateTexture(nil, "BORDER")
 	card.selected:SetAllPoints()
-	if not Atlas(card.selected, "Legacy-Challenge-Cards-selected") then
-		card.selected:SetColorTexture(1, 0.82, 0, 0.12)
-	end
+	card.selected:SetColorTexture(1, 1, 1, 0.06) -- under the mouse
 	card.selected:Hide()
 	card.icon = card:CreateTexture(nil, "ARTWORK", nil, 1)
 	card.icon:SetSize(34, 34)
 	card.icon:SetPoint("LEFT", 12, 0)
 	card.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 	card.iconFrame = card:CreateTexture(nil, "OVERLAY")
-	card.iconFrame:SetSize(44, 44)
-	card.iconFrame:SetPoint("CENTER", card.icon, "CENTER")
+	card.iconFrame:SetAllPoints(card.icon)
+	card.iconFrame:SetTexture("Interface\\Common\\WhiteIconFrame")
 	card.check = card:CreateTexture(nil, "OVERLAY", nil, 2)
 	card.check:SetSize(16, 14)
 	card.check:SetPoint("BOTTOMRIGHT", card.icon, "BOTTOMRIGHT", 6, -4)
@@ -527,7 +521,7 @@ GearCard = function(parent, g)
 	card.from:SetPoint("TOPLEFT", card.name, "BOTTOMLEFT", 0, -4)
 	card.from:SetPoint("RIGHT", -64, 0)
 	card.from:SetJustifyH("LEFT")
-	card.from:SetWordWrap(false)
+	card.from:SetWordWrap(true) -- two lines if it needs them, never cut short
 	card:SetScript("OnEnter", function(self)
 		self.selected:Show()
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -566,13 +560,23 @@ end
 
 PaintGearCard = function(card, bonus, owned, equipped)
 	local g = card.gear
-	Atlas(card.bg, owned and "Legacy-Challenge-Cards" or "Legacy-Challenge-Cards-Disable")
-	Atlas(card.iconFrame, owned and "Legacy-Tree-Frame-icon-frame" or "Legacy-Tree-Frame-icon-frame-disable")
+	if owned then
+		card:SetColor(0.12, 1, 0, equipped and 0.16 or 0.1)
+	else
+		card:SetColor(0.5, 0.5, 0.5, 0)
+	end
 	card.icon:SetTexture(C_Item.GetItemIconByID(g.id))
 	card.icon:SetDesaturated(not owned)
 	local name, _, quality = C_Item.GetItemInfo(g.id)
+	if not name and C_Item.RequestLoadItemDataByID then
+		C_Item.RequestLoadItemDataByID(g.id) -- the card repaints when it arrives
+	end
 	local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-	card.name:SetText((color and color.hex or "|cffffffff") .. (name or "...") .. "|r")
+	if color then
+		card.iconFrame:SetVertexColor(color.r, color.g, color.b, owned and 1 or 0.5)
+	end
+	card.iconFrame:SetShown(color ~= nil)
+	card.name:SetText((color and color.hex or "|cffffffff") .. (name or g.name or ("item " .. g.id)) .. "|r")
 	card.name:SetAlpha(owned and 1 or 0.75)
 	card.from:SetText((g.kind ~= "Pole" and (g.kind .. "  ·  ") or "") .. (g.short or g.from))
 	card.from:SetTextColor(owned and 0.85 or 0.6, owned and 0.85 or 0.6, owned and 0.85 or 0.6)
@@ -588,28 +592,32 @@ end
 
 -- Under the worn gear: the best of each you have, and the Fishing all of it adds up to.
 GearBest = function(parent)
-	local p = CreateFrame("Frame", nil, parent)
-	local bg = p:CreateTexture(nil, "BACKGROUND")
-	bg:SetAllPoints()
-	bg:SetColorTexture(0, 0, 0, 0.3)
+	-- The window's card, its bar gold: a stat row a slot, gold label and white value, then the total.
+	local p = ns.UI.Card(parent)
+	p:SetColor(1, 0.82, 0, 0.12)
 	p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	p.title:SetPoint("TOPLEFT", 10, -8)
+	p.title:SetPoint("TOPLEFT", 14, -8)
 	p.title:SetText("The best you have")
 	p.lines = {}
 	for i, slot in ipairs(SLOT_ORDER) do
-		local left = p:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
-		left:SetPoint("TOPLEFT", 10, -10 - i * 16)
-		left:SetText(slot)
-		local right = p:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
-		right:SetPoint("TOPRIGHT", -10, -10 - i * 16)
+		local row = CreateFrame("Frame", nil, p)
+		row:SetPoint("TOPLEFT", 8, -8 - 18 - (i - 1) * 20)
+		row:SetPoint("TOPRIGHT", -8, -8 - 18 - (i - 1) * 20)
+		row:SetHeight(20)
+		ns.UI.RowBackground(row, i)
+		local left = row:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
+		left:SetPoint("LEFT", 6, 0)
+		left:SetText(slot .. ":")
+		local right = row:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+		right:SetPoint("RIGHT", -6, 0)
 		right:SetPoint("LEFT", left, "RIGHT", 10, 0)
 		right:SetJustifyH("RIGHT")
 		right:SetWordWrap(false)
 		p.lines[slot] = right
 	end
 	p.total = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	p.total:SetPoint("BOTTOMRIGHT", -10, 8)
-	p.height = 10 + (#SLOT_ORDER + 1) * 16 + 30
+	p.total:SetPoint("BOTTOMRIGHT", -14, 8)
+	p.height = 8 + 18 + #SLOT_ORDER * 20 + 8 + 22
 	p:SetHeight(p.height)
 	return p
 end
@@ -645,22 +653,23 @@ local function CreateWindow()
 	UI.RememberPosition(f, "journey")
 
 
-	-- Where you stand: your rank, your skill along it, and what it takes to the cap.
-	f.headline = inset:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	f.headline:SetPoint("TOPLEFT", EDGE + 4, -GAP - 2)
-	-- The stats page's own bar: Forever's Fishing bar.
+	-- Where you stand, in the window's header band: your rank on the left, what it takes to the
+	-- cap on the right; then the stats page's own bar, Forever's Fishing bar.
+	f.header = UI.SectionHeader(inset, -GAP)
+	f.headline = f.header.text
+	f.togo = f.header:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	f.togo:SetPoint("RIGHT", -10, 0)
+	f.togo:SetJustifyH("RIGHT")
 	f.progress = UI.RankBar(inset, ns.GetFishingName and ns.GetFishingName() or "Fishing")
 	f.progress:ClearAllPoints()
-	f.progress:SetPoint("TOPLEFT", EDGE, -GAP - 26)
-	f.progress:SetPoint("TOPRIGHT", -EDGE, -GAP - 26)
-	f.togo = inset:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
-	f.togo:SetPoint("TOPRIGHT", -EDGE - 4, -GAP - 4)
-	f.togo:SetJustifyH("RIGHT")
+	f.progress:SetPoint("TOPLEFT", EDGE, -GAP - 28)
+	f.progress:SetPoint("TOPRIGHT", -EDGE, -GAP - 28)
 
 	f.cards = {}
-	local y = -GAP - 66
 	f.ranksView = CreateFrame("Frame", nil, inset)
 	f.ranksView:SetAllPoints()
+	f.ranksHeader = UI.SectionHeader(f.ranksView, RANKS_TOP)
+	local y = RANKS_TOP - 28
 	for i, r in ipairs(Journey.RANKS) do
 		f.cards[i] = Card(f.ranksView, r, y)
 		y = y - CARD_HEIGHT
@@ -714,9 +723,19 @@ function Journey.Refresh()
 			frame.togo:SetText(GOOD .. "Every rank learned: " .. maxRank .. " is as high as Fishing goes.|r")
 		end
 	end
+	-- Each card as tall as it needs, one under the other.
+	local y = RANKS_TOP - 28
+	local learned = 0
 	for i, c in ipairs(frame.cards) do
-		Paint(c, i, current, rank)
+		local h = Paint(c, i, current, rank)
+		c:ClearAllPoints()
+		c:SetPoint("TOPLEFT", EDGE, y)
+		c:SetPoint("TOPRIGHT", -EDGE, y)
+		c:SetHeight(h)
+		y = y - h - 4
+		learned = learned + (i <= current and 1 or 0)
 	end
+	frame.ranksHeader.text:SetText(string.format("Ranks  %s(%d of %d learned)|r", GREY, learned, #frame.cards))
 end
 
 -- The gear catalogue -------------------------------------------------------------------------
@@ -791,8 +810,12 @@ local function PaintGearView(v)
 		end
 	end
 	PaintGearBest(v.best, best)
-	v.summary:SetText(string.format("%sYou have %d of the %d pieces of fishing gear. Hover one for where it comes from.|r",
-		GREY, have, shown))
+	-- And the Legacy tree's fishing talent, for anyone without it.
+	local luremaster = ns.Lure and ns.Lure.Luremaster and not ns.Lure.Luremaster()
+		and string.format("  Not gear, but worth it: Luremaster in the Legacy tree, up to a %d%% chance of an extra fish while lured.",
+			ns.Lure.LUREMASTER_MAX) or ""
+	v.summary:SetText(string.format("%sYou have %d of the %d pieces of fishing gear. Hover one for where it comes from.%s|r",
+		GREY, have, shown, luremaster))
 end
 
 -- Gear any character can get, or one of your faction's.
@@ -821,6 +844,21 @@ function Journey.GearView(parent, width)
 	end
 	v.best = GearBest(v)
 	v.Paint = PaintGearView
+	-- The game loads an item it's asked for a moment later: then its name, quality and bonus show.
+	local pending = false
+	v:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+	v:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+	v:SetScript("OnEvent", function(self)
+		if self:IsVisible() and not pending then
+			pending = true
+			C_Timer.After(0.1, function()
+				pending = false
+				if self:IsVisible() then
+					self:Paint()
+				end
+			end)
+		end
+	end)
 	return v
 end
 

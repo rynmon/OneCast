@@ -36,13 +36,13 @@ Every cast, reel and lure is still your own press. OneCast never fishes for you.
 A stats window that opens as you cast, with three tabs:
 - **Session:** fish per hour against your best, gold per hour, how many got away, what's **new for your collection**, your skill gained and how long until the next point. Each catch shows what it's worth.
 - **Spots:** is this zone worth it? Its fish and gold per hour and every lake, coast and river you've fished here, best first. Click one for a waypoint. Pick a fish (or Ctrl-click one anywhere) to see where it bites best and when you last caught it.
-- **All-time records:** personal bests, your notable catches (rares, wanted fish and new ones for your collection), lifetime totals and every past session.
+- **Records:** personal bests, your notable catches (rares, wanted fish and new ones for your collection), lifetime totals and every past session.
 
 And around it:
 - **What was inside:** open a trunk, crate or clam you fished up and its contents are counted, valued and drawn under it as a tree.
 - **Skill-ups:** +1 Fishing pops up on screen as your skill rises.
 - **Your wanted list:** right-click a catch to add it, for an alert when you catch it. Or want a number of them, like 20 Stonescale Eels, with progress on its row.
-- The session carries on through breaks, `/reload` and weapon swaps until you press **Reset**.
+- The session carries on through breaks, `/reload` and weapon swaps until you press **Reset**, or starts a new one by itself if you'd rather: after a break of the length you choose, each time you log in, each new day, or when you press Done fishing. The one before goes into your session history.
 - Click any catch to open it in the collection. **Right-click** for your wanted list, where it bites best, its **Wowhead** page or a chat link.
 
 **Mini mode:** a slim bar in place of the stats while you fish, with your skill, the zone, your catch rate, lure and wanted list.
@@ -57,6 +57,8 @@ And around it:
 - Left-click to apply, use the Apply lure key, or turn on **Apply with the cast key** so your key applies the lure, then casts on the next press.
 - Compare your **fish per hour with and without a lure**.
 - A nudge at a vendor selling your lure when you have fewer than 5.
+- **Luremaster:** WoW Forever's Legacy tree talent gives up to a 50% chance of an extra fish while a lure is on. OneCast counts the extra fish it gives you, shows its chance in the tackle box, and tells you once when your lure runs out.
+- **Fishing food:** some of Forever's cooked fish (Rockscale Cod, Filet of Redgill and more) make you Well Fed with up to +18 Fishing for 15 minutes. The tackle box shows the buff's time left and has a button to eat the best you have, chat reminds you when it wears off, and a zone you're just short for names the food that would cover it.
 
 ### 🌟 Your bobber, marked
 ![Your bobber marked with a column of light and a glowing ring on the water, in Stormwind's canals at night](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/bobber-beam.png?v=0.9.0)
@@ -119,7 +121,7 @@ And around it:
 ### 🏕️ Fishing at camp
 ![The Camp tab: the Fish Bowl, Fishing Rack and Fishing Hut with their reagents and where the blueprints drop, your camp buff right now, and the campfires](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/camp.png?v=1.0.0b)
 
-- A **Camp tab** for Forever's fishing crafts: the **Fish Bowl**, **Fishing Rack** and **Fishing Hut**, with what each does, whether you've learned it, and your reagents against what it takes.
+- A **Camp page** for Forever's fishing crafts: the **Fish Bowl**, **Fishing Rack** and **Fishing Hut**, with what each does, whether you've learned it, and your reagents against what it takes.
 - **Where the blueprints drop**, with a click for a waypoint to the dungeon's entrance.
 - The **campfires**, how many features each holds, and where the Journeyman and Expert blueprints come from.
 - The **Uncommon or Rare Fishing** buff from a Rack or Hut shows with its time left, and chat tells you when it wears off. What you catch while it's on is kept, to show what its extra rewards really are.
@@ -139,6 +141,7 @@ And around it:
 
 ### ♿ Accessibility
 - **Larger text** across every window.
+- **Row shading:** every other row of a list shaded, light or strong, to follow a row across.
 - **Controller button size:** normal, large or largest.
 - Turn off the **ticks** on what you've caught, or **reduce motion** to stop OneCast's animations.
 
@@ -148,7 +151,7 @@ And around it:
 - Built from WoW Forever's own art and UI style, so it looks like part of the game.
 - **One window for everything:** stats, tackle box, wardrobe, collection, Camp, Fisherman's journey, data report, What's new and options, with side tabs to move between them. It opens wherever you last dragged it, on the page you had open.
 - **Every setting in the window,** a category at a time, with each one explained beside it as you hover.
-- **Stays open while you need it:** Escape is left to the game's menu and windows, and Done fishing leaves the stats up. Either can close OneCast instead, if you'd rather (**Options → Stats and alerts**).
+- **Stays open while you need it:** Escape is left to the game's menu and windows, and Done fishing leaves the stats up. Either can close OneCast instead, if you'd rather (**Options → Stats and sessions**).
 - Scale the whole window (drag a corner, Ctrl + mouse wheel, or `/onecast scale`), or lock it in place.
 - Minimap button and addon compartment entry.
 - A **What's new** page shows every update.
@@ -168,7 +171,7 @@ And around it:
 | `/onecast setup` | Choose your cast key |
 | `/onecast stats` | Show or hide the stats window (`/onecast session`, `spots` or `alltime` for a tab) |
 | `/onecast search <words>` | Search catches, zones, recipes, gear, ranks and settings |
-| `/onecast book` | Fishing collection (`/onecast camp` for its Camp tab) |
+| `/onecast book` | Fishing collection (`/onecast camp` for the Camp page) |
 | `/onecast tackle` | Tackle box |
 | `/onecast wardrobe` | Choose what you wear to fish |
 | `/onecast journey` | The Fishing ranks, and where to learn the next |

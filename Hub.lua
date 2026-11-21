@@ -175,7 +175,7 @@ local TABS = {
 	{ key = "journey", hint = "/onecast journey", label = "Fisherman's journey", item = 16083, icon = "Interface\\Icons\\Trade_Fishing",
 		open = function() ns.Journey.Show() end },
 	{ key = "camp", hint = "/onecast camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
-		open = function() ns.Book.ShowCamp() end },
+		open = function() ns.Camp.ShowPage() end },
 	{ key = "report", hint = "/onecast report", label = "Data report", icon = "Interface\\Icons\\INV_Letter_15",
 		open = function() ns.Report.Show() end },
 	{ key = "news", hint = "/onecast new", label = "What's new", icon = "Interface\\Icons\\INV_Misc_Note_01",
@@ -440,7 +440,7 @@ local function AddGrip(frame)
 		local startWidth = frame:GetWidth() * frame:GetScale()
 		grip:SetScript("OnUpdate", function()
 			local x = GetCursorPosition() / UIParent:GetEffectiveScale()
-			ns.Stats.SetScale((startWidth + x - startX) / frame:GetWidth() * 100, true)
+			ns.Stats.SetScale((startWidth + x - startX) / frame:GetWidth() / ns.TextScale() * 100, true)
 		end)
 	end)
 	grip:SetScript("OnMouseUp", function()
@@ -448,7 +448,7 @@ local function AddGrip(frame)
 			return
 		end
 		grip:SetScript("OnUpdate", nil)
-		ns.Stats.SetScale(frame:GetScale() * 100)
+		ns.Stats.SetScale(frame:GetScale() / ns.TextScale() * 100)
 	end)
 	grip:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -461,7 +461,7 @@ local function AddGrip(frame)
 	frame:HookScript("OnHide", function()
 		if grip:GetScript("OnUpdate") then
 			grip:SetScript("OnUpdate", nil)
-			ns.Stats.SetScale(frame:GetScale() * 100)
+			ns.Stats.SetScale(frame:GetScale() / ns.TextScale() * 100)
 		end
 	end)
 	frame.grip = grip
@@ -652,7 +652,7 @@ end)
 -- The window's scale, for every page: the "Window scale" setting (statsScale, from when only the
 -- stats window had one).
 function Hub.Scale()
-	return (ns.db and ns.db.statsScale or 100) / 100
+	return (ns.db and ns.db.statsScale or 100) / 100 * ns.TextScale() -- with "Larger text" on top
 end
 
 -- The scale changed: the open page and its tabs follow, its top-left corner staying put.
@@ -716,10 +716,10 @@ local INDENT = 16 -- settings that belong to the one above
 -- Every label starts where a checkbox's does, and every value sits in the same place with its
 -- arrows, so the rows line up down the page.
 local LABEL_LEFT = 2 + ROW + 4 -- after a checkbox: its inset, its size, a gap
-local VALUE_WIDTH = 120 -- leaves the longest label, indented, its full width
+local VALUE_WIDTH = 120 -- the least a choice's value gets: a longer choice widens it (FitValue)
 -- The arrows' whole width, so a slider starts where a row's first arrow does.
 local CONTROL_WIDTH = 2 + 22 + 2 + VALUE_WIDTH + 2 + 22
-local SLIDER_VALUE_WIDTH = 44
+local SLIDER_VALUE_WIDTH = 52 -- "2h 30m" whole
 -- Settings that change the window itself apply when the slider is let go, not while dragging:
 -- the window scale would otherwise resize the page under the mouse.
 local APPLY_ON_RELEASE = { statsScale = true }
@@ -761,7 +761,8 @@ local CATEGORY = {
 	["While fishing"] = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = "What you see and hear with your line out: your bobber marked, and the splash over everything else." },
 	Controller = { icon = "Interface\\Icons\\INV_Misc_EngGizmos_17", blurb = "Fish with a controller: the button that casts and reels, the one that opens OneCast, prompts and rumble." },
 	Accessibility = { icon = "Interface\\Icons\\INV_Misc_Spyglass_03", blurb = "Bigger text and controller buttons, ticks on what you have, and calmer windows with less moving." },
-	["Stats and alerts"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = "The stats window and mini bar, catch alerts, reminders and the collection." },
+	["Stats and sessions"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = "The stats window and mini bar, and when a fishing session starts and ends." },
+	["Alerts"] = { icon = "Interface\\Icons\\INV_Misc_Bell_01", blurb = "Rare catch alerts, wanted catches, skill-ups and reminders." },
 }
 
 local function ArrowButton(parent, which)
@@ -849,59 +850,71 @@ local function CreateOptions()
 	local choices = ns.OPTION_CHOICES or {}
 	local parents = ns.OPTION_PARENT or {}
 
-	-- The details on the right: parchment, in its ink.
+	-- The details on the right, as the window's other pages: a header, a card with the setting's
+	-- name and what it does, and under it a row each for its value now and its chat command.
 	local detail = CreateFrame("Frame", nil, content)
 	detail:SetPoint("TOPRIGHT", -EDGE, -GAP)
 	detail:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
 	detail:SetWidth(DETAIL_WIDTH)
-	local paper = detail:CreateTexture(nil, "BACKGROUND")
-	paper:SetAllPoints()
-	if UI.HasAtlas("QuestBG-Parchment") then
-		paper:SetAtlas("QuestBG-Parchment")
-	else
-		paper:SetTexture("Interface\\QuestFrame\\QuestBG")
-		paper:SetTexCoord(0, 0.586, 0, 0.65)
-	end
-	local edge = detail:CreateTexture(nil, "BORDER")
-	edge:SetColorTexture(0.55, 0.40, 0.15, 0.8)
-	edge:SetPoint("TOPLEFT")
-	edge:SetPoint("BOTTOMLEFT")
-	edge:SetWidth(3)
-	local function Ink(size, font)
-		local fs = detail:CreateFontString(nil, "OVERLAY")
-		UI.SizedFont(fs, font or QuestFont, size)
-		fs:SetShadowOffset(0, 0)
-		fs:SetJustifyH("LEFT")
-		fs:SetWidth(DETAIL_WIDTH - 32)
-		return fs
-	end
-	detail.title = Ink(17, QuestTitleFont or QuestFont)
-	detail.title:SetPoint("TOPLEFT", 18, -18)
-	detail.text = Ink(13)
-	detail.text:SetPoint("TOPLEFT", detail.title, "BOTTOMLEFT", 0, -10)
+	local detailHeader = UI.SectionHeader(detail, 0)
+	detailHeader:ClearAllPoints()
+	detailHeader:SetPoint("TOPLEFT")
+	detailHeader:SetPoint("TOPRIGHT")
+	detailHeader.text:SetText("Details")
+	local card = UI.Card(detail)
+	card:SetColor(1, 0.82, 0, 0.12)
+	card:SetPoint("TOPLEFT", 0, -HEADER - 2)
+	card:SetPoint("TOPRIGHT", 0, -HEADER - 2)
+	detail.card = card
+	local inner = DETAIL_WIDTH - 28
+	detail.title = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	detail.title:SetPoint("TOPLEFT", 14, -10)
+	detail.title:SetWidth(inner)
+	detail.title:SetJustifyH("LEFT")
+	detail.title:SetWordWrap(true)
+	detail.text = card:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	detail.text:SetPoint("TOPLEFT", detail.title, "BOTTOMLEFT", 0, -6)
+	detail.text:SetWidth(inner)
+	detail.text:SetJustifyH("LEFT")
+	detail.text:SetWordWrap(true)
 	detail.text:SetSpacing(3)
-	detail.now = Ink(12)
-	detail.now:SetPoint("TOPLEFT", detail.text, "BOTTOMLEFT", 0, -14)
-	detail.cmd = Ink(11)
-	detail.cmd:SetPoint("TOPLEFT", detail.now, "BOTTOMLEFT", 0, -6)
+	detail.text:SetTextColor(0.85, 0.85, 0.85)
+	local function DetailRow(index)
+		local row = CreateFrame("Frame", nil, detail)
+		UI.RowBackground(row, index)
+		row.text = row:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+		row.text:SetPoint("TOPLEFT", 10, -5)
+		row.text:SetWidth(DETAIL_WIDTH - 20)
+		row.text:SetJustifyH("LEFT")
+		row.text:SetWordWrap(true)
+		return row
+	end
+	detail.nowRow, detail.cmdRow = DetailRow(1), DetailRow(2)
+	detail.now, detail.cmd = detail.nowRow.text, detail.cmdRow.text
 	f.detail = detail
 
-	local function InkDetail()
-		local theme = ns.Theme.Current()
-		for _, fs in ipairs({ detail.title, detail.text, detail.now }) do
-			fs:SetTextColor(theme.ink[1], theme.ink[2], theme.ink[3])
-		end
-		detail.cmd:SetTextColor(theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3])
-	end
-	InkDetail()
-
 	-- What the details show: a setting (title, text, its value now, its command), or a category.
+	-- Each part as tall as its words, one under the other.
 	local function ShowDetail(title, text, now, cmd)
-		local lead = ns.Theme.Current().lead or ""
 		detail.title:SetText(title or "")
 		detail.text:SetText(text or "")
-		detail.now:SetText(now and (lead .. "Now:|r " .. now) or "")
-		detail.cmd:SetText(cmd and ("Chat command: /onecast " .. cmd) or "")
+		detail.now:SetText(now and ("|cffffd100Now:|r " .. now) or "")
+		detail.cmd:SetText(cmd and ("|cffffd100Chat command:|r /onecast " .. cmd) or "")
+		local h = 10 + (detail.title:GetStringHeight() or 14) + 6 + (detail.text:GetStringHeight() or 12) + 12
+		card:SetHeight(h)
+		local y = HEADER + 2 + h + 4
+		for _, row in ipairs({ detail.nowRow, detail.cmdRow }) do
+			local shown = (row.text:GetText() or "") ~= ""
+			row:SetShown(shown)
+			if shown then
+				local rh = (row.text:GetStringHeight() or 12) + 10
+				row:ClearAllPoints()
+				row:SetPoint("TOPLEFT", 0, -y)
+				row:SetPoint("TOPRIGHT", 0, -y)
+				row:SetHeight(rh)
+				y = y + rh
+			end
+		end
 	end
 	f.ShowDetail = ShowDetail
 
@@ -911,8 +924,14 @@ local function CreateOptions()
 	nav:SetPoint("BOTTOMLEFT", EDGE, EDGE)
 	nav:SetWidth(NAV_WIDTH)
 	local navBg = nav:CreateTexture(nil, "BACKGROUND")
-	navBg:SetAllPoints()
+	navBg:SetPoint("TOPLEFT", 0, -HEADER - 2)
+	navBg:SetPoint("BOTTOMRIGHT")
 	navBg:SetColorTexture(0, 0, 0, 0.25)
+	local navHeader = UI.SectionHeader(nav, 0)
+	navHeader:ClearAllPoints()
+	navHeader:SetPoint("TOPLEFT")
+	navHeader:SetPoint("TOPRIGHT")
+	navHeader.text:SetText("Categories")
 	local divider = content:CreateTexture(nil, "BORDER")
 	divider:SetColorTexture(0.62, 0.48, 0.24, 0.5)
 	divider:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP / 2, 0)
@@ -927,6 +946,7 @@ local function CreateOptions()
 		index = index + 1
 		local indent = parents[key] and INDENT or 0
 		local line = CreateFrame("Frame", nil, page)
+		line.indent = indent
 		line:SetHeight(ROW)
 		line:SetPoint("TOPLEFT", indent, y)
 		line:SetWidth(LIST_WIDTH - indent)
@@ -1101,7 +1121,7 @@ local function CreateOptions()
 			end
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			SetOption(key, v)
-			line.Update()
+			f:Refresh() -- settings that belong to one of its choices follow it (Break length)
 			Enter()
 		end
 		prevButton:SetScript("OnClick", function()
@@ -1112,13 +1132,31 @@ local function CreateOptions()
 		end)
 		local name = NameButton(line, { prevButton, nextButton }, Step, Enter, function() Unhover(line) end, true)
 		line.name = name
+		line.Step = Step -- as the arrows do (for the tests)
 		for _, b in ipairs({ prevButton, nextButton }) do
 			b:SetScript("OnEnter", Enter)
 			b:SetScript("OnLeave", function() Unhover(line) end)
 		end
 		line:SetScript("OnEnter", Enter)
 		line:SetScript("OnLeave", Unhover)
+		-- As wide as its longest choice, out of the room its label leaves, so no choice is ever
+		-- cut short (the arrows stay put as you step through them). Lists can change (the lures
+		-- you have), so it's worked out each time the row's drawn.
+		local function FitValue()
+			local widest = VALUE_WIDTH
+			if spec.list then
+				value:SetWidth(0)
+				for _, choice in ipairs(spec.list()) do
+					value:SetText(choice[2])
+					widest = math.max(widest, math.ceil(value:GetStringWidth() or 0) + 6)
+				end
+			end
+			local indent = line.indent or 0
+			local room = LIST_WIDTH - indent - LABEL_LEFT - math.ceil(text:GetStringWidth() or 0) - 6 - (2 + 22 + 2) - (2 + 22 + 2)
+			value:SetWidth(math.max(VALUE_WIDTH, math.min(widest, room)))
+		end
 		line.Update = function()
+			FitValue()
 			value:SetText(Show(Current()))
 		end
 		line.SetActive = function(_, on)
@@ -1273,6 +1311,7 @@ local function CreateOptions()
 			local on = cat.name == name
 			pages[cat.name]:SetShown(on)
 			f.navButtons[cat.name].selected:SetShown(on)
+			f.navButtons[cat.name].selectedEdge:SetShown(on)
 			f.navButtons[cat.name].label:SetFontObject(on and "GameFontHighlight" or "GameFontNormal")
 		end
 		if ns.db then
@@ -1300,17 +1339,20 @@ local function CreateOptions()
 		local info = CATEGORY[cat.name] or {}
 		local b = CreateFrame("Button", nil, nav)
 		b:SetHeight(NAV_ROW)
-		b:SetPoint("TOPLEFT", 4, -4 - (i - 1) * (NAV_ROW + 2))
-		b:SetPoint("TOPRIGHT", -4, -4 - (i - 1) * (NAV_ROW + 2))
+		b:SetPoint("TOPLEFT", 4, -HEADER - 6 - (i - 1) * (NAV_ROW + 2))
+		b:SetPoint("TOPRIGHT", -4, -HEADER - 6 - (i - 1) * (NAV_ROW + 2))
 		b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+		-- Chosen: a gold wash with the window's bar down its left, as What's new's versions.
 		b.selected = b:CreateTexture(nil, "BACKGROUND")
 		b.selected:SetAllPoints()
-		if ns.UI.HasAtlas("options_list_active") then
-			b.selected:SetAtlas("options_list_active") -- as the game's own options list
-		else
-			b.selected:SetColorTexture(1, 0.82, 0.3, 0.16)
-		end
+		b.selected:SetColorTexture(1, 0.82, 0, 0.12)
+		b.selectedEdge = b:CreateTexture(nil, "BORDER")
+		b.selectedEdge:SetPoint("TOPLEFT")
+		b.selectedEdge:SetPoint("BOTTOMLEFT")
+		b.selectedEdge:SetWidth(3)
+		b.selectedEdge:SetColorTexture(1, 0.82, 0, 0.95)
 		b.selected:Hide()
+		b.selectedEdge:Hide()
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetSize(24, 24)
 		b.icon:SetPoint("LEFT", 6, 0)
@@ -1344,8 +1386,7 @@ local function CreateOptions()
 	f.gamepadTabsLabel = "Category"
 
 	-- The one thing that stays in the game's options: your cast key.
-	local keys = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	keys:SetSize(140, 22)
+	local keys = ns.UI.GoldButton(f, 140, 22)
 	keys:SetPoint("BOTTOMLEFT", 10, 4)
 	keys:SetText("Key bindings")
 	keys:SetScript("OnClick", function()
@@ -1366,7 +1407,10 @@ local function CreateOptions()
 	function f:Refresh()
 		for _, line in ipairs(self.rows) do
 			line.Update()
-			if line.parent then
+			if type(line.parent) == "table" then
+				-- A setting for one of a choice's values: active when that's the one chosen.
+				line:SetActive(OptionValue(line.parent[1]) == line.parent[2])
+			elseif line.parent then
 				line:SetActive(OptionValue(line.parent) and true or false)
 			end
 		end

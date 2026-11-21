@@ -17,7 +17,7 @@ local WIDTH = 760
 local EDGE, GAP = 10, 8
 local SLOT = 40          -- a slot's icon
 local ROWS = 6           -- rows down each side: the pole is on the right side's last
-local BOTTOM_ROOM = 96   -- under the slots: the summary and the buttons
+local BOTTOM_ROOM = 106  -- under the slots: the summary card and the buttons
 local LABEL_WIDTH = 190
 local MODEL_WIDTH = WIDTH - 10 - 2 * EDGE - 2 * (SLOT + 8 + LABEL_WIDTH) - 2 * GAP
 local ZOOM_MIN, ZOOM_MAX, ZOOM_STEP = 0.55, 1.5, 0.08
@@ -187,7 +187,12 @@ end
 
 -- A slot: its icon in a frame, its name and what it'll be beside it (mirrored on the right).
 local function SlotButton(parent, info, x, y, right)
+	-- Behind the slot and its words, the window's card: its bar says how the slot stands.
+	local card = ns.UI.Card(parent)
+	card:SetWidth(SLOT + 8 + LABEL_WIDTH + 12) -- clear of the model
+	card:SetPoint(right and "TOPRIGHT" or "TOPLEFT", parent, "TOPLEFT", right and (x + SLOT + 6) or (x - 6), y + 6)
 	local b = CreateFrame("Button", nil, parent)
+	b.card = card
 	b:SetSize(SLOT, SLOT)
 	b:SetPoint("TOPLEFT", x, y)
 	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -210,14 +215,14 @@ local function SlotButton(parent, info, x, y, right)
 	b.glow:SetVertexColor(0.3, 1, 0.4, 0.8)
 	b.glow:Hide()
 	b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-	b.bonus = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+	b.bonus = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightOutline")
 	b.bonus:SetPoint("BOTTOMRIGHT", -2, 2)
 	b.name = b:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
 	b.item = b:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	b.how = b:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	for _, fs in ipairs({ b.name, b.item, b.how }) do
 		fs:SetWidth(LABEL_WIDTH)
-		fs:SetWordWrap(false)
+		fs:SetWordWrap(fs == b.item) -- a long item name takes two lines, never cut short
 		fs:SetJustifyH(right and "RIGHT" or "LEFT")
 	end
 	if right then
@@ -297,6 +302,18 @@ local function Paint(b, plan)
 	local name = ItemName(plan.link)
 	b.item:SetText(name and ((color and color.hex or "|cffffffff") .. name .. "|r") or (GREY .. "Empty|r"))
 	b.how:SetText((HOW_TEXT[plan.how] or "") .. (plan.changes and (GOOD .. "  · goes on|r") or ""))
+	-- The card: green where it adds Fishing (brighter where it goes on), red where your pick is
+	-- missing, grey where there's nothing to wear; as tall as its words.
+	local card = b.card
+	if plan.how == "missing" then
+		card:SetColor(1, 0.25, 0.25, 0.14)
+	elseif (plan.bonus or 0) > 0 then
+		card:SetColor(0.12, 1, 0, plan.changes and 0.18 or 0.08)
+	else
+		card:SetColor(0.5, 0.5, 0.5, 0)
+	end
+	local words = (b.name:GetStringHeight() or 12) + 2 + (b.item:GetStringHeight() or 12) + 2 + (b.how:GetStringHeight() or 12)
+	card:SetHeight(math.max(SLOT, words) + 12)
 end
 
 -- The model's view: kept across refreshes, so a bag change doesn't spin it back.
@@ -435,11 +452,14 @@ local function CreateWindow()
 	-- With a controller, the right stick stays the camera's here: there's nothing to select in
 	-- the model, so it never takes the stick to zoom.
 	f.modelHint:SetDrawLayer("OVERLAY", 7)
-	f.modelHint:SetText("Drag to turn  ·  wheel to zoom  ·  double-click to reset")
+	-- Within the model's width, over two lines: wider, it ran under the slots beside it.
+	f.modelHint:SetWidth(MODEL_WIDTH - 8)
+	f.modelHint:SetWordWrap(true)
+	f.modelHint:SetJustifyH("CENTER")
+	f.modelHint:SetText("Drag to turn  ·  wheel to zoom\ndouble-click to reset")
 
 	-- At the model's head: the outfit, or what you wear now.
-	f.compare = CreateFrame("Button", nil, outfit, "UIPanelButtonTemplate")
-	f.compare:SetSize(150, 20)
+	f.compare = ns.UI.GoldButton(outfit, 150, 20)
 	f.compare:SetPoint("TOP", model, "TOP", 0, 0)
 	f.compare:SetFrameLevel(model:GetFrameLevel() + 2)
 	f.compare:SetScript("OnClick", function()
@@ -459,11 +479,15 @@ local function CreateWindow()
 	local poleRow = ROWS - 1 -- level with Wrist, a little apart from the armour
 	f.pole = SlotButton(outfit, poleInfo, WIDTH - 10 - EDGE - SLOT, top - poleRow * step, true)
 
-	-- The summary: your Fishing now and with the outfit, or what to look for.
-	f.total = outfit:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	f.total:SetPoint("BOTTOM", outfit, "BOTTOM", 0, 64)
+	-- The summary, on the window's card: your Fishing now and with the outfit, or what to look for.
+	f.summary = ns.UI.Card(outfit)
+	f.summary:SetPoint("BOTTOMLEFT", EDGE, 46)
+	f.summary:SetPoint("BOTTOMRIGHT", -EDGE, 46)
+	f.summary:SetHeight(46)
+	f.total = f.summary:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	f.total:SetPoint("TOP", 0, -8)
 	f.total:SetWidth(WIDTH - 60)
-	f.totalNote = outfit:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	f.totalNote = f.summary:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	f.totalNote:SetPoint("TOP", f.total, "BOTTOM", 0, -4)
 	f.totalNote:SetWidth(WIDTH - 60)
 	f.totalNote:SetWordWrap(true)
@@ -640,6 +664,16 @@ function Wardrobe.Refresh()
 		frame.totalNote:SetText(string.format("%s%d piece%s go%s on with the pole, glowing above.|r", GREY, changes,
 			changes == 1 and "" or "s", changes == 1 and "es" or ""))
 	end
+
+	-- The summary's card: green with Fishing to gain, red with a pick missing, as tall as its words.
+	if chosenMissing then
+		frame.summary:SetColor(1, 0.25, 0.25, 0.12)
+	elseif outfit > 0 then
+		frame.summary:SetColor(0.12, 1, 0, gain > 0 and 0.16 or 0.08)
+	else
+		frame.summary:SetColor(0.5, 0.5, 0.5, 0)
+	end
+	frame.summary:SetHeight(8 + (frame.total:GetStringHeight() or 14) + 4 + (frame.totalNote:GetStringHeight() or 12) + 10)
 
 	local locked = ns.Gear.Locked()
 	frame.wear:SetEnabled(not locked)

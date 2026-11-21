@@ -30,7 +30,7 @@ local lootOpen = false  -- shown for a loot window that needs clicking
 local KEEP = {
 	"OneCastStatsFrame", "OneCastMiniFrame", "OneCastSkillToast", "OneCastHubTabs",
 	"OneCastTackleButton", "OneCastApplyLureButton", "OneCastTackleWindow", "OneCastBookFrame",
-	"OneCastWardrobeFrame", "OneCastJourneyFrame", "OneCastReportFrame", "OneCastOptionsWindow",
+	"OneCastWardrobeFrame", "OneCastJourneyFrame", "OneCastCampFrame", "OneCastReportFrame", "OneCastOptionsWindow",
 	"OneCastWhatsNewFrame", "OneCastWelcome", "OneCastMenu", "OneCastItemMenu",
 	"GameTooltip", "ItemRefTooltip",
 }

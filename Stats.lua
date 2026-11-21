@@ -25,24 +25,24 @@ local SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 200, 5 -- percent
 -- header, three headline tiles, a few detail rows, then the list, which takes the rest.
 -- One set of spacings throughout: EDGE from the sides, GAP between parts, HEADER_GAP from a
 -- section header to what's under it, and PAD for text inside a row.
-local WINDOW_WIDTH, WINDOW_HEIGHT = 340, 580 -- every page of the window is 580 tall (ns.UI.PAGE_HEIGHT)
+local WINDOW_WIDTH, WINDOW_HEIGHT = 340, 646 -- every page of the window is this tall (ns.UI.PAGE_HEIGHT)
 local INSET_WIDTH, INSET_HEIGHT = WINDOW_WIDTH - 10, WINDOW_HEIGHT - 60 - 28
 local EDGE, GAP, HEADER_GAP, PAD = 10, 8, 4, 6
 local HEADER_HEIGHT = 24
 local BAR_TOP, BAR_HEIGHT = -GAP, 29 -- the professions window's bar art is 29 tall
-local STRIP_TOP, STRIP_HEIGHT = BAR_TOP - BAR_HEIGHT - GAP, 22
+local STRIP_TOP, STRIP_HEIGHT = BAR_TOP - BAR_HEIGHT - GAP, 36 -- two lines: the place in full, then how it's going
 local SUMMARY_TOP = STRIP_TOP - STRIP_HEIGHT - GAP
 local TILES_TOP, TILE_HEIGHT, TILE_GAP = SUMMARY_TOP - HEADER_HEIGHT - HEADER_GAP, 44, 5
 local STATS_TOP = TILES_TOP - TILE_HEIGHT - HEADER_GAP
-local STAT_ROWS, STAT_HEIGHT = 8, 17
-local MAX_ROWS, ITEM_HEIGHT = 14, 22
+local STAT_ROWS, STAT_HEIGHT = 8, 21 -- room around each line: one fact a row, the rest on hover
+local MAX_ROWS, ITEM_HEIGHT = 20, 22
 local LATEST_HEIGHT = 40 -- the latest catch's card, above the session's list
 local VIEWS = {
-	{ key = "session", label = "Session", width = 74 },
-	{ key = "farm", label = "Spots", width = 64 },
-	{ key = "records", label = "All-time records", width = 126 },
+	{ key = "session", label = "Session", tip = "This session: what you've caught, gold and fish per hour, and your skill." },
+	{ key = "farm", label = "Spots", tip = "Whether this zone is worth fishing, its spots best first, and where each fish bites best." },
+	{ key = "records", label = "Records", tip = "All-time records: your personal bests, notable catches, lifetime totals and past sessions." },
 }
-local TABS_LEFT, TAB_GAP = 62, 2 -- top tabs start right of the portrait; widths fit their names
+local TABS_LEFT, TAB_GAP = 62, 2 -- top tabs start right of the portrait, and share the rest evenly
 local NOTABLE_SIZE = 40
 local BEST_MIN_TIME = 15 * 60 -- fishing in a session before its rates can be a personal best
 
@@ -151,6 +151,40 @@ function Stats.ScheduleRefresh()
 end
 
 local ArchiveSession -- below: keeps the session in the history before it's replaced
+
+-- "Start a new session": whether the session that's going should give way to a new one now,
+-- by the rule chosen (`event`: "cast", "login" or "done"), and why, for chat.
+function Stats.SessionOver(event, now)
+	local s = charDB and charDB.session
+	if not (s and ns.db) or (s.casts or 0) == 0 then
+		return nil
+	end
+	local rule = ns.db.sessionStart or "manual"
+	now = now or GetServerTime()
+	if rule == "break" and event == "cast" and s.lastCast then
+		local minutes = math.max(1, tonumber(ns.db.sessionBreak) or 30)
+		if now - s.lastCast > minutes * 60 then
+			return string.format("after a break of over %s", Stats.FormatDuration(minutes * 60):gsub(" 00s$", ""):gsub("^0h ", ""))
+		end
+	elseif rule == "day" and event == "cast" and s.lastCast and date
+		and date("%Y%m%d", s.lastCast) ~= date("%Y%m%d", now) then
+		return "for a new day"
+	elseif rule == "login" and event == "login" then
+		return "for a new login"
+	elseif rule == "done" and event == "done" then
+		return "after Done fishing"
+	end
+end
+
+-- A new session by the chosen rule, if it's time: the last one kept in the history.
+function Stats.AutoNewSession(event)
+	local why = Stats.SessionOver(event)
+	if why then
+		Stats.ResetSession()
+		ns.Print("started a new session " .. why .. ". The last one is in your session history (Records tab).")
+		return true
+	end
+end
 
 function Stats.ResetSession()
 	if ArchiveSession then
@@ -888,6 +922,7 @@ function Stats.EndSession(close)
 	if s.catches > 0 then
 		ns.Print("done fishing. Session so far: " .. Stats.SessionSummaryText(s) .. ".")
 	end
+	Stats.AutoNewSession("done") -- "Start a new session" when you press Done fishing
 	if close and frame and frame:IsShown() then
 		frame:Hide()
 	end
@@ -952,6 +987,7 @@ end
 
 function Stats.OnCast()
 	local now = GetServerTime()
+	Stats.AutoNewSession("cast") -- "Start a new session": after a break, or each new day
 	local s = Session()
 	if not s.lastCast or now - s.lastCast > ACTIVE_GAP then
 		dismissed = false -- back from a break: open again
@@ -988,7 +1024,14 @@ function Stats.OnCast()
 	end
 	-- Fish per hour with and without a lure: this stretch counts as whatever is on now.
 	local lured = ns.Lure and ns.Lure.IsActive()
+	local wasLured = castLured == "with"
 	castLured = lured and "with" or "without"
+	-- The lure just ran out: with Luremaster, say once what that costs.
+	local luremaster = not lured and wasLured and ns.Lure.Luremaster and ns.Lure.Luremaster()
+	if luremaster and ns.Lure.Choice() ~= ns.Lure.NONE then
+		ns.Print(string.format("your lure is off, so Luremaster's %d%% chance of an extra fish is too. "
+			.. "The tackle box puts another on.", luremaster))
+	end
 	local rates = charDB.lureRates
 	if s.lastCast and now - s.lastCast <= ACTIVE_GAP then
 		rates[castLured].time = rates[castLured].time + (now - s.lastCast)
@@ -1072,6 +1115,20 @@ local function OnLootReady(autoLooted)
 
 	local zone = CurrentZone()
 	local s = Session()
+	-- Luremaster: on a lured cast, every fish past the first is its extra fish.
+	if castLured == "with" and ns.Lure and ns.Lure.Luremaster and ns.Lure.Luremaster() then
+		local fish = 0
+		for _, l in ipairs(loot) do
+			if ns.Collection and ns.Collection.IsFish(l.id) then
+				fish = fish + l.quantity
+			end
+		end
+		for _, totals in ipairs({ s, charDB.lifetime }) do
+			totals.luremaster = totals.luremaster or { lured = 0, extra = 0 }
+			totals.luremaster.lured = totals.luremaster.lured + 1
+			totals.luremaster.extra = totals.luremaster.extra + math.max(0, fish - 1)
+		end
+	end
 	AddCatch(s, zone, loot)
 	AddCatch(charDB.lifetime, zone, loot)
 	AddCatch(ZoneTotals(zone), zone, loot)
@@ -1285,12 +1342,28 @@ function Stats.Summary()
 		rate and string.format("  ·  %.0f/hr", rate) or "")
 end
 
-local function SortedItems(items)
+-- Most caught first, or by `sort`: "value" (what the stack is worth), "latest" (the last you
+-- caught first) or "name". Ties go most caught, then by name.
+local function SortedItems(items, sort, totals)
 	local list = {}
 	for id, item in pairs(items) do
-		list[#list + 1] = { id = id, name = item.name, icon = item.icon, quality = item.quality, count = item.count }
+		local r = { id = id, name = item.name, icon = item.icon, quality = item.quality, count = item.count }
+		r.name = r.name or C_Item.GetItemNameByID(id)
+		if sort == "value" then
+			r.key = Stats.CatchWorth(totals, id, r.count) or 0
+		elseif sort == "latest" then
+			local last = charDB and charDB.lastCaught and charDB.lastCaught[id]
+			r.key = last and last.time or 0
+		end
+		list[#list + 1] = r
 	end
 	table.sort(list, function(a, b)
+		if sort == "name" and a.name ~= b.name then
+			return (a.name or "") < (b.name or "")
+		end
+		if a.key and a.key ~= b.key then
+			return a.key > b.key
+		end
 		if a.count ~= b.count then
 			return a.count > b.count
 		end
@@ -1453,13 +1526,26 @@ end
 
 -- What items are worth, to a vendor and at auction: "1g 73s vendor  ·  9g 75s AH".
 local function WorthText(value, items)
-	local text = Coins(value.vendor) .. GREY .. (value.loading and " vendor (loading)|r" or " vendor|r")
+	local text = ShortGold(value.vendor) .. GREY .. (value.loading and " vendor (loading)|r" or " vendor|r")
 	if value.priced then
-		text = text .. SEP .. Coins(value.auction) .. GREY .. " AH|r"
+		text = text .. SEP .. ShortGold(value.auction) .. GREY .. " AH|r"
 	elseif next(items) and ns.Prices and ns.Prices.CanScan() then
 		text = text .. SEP .. GREY .. "scan at the AH|r"
 	end
 	return text
+end
+
+-- The Worth row: short gold on the row, every coin on hover.
+local function WorthRow(value, items)
+	return { "Worth", WorthText(value, items), {
+		tip = function(tooltip)
+			tooltip:SetText("What it's worth")
+			tooltip:AddDoubleLine("To a vendor", Coins(value.vendor), 1, 0.82, 0, 1, 1, 1)
+			if value.priced then
+				tooltip:AddDoubleLine("At auction", Coins(value.auction), 1, 0.82, 0, 1, 1, 1)
+			end
+		end,
+	} }
 end
 
 -- About how long `catches` more will take, at this session's pace (or your usual one).
@@ -1481,13 +1567,46 @@ local function StackWorth(itemID, count)
 	return "  " .. ShortGold(price * count)
 end
 
--- Items as rows with their count, share of the catch and worth: "x43  77%  1.2g".
-local function ShareRows(items)
-	local list = SortedItems(items)
+-- What a catch is worth, in copper (nil if nothing): for a trunk or clam you've opened, what came
+-- out of it, and its own price for any not opened yet; for anything else, its own price.
+-- One item's price: its auction price, else the vendor's; nil if it has neither.
+function Stats.ItemPrice(itemID)
+	local price = AuctionPrice(itemID) or VendorPrice(itemID)
+	return price and price > 0 and price or nil
+end
+
+function Stats.CatchWorth(totals, id, count)
+	local Price = Stats.ItemPrice
+	local held = totals and totals.inside and totals.inside[id]
+	if not held then
+		local price = Price(id)
+		return price and price * count
+	end
+	local worth = 0
+	for itemID, entry in pairs(held) do
+		worth = worth + (Price(itemID) or 0) * entry.count
+	end
+	local unopened = math.max(0, count - (totals.opened and totals.opened[id] or 0))
+	worth = worth + (Price(id) or 0) * unopened
+	return worth > 0 and worth or nil
+end
+
+-- Items as rows with their count, share of the catch and worth: "x43  77%  1.2g". `totals`,
+-- when given, has what was inside the trunks: a trunk is worth what came out of it.
+local function ShareRows(items, sort, totals)
+	local list = SortedItems(items, sort, totals)
 	local total = ItemTotal(items)
 	for _, r in ipairs(list) do
+		-- Sorted by value, the sort has worked it out already.
+		local worth
+		if sort == "value" then
+			worth = r.key > 0 and r.key or nil
+		else
+			worth = Stats.CatchWorth(totals, r.id, r.count)
+		end
 		r.right = string.format("x%d" .. GREY .. "  %d%%|r", r.count, math.floor(r.count / math.max(total, 1) * 100 + 0.5))
-			.. StackWorth(r.id, r.count)
+			.. (worth and ("  " .. ShortGold(worth)) or "")
+		r.opened = totals and totals.inside and totals.inside[r.id] and true or nil
 	end
 	return list
 end
@@ -1500,7 +1619,7 @@ local function WithContents(rows, totals)
 		out[#out + 1] = r
 		local held = totals.inside and totals.inside[r.id]
 		if held then
-			local children = SortedItems(held)
+			local children = SortedItems(held, charDB.catchSort)
 			for i, c in ipairs(children) do
 				c.icon = c.icon or C_Item.GetItemIconByID(c.id)
 				c.child, c.last = true, i == #children
@@ -1625,6 +1744,25 @@ local function NowView(zone)
 			math.floor(escapes / math.max(escapes + s.catches, 1) * 100 + 0.5)) .. "|r"
 	end
 	local stats = { { "Caught", caught } }
+	-- Luremaster's extra fish, once a lured catch has been counted.
+	local lm = s.luremaster
+	if lm and lm.lured > 0 then
+		stats[#stats + 1] = { "Luremaster", string.format("%s+%d extra fish|r", lm.extra > 0 and GREEN or "", lm.extra), {
+			tip = function(tooltip)
+				tooltip:SetText("Luremaster")
+				tooltip:AddLine("Your Legacy tree talent: while a lure is on, a chance of an extra fish. "
+					.. "These are the extra fish it's given you this session, out of your catches with a lure on.", 1, 1, 1, true)
+				tooltip:AddLine(" ")
+				tooltip:AddDoubleLine("This session", string.format("+%d from %d lured catches", lm.extra, lm.lured),
+					1, 0.82, 0, 1, 1, 1)
+				local life = charDB.lifetime.luremaster
+				if life then
+					tooltip:AddDoubleLine("All time", string.format("+%d from %d lured catches", life.extra, life.lured),
+						1, 0.82, 0, 1, 1, 1)
+				end
+			end,
+		} }
+	end
 	-- What's new for the collection this session, each fish on hover.
 	local news = Stats.SessionNew(s)
 	if #news > 0 then
@@ -1665,7 +1803,7 @@ local function NowView(zone)
 		end
 	end
 	-- What it's worth, vendor and auction in one row.
-	stats[#stats + 1] = { "Worth", WorthText(value, worth) }
+	stats[#stats + 1] = WorthRow(value, worth)
 	local contest = ns.Extravaganza and ns.Extravaganza.StatusLine(zone)
 	if contest then
 		stats[#stats + 1] = { "Extravaganza", contest }
@@ -1677,7 +1815,7 @@ local function NowView(zone)
 
 	local rows, listTitle
 	if s.catches > 0 then
-		rows, listTitle = ShareRows(s.items), "Caught this session"
+		rows, listTitle = ShareRows(s.items, charDB.catchSort, s), "Caught this session"
 		-- What was inside the trunks, crates and clams you opened: under each, as a tree.
 		if s.inside then
 			rows = WithContents(rows, s)
@@ -1687,7 +1825,7 @@ local function NowView(zone)
 
 	else
 		local z = charDB.zoneStats[zone]
-		rows, listTitle = z and ShareRows(z.items) or {}, "Caught here before"
+		rows, listTitle = z and ShareRows(z.items, charDB.catchSort) or {}, "Caught here before"
 	end
 	return SessionTitle(s), tiles, stats, rows, listTitle, "Nothing caught here yet. Cast to start."
 end
@@ -1756,14 +1894,15 @@ local function FarmView(zone)
 		Tile(bestSpot and bestSpot.rate and string.format("%.0f", bestSpot.rate), "best spot/hr",
 			bestSpot and ("Your best spot here: " .. bestSpot.name .. ".") or "Your best spot here, per hour."),
 	}
-	local caught = tostring(z.catches) .. SEP .. Stats.FormatDuration(z.activeTime) .. " fishing"
+	local caught = tostring(z.catches)
 	if (z.escapes or 0) > 0 then
 		caught = caught .. SEP .. RED .. z.escapes .. " got away|r"
 	end
 	local stats = {
 		{ "Caught here", caught },
+		{ "Fishing time", Stats.FormatDuration(z.activeTime) },
 		{ "Best spot", bestSpot and bestSpot.name or (GREY .. "-|r") },
-		{ "Worth", WorthText(value, zoneWorth) },
+		WorthRow(value, zoneWorth),
 	}
 
 	if charDB.farmList == "fish" then
@@ -1805,13 +1944,11 @@ local function RecordsView()
 		{ "Longest session", bests.time and (Stats.FormatDuration(bests.time.value) .. GREY .. "  " .. date("%d %b", bests.time.time) .. "|r")
 			or (GREY .. "-|r") },
 	}
-	local zonesText = CountKeys(life.zones) .. " zones fished"
 	if ns.Collection then
 		local caught, total = ns.Collection.Progress()
-		stats[#stats + 1] = { "Collection", string.format("%d of %d caught", caught, total) .. SEP .. zonesText }
-	else
-		stats[#stats + 1] = { "Zones", zonesText }
+		stats[#stats + 1] = { "Collection", string.format("%d of %d caught", caught, total) }
 	end
+	stats[#stats + 1] = { "Zones fished", tostring(CountKeys(life.zones)) }
 	local rows = {}
 	if charDB.recordsList == "sessions" then
 		-- Recent sessions: when and where, catches and fish per hour; the rest in the tooltip.
@@ -1927,9 +2064,7 @@ function Stats.CappedRows(zone)
 	elseif status.needed then
 		verdict = RED .. (status.needed - effective) .. " short of " .. status.needed .. "|r"
 	end
-	rows[#rows + 1] = { "With gear", tostring(effective)
-		.. ((modifier or 0) > 0 and (GREY .. " (" .. rank .. " + " .. modifier .. ")|r") or "")
-		.. (verdict and (SEP .. verdict) or ""), {
+	rows[#rows + 1] = { "With gear", tostring(effective) .. (verdict and (SEP .. verdict) or ""), {
 		tip = function(tooltip)
 			tooltip:SetText("Your Fishing with your gear")
 			tooltip:AddLine(string.format("%d skill%s.", rank, (modifier or 0) > 0
@@ -1962,14 +2097,9 @@ function Stats.CappedRows(zone)
 		end
 	end
 	if #missing == 0 then
-		rows[#rows + 1] = { "Still to catch", GREEN .. "nothing: every known catch here|r" }
+		rows[#rows + 1] = { "Still to catch", GREEN .. "all caught here|r" }
 	else
-		local names = {}
-		for i = 1, math.min(1, #missing) do
-			names[i] = C_Item.GetItemNameByID(missing[i].id) or missing[i].name
-		end
-		rows[#rows + 1] = { "Still to catch", #missing .. GREY .. ": " .. table.concat(names, ", ")
-			.. (#missing > 1 and ("…") or "") .. "|r", {
+		rows[#rows + 1] = { "Still to catch", #missing .. GREY .. " here|r", {
 			tip = function(tooltip)
 				tooltip:SetText("Still to catch in " .. zone)
 				for _, fish in ipairs(missing) do
@@ -1981,7 +2111,7 @@ function Stats.CappedRows(zone)
 			end,
 			click = function()
 				if ns.Book and ns.Book.ShowZoneFish then
-					ns.Book.ShowZoneFish(zone)
+					ns.Book.ShowZoneFish(zone, "missing") -- what's still to catch here, as the row says
 				elseif ns.Book then
 					ns.Book.Show()
 				end
@@ -2019,7 +2149,7 @@ function Stats.ZoneVerdict(zone, spot)
 		return string.format("|cff20ff20%s needs %d: no fish should get away.|r", zone, status.needed)
 	end
 	-- A lure in the bags that would close the gap is the more useful thing to say.
-	local hint = ns.Lure and ns.Lure.CoverHint(status.short)
+	local hint = ns.Lure and ns.Lure.CoverHint(status.short) or ns.Food and ns.Food.CoverHint(status.short)
 	if hint then
 		return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r |cffffd100%s|r",
 			zone, status.needed, status.short, hint)
@@ -2055,7 +2185,7 @@ function Stats.ZoneBadge(zone, spot)
 	if kind == "ok" then
 		badge.mood, badge.status = "good", "No fish get away"
 	elseif kind == "short" then
-		if ns.Lure and ns.Lure.CoverHint(status.short) then
+		if (ns.Lure and ns.Lure.CoverHint(status.short)) or (ns.Food and ns.Food.CoverHint(status.short)) then
 			badge.mood, badge.status = "warn", status.short .. " skill short" -- yellow: a lure in your bags covers it
 		else
 			badge.mood, badge.status = "bad", status.short .. " skill short"
@@ -2263,8 +2393,11 @@ local function WaterBar(parent, name)
 	local textHolder = CreateFrame("Frame", nil, holder)
 	textHolder:SetAllPoints(fill)
 	textHolder:SetFrameLevel(holder:GetFrameLevel() + 5)
-	local text = textHolder:CreateFontString(nil, "OVERLAY", Number12FontOutline and "Number12FontOutline" or "OneCastFontHighlightSmall")
+	-- OneCast's own small print, as everywhere else, with a shadow to stand out from the water.
+	local text = textHolder:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	text:SetPoint("CENTER", 0, 0)
+	text:SetShadowColor(0, 0, 0, 1)
+	text:SetShadowOffset(1, -1)
 
 	-- The water flows on a loop while the window is open (hidden frames don't animate).
 	local flow = holder:CreateAnimationGroup()
@@ -2323,7 +2456,7 @@ local function WaterBar(parent, name)
 	end
 
 	function holder:SetRank(fraction, valueText)
-		text:SetText(name .. " " .. valueText)
+		text:SetText("|cffffd100" .. name .. "|r  " .. valueText) -- gold label, white value, as every stat
 		if target == fraction then
 			return
 		end
@@ -2487,7 +2620,7 @@ local function RankBar(parent, name)
 	end
 
 	function holder:SetRank(fraction, valueText)
-		text:SetText(name .. " " .. valueText)
+		text:SetText("|cffffd100" .. name .. "|r  " .. valueText)
 		if target == fraction then
 			return
 		end
@@ -2516,6 +2649,93 @@ local function RankBar(parent, name)
 end
 
 -- Character-sheet style section header ("General", "Primary Attributes").
+-- A section's heading: the game's group finder category bar (common-button-list-collapseExpand),
+-- its title in gold at the left, as Seeker LFG and the game's own lists have it.
+-- A slim scroll bar of the game's minimal kind, that the mouse can hold: drag the thumb, or
+-- press the track to jump there and keep holding to drag. bar:Set(offset, max, visible, total)
+-- after each draw; onScroll(offset) when the player moves it.
+local function ScrollBar(parent, onScroll)
+	local bar = CreateFrame("Frame", nil, parent)
+	bar:SetWidth(12) -- wider than it looks, to be easy to catch
+	bar.track = bar:CreateTexture(nil, "ARTWORK")
+	bar.track:SetColorTexture(0, 0, 0, 0.35)
+	bar.track:SetPoint("TOP")
+	bar.track:SetPoint("BOTTOM")
+	bar.track:SetWidth(4)
+	bar.thumb = bar:CreateTexture(nil, "OVERLAY")
+	if HasAtlas("minimal-scrollbar-small-thumb-middle") then
+		bar.thumb:SetAtlas("minimal-scrollbar-small-thumb-middle")
+	else
+		bar.thumb:SetColorTexture(1, 0.82, 0, 0.6)
+	end
+	bar.offset, bar.max = 0, 0
+	function bar:Set(offset, max, visible, total)
+		self.offset, self.max = offset, max
+		self:SetShown(max > 0)
+		if max <= 0 then
+			return
+		end
+		local height = self:GetHeight() or 0
+		self.thumbH = math.max(12, height * visible / math.max(total, 1))
+		self.thumb:ClearAllPoints()
+		self.thumb:SetPoint("TOP", self, "TOP", 0, -(height - self.thumbH) * offset / max)
+		self.thumb:SetSize(6, self.thumbH)
+	end
+	local function CursorY()
+		local _, y = GetCursorPosition()
+		return y / bar:GetEffectiveScale()
+	end
+	-- The offset that puts the held point of the thumb under the mouse.
+	local function OffsetAt(y)
+		local top, height = bar:GetTop(), bar:GetHeight() or 0
+		local span = height - (bar.thumbH or 12)
+		if not top or span <= 0 then
+			return 0
+		end
+		local share = (top - y - (bar.grab or 0)) / span
+		return math.floor(math.max(0, math.min(1, share)) * bar.max + 0.5)
+	end
+	local function Move()
+		local offset = OffsetAt(CursorY())
+		if offset ~= bar.offset then
+			bar.offset = offset
+			onScroll(offset)
+		end
+	end
+	local function Stop()
+		bar:SetScript("OnUpdate", nil)
+		bar.grab = nil
+		bar.thumb:SetAlpha(bar:IsMouseOver() and 1 or 0.8)
+	end
+	bar:EnableMouse(true)
+	bar:SetScript("OnMouseDown", function(self, button)
+		if button ~= "LeftButton" or self.max <= 0 then
+			return
+		end
+		local y = CursorY()
+		local thumbTop, thumbBottom = self.thumb:GetTop(), self.thumb:GetBottom()
+		if thumbTop and thumbBottom and y <= thumbTop and y >= thumbBottom then
+			self.grab = thumbTop - y -- held where it was pressed
+		else
+			self.grab = (self.thumbH or 12) / 2 -- the track: the thumb's middle jumps to the mouse
+		end
+		Move()
+		self:SetScript("OnUpdate", Move)
+	end)
+	bar:SetScript("OnMouseUp", Stop)
+	bar:SetScript("OnHide", Stop)
+	bar:SetScript("OnEnter", function(self)
+		self.thumb:SetAlpha(1)
+	end)
+	bar:SetScript("OnLeave", function(self)
+		if not self.grab then
+			self.thumb:SetAlpha(0.8)
+		end
+	end)
+	bar.thumb:SetAlpha(0.8)
+	return bar
+end
+
 local function SectionHeader(parent, y)
 	local h = CreateFrame("Frame", nil, parent)
 	h:SetPoint("TOPLEFT", EDGE, y)
@@ -2523,29 +2743,43 @@ local function SectionHeader(parent, y)
 	h:SetHeight(HEADER_HEIGHT)
 	local bg = h:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
-	if HasAtlas("UI-Character-Info-Title") then
-		bg:SetAtlas("UI-Character-Info-Title")
+	if HasAtlas("common-button-list-collapseExpand") then
+		bg:SetAtlas("common-button-list-collapseExpand")
 	else
-		bg:SetColorTexture(0.25, 0.18, 0.10, 0.9)
+		bg:SetColorTexture(0.12, 0.1, 0.08, 0.9)
 	end
-	h.text = h:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	h.text:SetPoint("CENTER", 0, 1)
+	h.bg = bg
+	h.text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	h.text:SetPoint("LEFT", 10, 0)
+	h.text:SetJustifyH("LEFT")
 	return h
 end
 
--- Alternating row background, as on the character sheet's stat lines.
+-- Alternating row background, as on the character sheet's stat lines: Row shading (off, light
+-- or strong) says how much. Every shaded row is kept, so a change of setting repaints them all.
+-- A headline number's backing (`bg.tile`) is a little stronger again, and never goes plain.
+local function ShadeRow(bg)
+	local shading = ns.db and ns.db.rowShading or "strong"
+	bg:SetShown(shading ~= "off" or bg.tile)
+	if shading == "strong" then
+		bg:SetColorTexture(1, 1, 1, bg.tile and 0.12 or 0.09)
+	elseif HasAtlas("UI-Character-Info-Line-Bounce") then
+		bg:SetAtlas("UI-Character-Info-Line-Bounce")
+		bg:SetAlpha(bg.tile and 0.5 or 0.3)
+	else
+		bg:SetColorTexture(1, 1, 1, bg.tile and 0.06 or 0.04)
+	end
+end
+
 local function RowBackground(row, index)
 	if index % 2 == 0 then
 		return
 	end
 	local bg = row:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
-	if HasAtlas("UI-Character-Info-Line-Bounce") then
-		bg:SetAtlas("UI-Character-Info-Line-Bounce")
-		bg:SetAlpha(0.3)
-	else
-		bg:SetColorTexture(1, 1, 1, 0.04)
-	end
+	Stats.shadedRows = Stats.shadedRows or {}
+	table.insert(Stats.shadedRows, bg)
+	ShadeRow(bg)
 end
 
 -- A headline number with a small caption under it, and a tooltip saying what it is.
@@ -2557,12 +2791,10 @@ local function StatTile(parent, index, top)
 	t:EnableMouse(true)
 	local bg = t:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
-	if HasAtlas("UI-Character-Info-Line-Bounce") then
-		bg:SetAtlas("UI-Character-Info-Line-Bounce")
-		bg:SetAlpha(0.5)
-	else
-		bg:SetColorTexture(1, 1, 1, 0.06)
-	end
+	bg.tile = true
+	Stats.shadedRows = Stats.shadedRows or {}
+	table.insert(Stats.shadedRows, bg)
+	ShadeRow(bg)
 	t.value = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
 	t.value:SetPoint("TOP", 0, -6)
 	t.value:SetWidth(width - 6)
@@ -2591,7 +2823,6 @@ local MOODS = {
 	warn = { color = { 1, 0.82, 0 }, atlas = "UI-LFG-PendingMark", file = "Interface\\RaidFrame\\ReadyCheck-Waiting" },
 	unknown = { color = { 0.6, 0.6, 0.6 }, atlas = "UI-LFG-PendingMark", file = "Interface\\RaidFrame\\ReadyCheck-Waiting" },
 }
-local PLACE_MAX_WIDTH = 150
 
 local function ZoneStrip(parent)
 	local strip = CreateFrame("Frame", nil, parent)
@@ -2599,44 +2830,36 @@ local function ZoneStrip(parent)
 	strip:SetPoint("TOPRIGHT", -EDGE, STRIP_TOP)
 	strip:SetHeight(STRIP_HEIGHT)
 	strip:EnableMouse(true)
-	-- The window's own art: the character sheet's gilded line as the base, a glow in the mood's
-	-- colour fading out from the left, and bronze hairlines above and below, like a plaque.
+	-- A card like the headline numbers' below it: their backing, a bar down the left in the
+	-- mood's colour with its glow fading out from it, the place on top in full and how it's
+	-- going under it, so nothing has to be cut short.
 	strip.base = strip:CreateTexture(nil, "BACKGROUND", nil, 0)
 	strip.base:SetAllPoints()
-	if HasAtlas("UI-Character-Info-Line-Bounce") then
-		strip.base:SetAtlas("UI-Character-Info-Line-Bounce")
-		strip.base:SetAlpha(0.7)
-	else
-		strip.base:SetColorTexture(0, 0, 0, 0.35)
-	end
+	strip.base.tile = true
+	Stats.shadedRows = Stats.shadedRows or {}
+	table.insert(Stats.shadedRows, strip.base)
+	ShadeRow(strip.base)
 	strip.band = strip:CreateTexture(nil, "BACKGROUND", nil, 1)
 	strip.band:SetPoint("TOPLEFT")
 	strip.band:SetPoint("BOTTOMLEFT")
-	strip.band:SetPoint("RIGHT", strip, "CENTER", 40, 0)
+	strip.band:SetPoint("RIGHT", strip, "CENTER", 0, 0)
 	strip.band:SetTexture("Interface\\Buttons\\WHITE8x8")
 	strip.band:SetBlendMode("ADD")
-	strip.lines = {}
-	for i, point in ipairs({ "TOP", "BOTTOM" }) do
-		local line = strip:CreateTexture(nil, "BORDER")
-		line:SetPoint(point .. "LEFT")
-		line:SetPoint(point .. "RIGHT")
-		line:SetHeight(1)
-		line:SetColorTexture(0.62, 0.48, 0.24, 0.7)
-		strip.lines[i] = line
-	end
+	strip.accent = strip:CreateTexture(nil, "BORDER")
+	strip.accent:SetPoint("TOPLEFT")
+	strip.accent:SetPoint("BOTTOMLEFT")
+	strip.accent:SetWidth(3)
 	strip.icon = strip:CreateTexture(nil, "ARTWORK")
-	strip.icon:SetSize(14, 14)
-	strip.icon:SetPoint("LEFT", PAD, 0)
-	strip.place = strip:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
-	strip.place:SetPoint("LEFT", strip.icon, "RIGHT", 5, 0)
-	strip.place:SetWordWrap(false)
-	strip.need = strip:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
-	strip.need:SetTextColor(0.78, 0.78, 0.78)
-	strip.need:SetPoint("LEFT", strip.place, "RIGHT", 6, 0)
-	strip.need:SetWordWrap(false)
+	strip.icon:SetSize(18, 18)
+	strip.icon:SetPoint("LEFT", PAD + 5, 0)
+	strip.place = strip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	strip.place:SetPoint("TOPLEFT", strip.icon, "TOPRIGHT", 8, 7)
+	strip.place:SetPoint("RIGHT", -PAD, 0)
+	strip.place:SetJustifyH("LEFT")
 	strip.status = strip:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	strip.status:SetPoint("TOPLEFT", strip.place, "BOTTOMLEFT", 0, -3)
 	strip.status:SetPoint("RIGHT", -PAD, 0)
-	strip.status:SetWordWrap(false)
+	strip.status:SetJustifyH("LEFT")
 
 	function strip:Update(zone, spot)
 		local badge = Stats.ZoneBadge(zone, spot)
@@ -2644,26 +2867,20 @@ local function ZoneStrip(parent)
 		local r, g, b = mood.color[1], mood.color[2], mood.color[3]
 		if self.band.SetGradient and CreateColor then
 			self.band:SetVertexColor(1, 1, 1, 1)
-			self.band:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0.22), CreateColor(r, g, b, 0))
+			self.band:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0.16), CreateColor(r, g, b, 0))
 		else
-			self.band:SetVertexColor(r, g, b, 0.1)
+			self.band:SetVertexColor(r, g, b, 0.08)
 		end
+		self.accent:SetColorTexture(r, g, b, 0.9)
 		if HasAtlas(mood.atlas) then
 			self.icon:SetAtlas(mood.atlas)
 		else
 			self.icon:SetTexture(mood.file)
 		end
-		-- A long place name is cut short rather than running into the status.
-		self.place:SetWidth(0)
 		self.place:SetText(badge.place)
-		self.need:SetText(badge.need or "")
-		self.status:SetText(badge.status)
-		-- The place gets what the level and status leave (before the first layout, its usual most).
-		local width = self:GetWidth() or 0
-		local room = width > 0 and (width - PAD - 14 - 5 - 6 - (self.need:GetStringWidth() or 0) - 12
-			- (self.status:GetStringWidth() or 0) - PAD) or PLACE_MAX_WIDTH
-		self.place:SetWidth(math.max(40, math.min(self.place:GetStringWidth() or 0, PLACE_MAX_WIDTH, room)))
-		self.status:SetTextColor(r, g, b)
+		-- "No fish get away  ·  needs 225": how it's going in the mood's colour, then the level.
+		local status = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, badge.status)
+		self.status:SetText(badge.need and (status .. GREY .. "  ·  " .. badge.need .. "|r") or status)
 		self.badge = badge
 		self.tip = Stats.ZoneVerdict(zone, spot)
 	end
@@ -3251,9 +3468,6 @@ end
 -- Font object, at a given size. The font comes from the object, not the string: a reused string
 -- can keep the font it was last given, which would put a heading's font on body text.
 local function SizedFont(fs, fontObject, size)
-	if ns.LargerText and ns.LargerText() and size < 15 then
-		size = size + 2 -- "Larger text"
-	end
 	fs:SetFontObject(fontObject)
 	local path, _, flags = fontObject:GetFont()
 	if path then
@@ -3293,9 +3507,175 @@ ns.UI = {
 	RankBar = function(parent, name) return RankBar(parent, name) end, -- Forever's Fishing bar: (parent, name), then :SetRank(fraction, "186/225")
 	SectionHeader = SectionHeader,
 	RowBackground = RowBackground,
+	-- A card, as the zone's under the Fishing bar: the headline numbers' backing (Row shading),
+	-- a bar down its left and a glow fading out from it. card:SetColor(r, g, b, glow) colours them.
+	Card = function(parent, kind)
+		local card = CreateFrame(kind or "Frame", nil, parent)
+		local base = card:CreateTexture(nil, "BACKGROUND", nil, 0)
+		base:SetAllPoints()
+		base.tile = true
+		Stats.shadedRows = Stats.shadedRows or {}
+		table.insert(Stats.shadedRows, base)
+		ShadeRow(base)
+		local glow = card:CreateTexture(nil, "BACKGROUND", nil, 1)
+		glow:SetPoint("TOPLEFT")
+		glow:SetPoint("BOTTOMLEFT")
+		glow:SetPoint("RIGHT", card, "CENTER", 0, 0)
+		glow:SetTexture("Interface\\Buttons\\WHITE8x8")
+		glow:SetBlendMode("ADD")
+		local accent = card:CreateTexture(nil, "BORDER")
+		accent:SetPoint("TOPLEFT")
+		accent:SetPoint("BOTTOMLEFT")
+		accent:SetWidth(3)
+		function card:SetColor(r, g, b, strength)
+			accent:SetColorTexture(r, g, b, 0.9)
+			local a = strength or 0.16
+			if glow.SetGradient and CreateColor then
+				glow:SetVertexColor(1, 1, 1, 1)
+				glow:SetGradient("HORIZONTAL", CreateColor(r, g, b, a), CreateColor(r, g, b, 0))
+			else
+				glow:SetVertexColor(r, g, b, a / 2)
+			end
+		end
+		card:SetColor(0.5, 0.5, 0.5, 0)
+		return card
+	end,
+	-- For a choice or a way to somewhere else: red buttons (UIPanelButtonTemplate) are kept for the
+	-- ones that do something.
+	-- A control in a section header, as the game's own have: words with no box, a dropdown arrow
+	-- when it opens a menu, a faint divider before it, and a soft gold glow under the mouse.
+	-- b:SetLabel(label, value): "Sort:" in grey, then its value; it sizes itself to fit.
+	HeaderButton = function(parent, menu)
+		local b = CreateFrame("Button", nil, parent)
+		b:SetHeight(HEADER_HEIGHT - 4)
+		local glow = b:CreateTexture(nil, "HIGHLIGHT")
+		glow:SetPoint("TOPLEFT", 0, -2)
+		glow:SetPoint("BOTTOMRIGHT", 0, 2)
+		glow:SetColorTexture(1, 0.82, 0, 0.12)
+		local divider = b:CreateTexture(nil, "ARTWORK")
+		divider:SetPoint("TOPLEFT", -1, -4)
+		divider:SetPoint("BOTTOMLEFT", -1, 4)
+		divider:SetWidth(1)
+		divider:SetColorTexture(1, 0.82, 0, 0.3)
+		local arrow
+		if menu then
+			arrow = b:CreateTexture(nil, "ARTWORK")
+			arrow:SetSize(18, 18)
+			arrow:SetPoint("RIGHT", -2, 0)
+			arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+			local lit = b:CreateTexture(nil, "HIGHLIGHT")
+			lit:SetAllPoints(arrow)
+			lit:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+			lit:SetBlendMode("ADD")
+			b:HookScript("OnMouseDown", function()
+				arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+			end)
+			b:HookScript("OnMouseUp", function()
+				arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+			end)
+		end
+		local text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		text:SetPoint("RIGHT", arrow or b, arrow and "LEFT" or "RIGHT", arrow and 0 or -6, 0)
+		text:SetJustifyH("RIGHT")
+		b.text = text
+		function b:GetText()
+			return self.value -- what it says, without its label
+		end
+		function b:SetLabel(label, value)
+			self.value = value
+			text:SetText(label and (GREY .. label .. "|r " .. value) or value)
+			self:SetWidth(text:GetStringWidth() + (arrow and 26 or 12))
+		end
+		return b
+	end,
+	-- A field that opens a menu, drawn as the game's search box is (so the two sit side by side),
+	-- with its words at the left and a dropdown arrow at the right. b:SetMenu(false) hides the
+	-- arrow while it does something else (Back to collection).
+	MenuField = function(parent, width, height)
+		local b = CreateFrame("Button", nil, parent)
+		b:SetSize(width or 150, height or 22)
+		if HasAtlas("common-search-border-middle") then
+			local left = b:CreateTexture(nil, "BACKGROUND")
+			left:SetAtlas("common-search-border-left")
+			left:SetSize(8, b:GetHeight())
+			left:SetPoint("LEFT")
+			local right = b:CreateTexture(nil, "BACKGROUND")
+			right:SetAtlas("common-search-border-right")
+			right:SetSize(8, b:GetHeight())
+			right:SetPoint("RIGHT")
+			local middle = b:CreateTexture(nil, "BACKGROUND")
+			middle:SetAtlas("common-search-border-middle")
+			middle:SetPoint("TOPLEFT", left, "TOPRIGHT")
+			middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+		else
+			local fill = b:CreateTexture(nil, "BACKGROUND")
+			fill:SetAllPoints()
+			fill:SetColorTexture(0, 0, 0, 0.6)
+		end
+		local glow = b:CreateTexture(nil, "HIGHLIGHT")
+		glow:SetPoint("TOPLEFT", 3, -3)
+		glow:SetPoint("BOTTOMRIGHT", -3, 3)
+		glow:SetColorTexture(1, 0.82, 0, 0.1)
+		local arrow = b:CreateTexture(nil, "ARTWORK")
+		arrow:SetSize(20, 20)
+		arrow:SetPoint("RIGHT", -1, 0)
+		arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+		local lit = b:CreateTexture(nil, "HIGHLIGHT")
+		lit:SetAllPoints(arrow)
+		lit:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+		lit:SetBlendMode("ADD")
+		b:HookScript("OnMouseDown", function()
+			arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+		end)
+		b:HookScript("OnMouseUp", function()
+			arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+		end)
+		local text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		text:SetJustifyH("LEFT")
+		text:SetWordWrap(false)
+		b:SetFontString(text)
+		local function Look(self)
+			local on = self:IsEnabled()
+			text:SetTextColor(on and 1 or 0.5, on and 1 or 0.5, on and 1 or 0.5)
+			arrow:SetDesaturated(not on)
+		end
+		b:HookScript("OnEnable", Look)
+		b:HookScript("OnDisable", Look)
+		function b:SetMenu(menu)
+			arrow:SetShown(menu)
+			text:ClearAllPoints()
+			text:SetPoint("LEFT", 10, 0)
+			text:SetPoint("RIGHT", menu and arrow or self, menu and "LEFT" or "RIGHT", menu and 0 or -10, 0)
+			text:SetJustifyH(menu and "LEFT" or "CENTER")
+		end
+		b:SetMenu(true)
+		return b
+	end,
+	-- The spellbook's page-turn arrow: (parent, "Prev" or "Next"), greyed when there's no page.
+	PageButton = function(parent, which)
+		local b = CreateFrame("Button", nil, parent)
+		b:SetSize(28, 28)
+		b:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-" .. which .. "Page-Up")
+		b:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-" .. which .. "Page-Down")
+		b:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-" .. which .. "Page-Disabled")
+		b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+		return b
+	end,
+	GoldButton = function(parent, width, height)
+		-- One look for every button that isn't an action: the menu field's, words centred and no arrow.
+		local b = ns.UI.MenuField(parent, width or 100, height or 22)
+		b:SetMenu(false)
+		return b
+	end,
+	ApplyRowShading = function()
+		for _, bg in ipairs(Stats.shadedRows or {}) do
+			ShadeRow(bg)
+		end
+	end,
 	StatRow = StatRow,
 	IconButton = IconButton,
 	ShowWowhead = ShowWowhead,
+	ScrollBar = ScrollBar, -- (parent, onScroll(offset)), then bar:Set(offset, max, visible, total)
 	ShowMenu = ShowMenu,
 	StatTile = StatTile, -- a headline number: (parent, 1 to 3, top), with .value, .caption and .tooltip
 	ShowItemMenu = ShowItemMenu,
@@ -3318,6 +3698,13 @@ local function CreateTabs(f, inset)
 			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
 			SelectView(v.key)
 		end)
+		tab:HookScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_TOP")
+			GameTooltip:SetText(v.label)
+			GameTooltip:AddLine(v.tip, 1, 1, 1, true)
+			GameTooltip:Show()
+		end)
+		tab:HookScript("OnLeave", GameTooltip_Hide)
 		-- Top tabs get a fixed width (FitTabs) so all four fit beside the portrait.
 		if not top and PanelTemplates_TabResize then
 			pcall(PanelTemplates_TabResize, tab, 0)
@@ -3345,11 +3732,13 @@ local function FitTabs(f)
 	if not f.topTabs then
 		return
 	end
-	for i, tab in ipairs(f.Tabs) do
-		tab:SetWidth(VIEWS[i].width)
+	-- From the portrait to the window's edge, in equal parts.
+	local width = math.floor((WINDOW_WIDTH - TABS_LEFT - EDGE - (#VIEWS - 1) * TAB_GAP) / #VIEWS)
+	for _, tab in ipairs(f.Tabs) do
+		tab:SetWidth(width)
 		local text = tab.Text or tab:GetFontString()
 		if text then
-			text:SetWidth(VIEWS[i].width - 10)
+			text:SetWidth(width - 10)
 		end
 	end
 end
@@ -3370,7 +3759,7 @@ local function CreateWindow()
 		local point, _, relPoint, x, y = self:GetPoint()
 		charDB.windowPoint = { point, relPoint, x, y }
 	end)
-	f:SetScale((ns.db and ns.db.statsScale or 100) / 100)
+	f:SetScale((ns.db and ns.db.statsScale or 100) / 100 * ns.TextScale())
 	local p = charDB.windowPoint
 	if p then
 		f:SetPoint(p[1], UIParent, p[2], p[3], p[4])
@@ -3415,9 +3804,8 @@ local function CreateWindow()
 		return false
 	end
 	-- Farm tab: switch the list between this zone's spots and your fish, or leave a fish.
-	f.listToggle = CreateFrame("Button", nil, f.listHeader, "UIPanelButtonTemplate")
-	f.listToggle:SetSize(64, 18)
-	f.listToggle:SetPoint("RIGHT", -4, 1)
+	f.listToggle = ns.UI.HeaderButton(f.listHeader)
+	f.listToggle:SetPoint("RIGHT", -2, 0)
 	f.listToggle:SetScript("OnClick", function()
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		if CurrentView() == "records" then
@@ -3444,6 +3832,40 @@ local function CreateWindow()
 		GameTooltip:Show()
 	end)
 	f.listToggle:SetScript("OnLeave", GameTooltip_Hide)
+	-- Session tab: how the catch is sorted, picked from a menu.
+	local SORTS = { { nil, "Most caught", "Count" }, { "value", "Most valuable", "Value" },
+		{ "latest", "Latest caught", "Latest" }, { "name", "Name", "Name" } }
+	f.listSort = ns.UI.HeaderButton(f.listHeader, true)
+	f.listSort:SetPoint("RIGHT", -2, 0)
+	f.listSort.Paint = function(self)
+		for _, choice in ipairs(SORTS) do
+			if choice[1] == charDB.catchSort then
+				self:SetLabel("Sort:", choice[3])
+			end
+		end
+	end
+	f.listSort:SetScript("OnClick", function()
+		local entries = {}
+		for _, choice in ipairs(SORTS) do
+			local mark = choice[1] == charDB.catchSort and "|TInterface\\Buttons\\UI-CheckBox-Check:14:14|t " or "      "
+			entries[#entries + 1] = { mark .. choice[2], function()
+				charDB.catchSort = choice[1]
+				Stats.Refresh()
+			end }
+		end
+		ShowMenu("Sort by", entries)
+	end)
+	f.listSort:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Sort the catch")
+		for _, choice in ipairs(SORTS) do
+			if choice[1] == charDB.catchSort then
+				GameTooltip:AddLine("By " .. choice[2]:lower() .. ". Click to change.", 1, 1, 1, true)
+			end
+		end
+		GameTooltip:Show()
+	end)
+	f.listSort:SetScript("OnLeave", GameTooltip_Hide)
 	f.rows = {}
 	f.latest = ItemRow(inset, 1, 0)
 	f.latest:SetHeight(LATEST_HEIGHT)
@@ -3477,15 +3899,11 @@ local function CreateWindow()
 		f.more:SetTextColor(0.5, 0.5, 0.5)
 	end)
 	f.moreButton:Hide()
-	-- The list's scroll bar: the game's minimal one, its track and thumb.
-	f.scrollTrack = inset:CreateTexture(nil, "ARTWORK")
-	f.scrollTrack:SetColorTexture(0, 0, 0, 0.35)
-	f.scrollThumb = inset:CreateTexture(nil, "OVERLAY")
-	if HasAtlas("minimal-scrollbar-small-thumb-middle") then
-		f.scrollThumb:SetAtlas("minimal-scrollbar-small-thumb-middle")
-	else
-		f.scrollThumb:SetColorTexture(1, 0.82, 0, 0.6)
-	end
+	-- The list's scroll bar: dragged, or the track pressed to jump there.
+	f.scrollBar = ScrollBar(inset, function(offset)
+		f.listOffset = offset
+		Stats.Refresh()
+	end)
 
 	-- Bottom bar: square icon buttons, like the Character frame's model controls.
 	local options = IconButton(f, "Options", "Options", function()
@@ -3512,7 +3930,7 @@ local function CreateWindow()
 	f:SetScript("OnMouseWheel", function(_, delta)
 		if IsControlKeyDown() then
 			if not (ns.db and ns.db.lockWindow) then
-				Stats.SetScale(f:GetScale() * 100 + delta * SCALE_STEP)
+				Stats.SetScale(f:GetScale() / ns.TextScale() * 100 + delta * SCALE_STEP)
 			end
 			return
 		end
@@ -3620,8 +4038,13 @@ function Stats.Refresh()
 		tile.tooltip = t.tooltip
 	end
 	local shownStats = 0
+	local statHeight = STAT_HEIGHT
 	for i, row in ipairs(frame.stats) do
 		local pair = stats[i]
+		row:ClearAllPoints()
+		row:SetPoint("TOPLEFT", 10, STATS_TOP - (i - 1) * statHeight)
+		row:SetPoint("TOPRIGHT", -10, STATS_TOP - (i - 1) * statHeight)
+		row:SetHeight(statHeight)
 		if pair then
 			row.label:SetText(pair[1] .. ":")
 			row.value:SetText(pair[2])
@@ -3637,7 +4060,7 @@ function Stats.Refresh()
 	end
 
 	-- The list starts under the detail rows and fills the rest of the window.
-	local listTop = STATS_TOP - shownStats * STAT_HEIGHT - GAP
+	local listTop = STATS_TOP - shownStats * statHeight - GAP
 	local rowsTop = listTop - HEADER_HEIGHT - HEADER_GAP
 	-- This session's latest catch, as a card above the list.
 	local last = view == "session" and Session().catches > 0 and Stats.LatestCatch()
@@ -3676,10 +4099,15 @@ function Stats.Refresh()
 	frame.listCapacity, frame.listMax = capacity, maxOffset
 	local offset = frame.listOffset
 	frame.listToggle:SetShown(view == "farm" or view == "records")
+	frame.listSort:SetShown(view == "session" and #rows > 1)
+	if frame.listSort:IsShown() then
+		frame.listSort:Paint()
+	end
 	if view == "records" then
-		frame.listToggle:SetText(charDB.recordsList == "sessions" and "Notable" or "Sessions")
+		frame.listToggle:SetLabel("Show:", charDB.recordsList == "sessions" and "Notable" or "Sessions")
 	else
-		frame.listToggle:SetText(charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
+		frame.listToggle:SetLabel(not charDB.farmTarget and "Show:" or nil,
+			charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
 	end
 	for i, row in ipairs(frame.rows) do
 		local r = i <= capacity and rows[offset + i]
@@ -3735,20 +4163,12 @@ function Stats.Refresh()
 	frame.moreButton:ClearAllPoints()
 	frame.moreButton:SetPoint("TOPLEFT", frame.more, "TOPLEFT", -2, 2)
 	frame.moreButton:SetPoint("BOTTOMRIGHT", frame.more, "BOTTOMRIGHT", 2, -2)
-	-- A slim scroll bar beside the rows, showing how far down the list is.
-	local track, thumb = frame.scrollTrack, frame.scrollThumb
-	track:SetShown(#rows > capacity)
-	thumb:SetShown(#rows > capacity)
-	if #rows > capacity then
-		local height = capacity * ITEM_HEIGHT
-		track:ClearAllPoints()
-		track:SetPoint("TOPRIGHT", frame.inset, "TOPRIGHT", -3, rowsTop)
-		track:SetSize(4, height)
-		local thumbH = math.max(12, height * capacity / #rows)
-		thumb:ClearAllPoints()
-		thumb:SetPoint("TOP", track, "TOP", 0, -(height - thumbH) * offset / math.max(1, maxOffset))
-		thumb:SetSize(6, thumbH)
-	end
+	-- A slim scroll bar beside the rows: how far down the list is, and a handle to move it.
+	local bar = frame.scrollBar
+	bar:ClearAllPoints()
+	bar:SetPoint("TOPRIGHT", frame.inset, "TOPRIGHT", 1, rowsTop)
+	bar:SetHeight(capacity * ITEM_HEIGHT)
+	bar:Set(offset, #rows > capacity and maxOffset or 0, capacity, #rows)
 
 	LayoutBottomButtons(view)
 end
@@ -3791,10 +4211,11 @@ function Stats.SetScale(percent, live)
 	if not live then
 		percent = math.floor(percent / SCALE_STEP + 0.5) * SCALE_STEP
 	end
+	local scale = percent / 100 * ns.TextScale() -- "Larger text" on top of Window scale
 	if frame then
-		frame:SetScale(percent / 100)
+		frame:SetScale(scale)
 	end
-	ns.Hub.SetScale(percent / 100)
+	ns.Hub.SetScale(scale)
 	if not live and ns.db and ns.db.statsScale ~= percent then
 		if ns.scaleSetting then
 			ns.scaleSetting:SetValue(percent) -- calls back into Stats.SetScale, now a no-op
@@ -3953,8 +4374,15 @@ events:SetScript("OnEvent", function(_, event, ...)
 		-- A pole just put on: the stats open, with "Open stats when your pole goes on".
 		if event == "PLAYER_EQUIPMENT_CHANGED" then
 			Stats.CheckPoleOn()
-		elseif event == "PLAYER_ENTERING_WORLD" and hadPole == nil then
-			Stats.NotePole()
+		elseif event == "PLAYER_ENTERING_WORLD" then
+			if hadPole == nil then
+				Stats.NotePole()
+			end
+			-- "Start a new session" each login: a real one, not a /reload.
+			local isLogin, isReload = ...
+			if isLogin and not isReload then
+				Stats.AutoNewSession("login")
+			end
 		end
 		-- Weapons back on after fishing: a window that opened itself closes itself.
 		if event == "PLAYER_EQUIPMENT_CHANGED" and autoOpened and ns.db and ns.db.closeOnDone then

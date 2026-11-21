@@ -111,7 +111,7 @@ local function CreateButton()
 	b.glow:SetTexture("Interface\\Buttons\\CheckButtonHilight")
 	b.glow:SetBlendMode("ADD")
 	b.glow:SetAllPoints()
-	b.count = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+	b.count = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightOutline")
 	b.count:SetPoint("BOTTOMRIGHT", -2, 2)
 	b.time = b:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmallOutline")
 	b.time:SetPoint("TOP", b, "BOTTOM", 0, -2)
@@ -290,11 +290,48 @@ local function StatusText()
 	return "|cffff2020" .. Lure.ReasonText(reason, about) .. "|r"
 end
 
+-- The fishing food row: the buff on you, or the best food you have and a button to eat it.
+function TackleBox.RefreshFood()
+	local food = window and window.food
+	local F = ns.Food
+	if not (food and F and window:IsShown()) then
+		return
+	end
+	local bonus, left = F.Active()
+	local best = F.Best()
+	if bonus then
+		food.icon:SetTexture(C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(F.WELL_FED) or "Interface\\Icons\\INV_Misc_Fish_14")
+		food.text:SetText(string.format("Well Fed: |cff20ff20+%d|r Fishing%s", bonus,
+			left and ("|cff9d9d9d  ·  " .. Lure.Clock(left) .. " left|r") or ""))
+	elseif best then
+		food.icon:SetTexture(C_Item.GetItemIconByID(best[1]))
+		food.text:SetText(string.format("%s  |cff20ff20+%d|r|cff9d9d9d  x%d|r", F.Name(best), best[2], F.Count(best)))
+	else
+		food.icon:SetTexture("Interface\\Icons\\INV_Misc_Fish_14")
+		food.text:SetText("|cff9d9d9dNo fishing food in your bags.|r")
+	end
+	food.icon:SetDesaturated(not (bonus or best))
+	if not InCombatLockdown() then
+		food.eat.itemID = best and best[1] or nil
+		food.eat:SetAttribute("item", best and ("item:" .. best[1]) or nil)
+		food.eat:SetEnabled(best ~= nil)
+	end
+end
+
 local function RedrawWindow()
 	if not window or not window:IsShown() then
 		return
 	end
 	window.status:SetText(StatusText())
+	local chance = Lure.Luremaster and Lure.Luremaster()
+	if chance then
+		local life = OneCastCharDB and OneCastCharDB.lifetime and OneCastCharDB.lifetime.luremaster
+		window.luremaster:SetText(string.format("|cffffd100Luremaster|r  %d%% chance of an extra fish while a lure is on%s",
+			chance, life and string.format("|cff9d9d9d  ·  +%d so far|r", life.extra) or ""))
+	else
+		window.luremaster:SetText(string.format("|cff9d9d9dLuremaster, in the Legacy tree, gives up to a %d%% chance "
+			.. "of an extra fish while a lure is on.|r", Lure.LUREMASTER_MAX))
+	end
 	local choice = Lure.Choice()
 	for _, row in ipairs(window.rows) do
 		local chosen = row.value == choice
@@ -318,6 +355,7 @@ local function RedrawWindow()
 			row.count:SetText("x" .. count)
 		end
 	end
+	TackleBox.RefreshFood()
 	window.autoLure:SetChecked(CharDB().autoLure)
 	window.tackleBox:SetChecked(ns.db.tackleBox)
 
@@ -412,6 +450,54 @@ local function CreateWindow()
 	f.rateGain.caption:SetText("a lure adds")
 	f.rateGain.tooltip = "How many more fish per hour a lure brings you, as a share of your rate without one."
 	y = y - 44
+	-- Luremaster: what it gives you, or where to get it.
+	f.luremaster = inset:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	f.luremaster:SetPoint("TOPLEFT", 14, y - 6)
+	f.luremaster:SetPoint("RIGHT", -14, 0)
+	f.luremaster:SetJustifyH("LEFT")
+	f.luremaster:SetWordWrap(true) -- two lines if it needs them, never cut short
+	y = y - 36
+
+	-- Fishing food: the Well Fed buff's bonus and time left, or the best fishing food in your bags,
+	-- with a button that eats it (the game's secure item button: set out of combat only).
+	y = y - SECTION_GAP
+	UI.SectionHeader(inset, y).text:SetText("Fishing food")
+	y = y - HEADER_HEIGHT
+	local food = CreateFrame("Frame", nil, inset)
+	food:SetPoint("TOPLEFT", 10, y)
+	food:SetPoint("TOPRIGHT", -10, y)
+	food:SetHeight(32)
+	food.icon = food:CreateTexture(nil, "ARTWORK")
+	food.icon:SetSize(26, 26)
+	food.icon:SetPoint("LEFT", 2, 0)
+	food.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+	food.eat = CreateFrame("Button", "OneCastEatFoodButton", food, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+	food.eat:SetSize(64, 22)
+	food.eat:SetPoint("RIGHT", -2, 0)
+	food.eat:SetText("Eat")
+	food.eat:SetAttribute("type", "item")
+	-- As the lure buttons: the press and the release, since the game uses the item on whichever
+	-- "Cast on key down" (ActionButtonUseKeyDown) says. Only the release, it does nothing with that on.
+	food.eat:RegisterForClicks("AnyUp", "AnyDown")
+	food.eat:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		if self.itemID then
+			GameTooltip:SetItemByID(self.itemID)
+		else
+			GameTooltip:SetText("Eat")
+			GameTooltip:AddLine("No fishing food in your bags.", 1, 1, 1, true)
+		end
+		GameTooltip:Show()
+	end)
+	food.eat:SetScript("OnLeave", GameTooltip_Hide)
+	-- Two lines if it needs them, never cut short.
+	food.text = food:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	food.text:SetPoint("LEFT", food.icon, "RIGHT", 8, 0)
+	food.text:SetPoint("RIGHT", food.eat, "LEFT", -8, 0)
+	food.text:SetJustifyH("LEFT")
+	food.text:SetWordWrap(true)
+	f.food = food
+	y = y - 32
 
 	-- The bottom bar's Options button, as on the stats window.
 	local options = UI.IconButton(f, "Options", "Options", function()
@@ -441,6 +527,7 @@ local function CreateWindow()
 		if elapsed >= TICK then
 			elapsed = 0
 			self.status:SetText(StatusText())
+			TackleBox.RefreshFood()
 		end
 	end)
 	f:Hide()
