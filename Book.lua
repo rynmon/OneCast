@@ -63,8 +63,21 @@ local SOFT = "|cff6b5233"
 local GOOD = "|cff1f6b1f"
 local BAD = "|cffa01c1c"
 
+-- Text inked once is kept, so a new theme's ink reaches it too.
+local inkedStrings = {}
 local function Ink(fontString, color)
 	fontString:SetTextColor(color[1], color[2], color[3])
+	inkedStrings[#inkedStrings + 1] = { fontString, color }
+end
+
+local function ApplyPalette(theme)
+	INK[1], INK[2], INK[3] = theme.ink[1], theme.ink[2], theme.ink[3]
+	INK_SOFT[1], INK_SOFT[2], INK_SOFT[3] = theme.inkSoft[1], theme.inkSoft[2], theme.inkSoft[3]
+	LEAD, SOFT, GOOD, BAD = theme.lead, theme.soft, theme.good, theme.bad
+	for _, entry in ipairs(inkedStrings) do
+		local color = entry[2]
+		entry[1]:SetTextColor(color[1], color[2], color[3])
+	end
 end
 
 local frame
@@ -1750,6 +1763,7 @@ local function CreatePage(parent)
 	local page = CreateFrame("Frame", nil, parent)
 	local parchment = page:CreateTexture(nil, "BACKGROUND")
 	parchment:SetAllPoints()
+	ns.Theme.Register(parchment, "parchment")
 	if HasAtlas("QuestBG-Parchment") then
 		parchment:SetAtlas("QuestBG-Parchment")
 	else
@@ -1814,12 +1828,14 @@ local function CreateWindow()
 	inset:ClearAllPoints()
 	inset:SetPoint("TOPLEFT", 4, -60)
 	inset:SetPoint("BOTTOMRIGHT", -6, 30)
+	ns.Theme.Frame(f, inset)
 
 	-- Category tabs, like the stats window's.
 	f.Tabs = {}
 	for i, cat in ipairs(CATEGORIES) do
 		local tab = TryCreate("Button", "OneCastBookFrameTab" .. i, f, "PanelTopTabButtonTemplate")
 			or CreateFrame("Button", "OneCastBookFrameTab" .. i, f, "UIPanelButtonTemplate")
+		ns.Theme.Register(tab, "button")
 		tab:SetID(i)
 		tab:SetText(cat.label)
 		if not tab.Text and tab:GetWidth() < 10 then
@@ -2270,3 +2286,12 @@ events:SetScript("OnEvent", function()
 	end
 end)
 
+
+-- A new theme: the palette, then whatever's drawn with it.
+ns.Theme.OnChange(function(theme)
+	ApplyPalette(theme)
+	if frame and frame.map then
+		frame.map:SetBackdropBorderColor(INK_SOFT[1], INK_SOFT[2], INK_SOFT[3], 0.8)
+	end
+	Book.RefreshIfShown()
+end)

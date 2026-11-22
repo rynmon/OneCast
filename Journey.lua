@@ -30,7 +30,7 @@ local NAT_FISH = { 16970, 16968, 16967, 16969 }
 
 Journey.RANKS = {
 	{ key = "apprentice", name = "Apprentice", cap = 75, from = 1, icon = "Interface\\Icons\\Trade_Fishing",
-		how = "Any Fishing trainer teaches it, for 1 silver: in every capital city and many towns.",
+		how = "Any Fishing trainer teaches it, for 1 silver: in every capital city and many towns. They teach Bait and Tackle too.",
 		needs = { level = 5 }, fishFrom = 1, fishTo = 74 },
 	{ key = "journeyman", name = "Journeyman", cap = 150, from = 75, icon = "Interface\\Icons\\Trade_Fishing",
 		how = "Any Fishing trainer teaches it, for 5 silver, once you've reached Fishing 50.",
@@ -268,7 +268,7 @@ Journey.GEAR = {
 	{ id = 6367, name = "Big Iron Fishing Pole", short = "Shellfish Traps", kind = "Pole", from = "Found in Shellfish Traps under the water, now and then." },
 	{ id = 19022, name = "Nat Pagle's Extreme Angler FC-5000", short = "Horde quest, The Hinterlands", faction = "Horde", kind = "Pole", from = "Reward from Snapjaws, Mon!, a Horde quest in The Hinterlands (level 44).",
 		where = { map = 1425, x = 0.802, y = 0.814, label = "Katoom the Angler, Revantusk Village" }, source = { "quest", 7815, "Snapjaws, Mon!" } },
-	{ id = 19970, name = "Arcanite Fishing Pole", short = "Extravaganza: first 50 winners", kind = "Pole", from = "The Fishing Extravaganza's prize: the first 50 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week.",
+	{ id = 19970, name = "Arcanite Fishing Pole", short = "Extravaganza: first 250 winners", kind = "Pole", from = "The Fishing Extravaganza's prize: the first 250 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Riggle Bassbait, Booty Bay" }, source = { "quest", 8193, "Master Angler" } },
 	{ id = 285094, name = "Ravaged Fishing Pole", short = "Lord Angler, Dustwallow Marsh", kind = "Pole", from = "New in Forever: dropped by Lord Angler, a rare level 44 by the shipwreck in Dustwallow Marsh's bay (about 1 kill in 4).", forever = true,
 		where = { map = 1445, x = 0.560, y = 0.618, label = "Lord Angler (rare), Dustwallow Marsh" }, source = { "npc", 14236, "Lord Angler" } },
@@ -496,7 +496,7 @@ GearCard = function(parent, g)
 	card.selected:SetColorTexture(1, 1, 1, 0.06) -- under the mouse
 	card.selected:Hide()
 	card.icon = card:CreateTexture(nil, "ARTWORK", nil, 1)
-	card.icon:SetSize(34, 34)
+	card.icon:SetSize(32, 32)
 	card.icon:SetPoint("LEFT", 12, 0)
 	card.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 	card.iconFrame = card:CreateTexture(nil, "OVERLAY")
@@ -508,8 +508,8 @@ GearCard = function(parent, g)
 	if not Atlas(card.check, "worldquest-tracker-checkmark") then
 		card.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
 	end
-	card.bonus = card:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-	card.bonus:SetPoint("TOPRIGHT", -12, -9)
+	card.bonus = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	card.bonus:SetPoint("TOPRIGHT", -12, -10)
 	card.status = card:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	card.status:SetPoint("TOPRIGHT", card.bonus, "BOTTOMRIGHT", 0, -2)
 	card.name = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -592,32 +592,33 @@ end
 
 -- Under the worn gear: the best of each you have, and the Fishing all of it adds up to.
 GearBest = function(parent)
-	-- The window's card, its bar gold: a stat row a slot, gold label and white value, then the total.
-	local p = ns.UI.Card(parent)
-	p:SetColor(1, 0.82, 0, 0.12)
-	p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	p.title:SetPoint("TOPLEFT", 14, -8)
-	p.title:SetText("The best you have")
+	-- As the stats window's summary: a section header, a stat row a slot (gold label, white value),
+	-- and the total as the last row.
+	local p = CreateFrame("Frame", nil, parent)
+	local header = ns.UI.SectionHeader(p, 0)
+	header.text:SetText("The best you have")
 	p.lines = {}
-	for i, slot in ipairs(SLOT_ORDER) do
+	local function Line(i, label)
 		local row = CreateFrame("Frame", nil, p)
-		row:SetPoint("TOPLEFT", 8, -8 - 18 - (i - 1) * 20)
-		row:SetPoint("TOPRIGHT", -8, -8 - 18 - (i - 1) * 20)
+		row:SetPoint("TOPLEFT", 0, -28 - (i - 1) * 20)
+		row:SetPoint("TOPRIGHT", 0, -28 - (i - 1) * 20)
 		row:SetHeight(20)
 		ns.UI.RowBackground(row, i)
 		local left = row:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
-		left:SetPoint("LEFT", 6, 0)
-		left:SetText(slot .. ":")
+		left:SetPoint("LEFT", 10, 0)
+		left:SetText(label)
 		local right = row:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
-		right:SetPoint("RIGHT", -6, 0)
+		right:SetPoint("RIGHT", -10, 0)
 		right:SetPoint("LEFT", left, "RIGHT", 10, 0)
 		right:SetJustifyH("RIGHT")
 		right:SetWordWrap(false)
-		p.lines[slot] = right
+		return right
 	end
-	p.total = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	p.total:SetPoint("BOTTOMRIGHT", -14, 8)
-	p.height = 8 + 18 + #SLOT_ORDER * 20 + 8 + 22
+	for i, slot in ipairs(SLOT_ORDER) do
+		p.lines[slot] = Line(i, slot .. ":")
+	end
+	p.total = Line(#SLOT_ORDER + 1, "All together:")
+	p.height = 28 + (#SLOT_ORDER + 1) * 20
 	p:SetHeight(p.height)
 	return p
 end
@@ -634,7 +635,7 @@ PaintGearBest = function(p, best)
 			p.lines[slot]:SetText(GREY .. "none yet|r")
 		end
 	end
-	p.total:SetText(string.format("All together: %s+%d Fishing|r", GOOD, total))
+	p.total:SetText(string.format("%s+%d Fishing|r", GOOD, total))
 end
 
 local function CreateWindow()
@@ -728,11 +729,12 @@ function Journey.Refresh()
 	local learned = 0
 	for i, c in ipairs(frame.cards) do
 		local h = Paint(c, i, current, rank)
+		c:SetIndex(i)
 		c:ClearAllPoints()
 		c:SetPoint("TOPLEFT", EDGE, y)
 		c:SetPoint("TOPRIGHT", -EDGE, y)
 		c:SetHeight(h)
-		y = y - h - 4
+		y = y - h
 		learned = learned + (i <= current and 1 or 0)
 	end
 	frame.ranksHeader.text:SetText(string.format("Ranks  %s(%d of %d learned)|r", GREY, learned, #frame.cards))
@@ -743,7 +745,7 @@ end
 -- right, each under the window's header, and under the worn gear the best you have for each
 -- slot. Each card bright and ticked if you have it (on, or in your bags), dimmed if not, laid
 -- out down its column as tall as the column allows. Held by the wardrobe's Gear guide tab.
-local GEAR_HEADER, GEAR_CARD, GEAR_GAP = 24, 56, 4
+local GEAR_HEADER, GEAR_CARD, GEAR_GAP = 24, 52, 0
 local GEAR_TOP = -GAP - 26 -- under the summary line
 
 local function PaintGearView(v)
@@ -796,7 +798,8 @@ local function PaintGearView(v)
 		header.text:SetText(string.format("%s  %s(%d of %d)|r", key == "pole" and "Fishing poles" or "Worn gear",
 			GREY, owned, #list))
 		local y = GEAR_TOP - GEAR_HEADER - 4
-		for _, card in ipairs(list) do
+		for n, card in ipairs(list) do
+			card:SetIndex(n)
 			card:SetHeight(height - GEAR_GAP)
 			card:ClearAllPoints()
 			card:SetPoint("TOPLEFT", left, y)
@@ -805,8 +808,8 @@ local function PaintGearView(v)
 		end
 		if key == "worn" then
 			v.best:ClearAllPoints()
-			v.best:SetPoint("TOPLEFT", left, y - 4)
-			v.best:SetPoint("TOPRIGHT", right, y - 4)
+			v.best:SetPoint("TOPLEFT", left, y - 8)
+			v.best:SetPoint("TOPRIGHT", right, y - 8)
 		end
 	end
 	PaintGearBest(v.best, best)
@@ -1098,6 +1101,13 @@ local function PlainFrom(f)
 	return text == "source not seen" and "somewhere" or text
 end
 
+-- What players' reports have settled (22 November 2026): Fishing trainers teach Apprentice,
+-- Journeyman and Bait and Tackle (Fenn Fairweather and Baelann Swiftcurrent on Zephras Isle,
+-- Uthan Stillwater in Mulgore, Grimnur Stonebrand in Ironforge, Paxton Ganter in Dun Morogh),
+-- Bait and Tackle from Fishing 6. Learned from a trainer, they're no longer news.
+local TRAINER_RANKS = { [75] = true, [150] = true }
+local TRAINER_SPELLS = { [1278067] = true }
+
 function Journey.Findings()
 	local out = {}
 	local finds = OneCastCharDB and OneCastCharDB.journeyFinds
@@ -1111,15 +1121,18 @@ function Journey.Findings()
 	table.sort(caps)
 	for _, cap in ipairs(caps) do
 		local f = finds.ranks[cap]
+		if TRAINER_RANKS[cap] and f.how == "trainer" then
+			f = nil
+		end
 		local rankName = "Fishing"
 		for _, r in ipairs(Journey.RANKS) do
 			if r.cap == cap then
 				rankName = r.name .. " Fishing"
 			end
 		end
-		out[#out + 1] = { key = "journey:rank:" .. cap, text = string.format("Learned %s (up to %d) %s in %s",
+		out[#out + 1] = f and { key = "journey:rank:" .. cap, text = string.format("Learned %s (up to %d) %s in %s",
 			rankName, cap, FromText(f), f.zone or "?"), title = rankName,
-			detail = string.format("You learned it %s in %s. Where it's taught in Forever isn't known yet.", PlainFrom(f), f.zone or "?") }
+			detail = string.format("You learned it %s in %s. Where it's taught in Forever isn't known yet.", PlainFrom(f), f.zone or "?") } or nil
 	end
 	local ids = {}
 	for id in pairs(finds.gear or {}) do
@@ -1135,10 +1148,10 @@ function Journey.Findings()
 				(f.bonus or 0) > 0 and string.format("+%d Fishing. ", f.bonus) or "", PlainFrom(f), f.zone or "?") }
 	end
 	for spellID, f in pairs(finds.spells or {}) do
-		out[#out + 1] = { key = "journey:spell:" .. spellID, text = string.format("Learned %s (%d) %s in %s",
+		out[#out + 1] = not (TRAINER_SPELLS[spellID] and f.how == "trainer") and { key = "journey:spell:" .. spellID, text = string.format("Learned %s (%d) %s in %s",
 			TRACKED_SPELLS[spellID] or "a fishing spell", spellID, FromText(f), f.zone or "?"),
 			title = TRACKED_SPELLS[spellID] or "A fishing spell",
-			detail = string.format("You learned it %s in %s. Where it's taught isn't known yet.", PlainFrom(f), f.zone or "?") }
+			detail = string.format("You learned it %s in %s. Where it's taught isn't known yet.", PlainFrom(f), f.zone or "?") } or nil
 	end
 	return out
 end

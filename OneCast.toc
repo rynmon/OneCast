@@ -2,7 +2,7 @@
 ## Title: OneCast
 ## Notes: One-button fishing for WoW Forever: the same key (or a double right-click) casts and reels.
 ## Author: rynmon
-## Version: 1.0.6
+## Version: 1.0.7
 ## SavedVariables: OneCastDB
 ## SavedVariablesPerCharacter: OneCastCharDB
 ## IconTexture: Interface\Icons\INV_Misc_Fish_68
@@ -12,6 +12,7 @@
 ## AddonCompartmentFuncOnLeave: OneCast_OnAddonCompartmentLeave
 
 OneCast.lua
+Themes.lua
 ZoneLevels.lua
 FishData.lua
 RecipeSellers.lua
@@ -29,11 +30,13 @@ Pools.lua
 Prices.lua
 Camp.lua
 Report.lua
+Feedback.lua
 Book.lua
 Changelog.lua
 WhatsNew.lua
 Hub.lua
 Mini.lua
+CatchWindow.lua
 WorldMap.lua
 Junk.lua
 Bobber.lua

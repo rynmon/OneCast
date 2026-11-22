@@ -127,9 +127,12 @@ And around it:
 - The **Uncommon or Rare Fishing** buff from a Rack or Hut shows with its time left, and chat tells you when it wears off. What you catch while it's on is kept, to show what its extra rewards really are.
 
 ### 🏆 Fishing Extravaganza
-- A countdown to Stranglethorn's Sunday contest, a Tastyfish counter while it runs (in the mini bar too), and an alert and a waypoint to Riggle Bassbait the moment you hold 40.
-- What it's all for: the first 50 winners get the Arcanite Fishing Pole and a coin for one of Jang's prizes, and each rare contest fish's page says what Fishbot 5000 trades it for.
-- Chat reminders shortly before it starts and when it does.
+- Its own page: a countdown, the race, a checklist, the rare fish and prizes, and your records.
+- **The race:** your Tastyfish, your pace, and whether 40 will come before the end, in the mini bar and stats window too. An alert and a waypoint to Riggle Bassbait the moment you hold 40.
+- **Get ready:** an hour before, chat says what's missing: Fishing for Stranglethorn, a pole, lures, food, bag space.
+- **Where they bite for you:** your best Stranglethorn spots for Tastyfish, from your own catches.
+- **Prizes:** the first 250 winners get the Arcanite Fishing Pole and a coin for one of Jang's prizes. The page shows which of Jang's and Fishbot 5000's prizes you have.
+- **Your results:** a summary when it ends, your best haul, fastest 40 and wins. Your win is spotted when you hand in.
 
 ### 🌅 Just you and the water
 - Turn on **Hide the game's interface while fishing** and, while your line is out, the interface fades away, leaving the water, your bobber and OneCast's own windows (Done fishing included).
@@ -149,7 +152,8 @@ And around it:
 ![The Options tab: categories on the left, their settings in the middle, and the one you hover explained on the right](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/options.png?v=1.0.0b)
 
 - Built from WoW Forever's own art and UI style, so it looks like part of the game.
-- **One window for everything:** stats, tackle box, wardrobe, collection, Camp, Fisherman's journey, data report, What's new and options, with side tabs to move between them. It opens wherever you last dragged it, on the page you had open.
+- **33 themes:** recolour every window, from Tidal, Ashenvale and Booty Bay to Vol'dun, Suramar, Fel, Alliance, Horde and your class colours, each with its own scenery, drifting particles, title-bar emblem and water in the Fishing bar (**Options → Look**, or `/onecast theme`).
+- **One window for everything:** stats, tackle box, wardrobe, collection, Camp, Fisherman's journey, the Extravaganza, feedback, What's new and options, with side tabs to move between them. It opens wherever you last dragged it, on the page you had open.
 - **Every setting in the window,** a category at a time, with each one explained beside it as you hover.
 - **Stays open while you need it:** Escape is left to the game's menu and windows, and Done fishing leaves the stats up. Either can close OneCast instead, if you'd rather (**Options → Stats and sessions**).
 - Scale the whole window (drag a corner, Ctrl + mouse wheel, or `/onecast scale`), or lock it in place.
@@ -177,9 +181,12 @@ And around it:
 | `/onecast journey` | The Fishing ranks, and where to learn the next |
 | `/onecast done` | Done fishing: weapons and gear back on |
 | `/onecast reset` | Start a new session |
+| `/onecast contest` | The Fishing Extravaganza page |
 | `/onecast riggle` | A waypoint to Riggle Bassbait, for the Fishing Extravaganza |
+| `/onecast theme [name]` | Change the window theme (no name: the next one) |
 | `/onecast scan` | Price your catch with Auctionator (auction house open) |
-| `/onecast report` | Your fishing data as text, to share |
+| `/onecast feedback` | Report a bug or suggest an idea |
+| `/onecast report` | Your data report: fishing numbers to share, to help fill in Forever's |
 | `/onecast pad` | What OneCast sees of your controller, if it isn't behaving |
 | `/onecast new` | What's new |
 | `/onecast help` | Every command, and a toggle for every setting |
@@ -193,13 +200,11 @@ And around it:
 - Pools move, so a mark shows where one has been, not where one is now.
 - Auction values need Auctionator, TradeSkillMaster or Naowh Forever installed.
 
-## Help fill in Forever's numbers
-![The data report: what you've found that OneCast doesn't know yet, and the report ready to copy and share](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/report.png?v=1.0.0b)
-
-Nobody has published Forever's real zone fishing levels, or where its rarer fish are found. Type `/onecast report`, click **Select report**, press Ctrl+C and paste it in a comment here or in a [data report on GitHub](https://github.com/rynmon/OneCast/issues/new?template=data-report.yml). The report window has both links ready to copy. When your fishing turns up something OneCast doesn't know, the Data report tab shows a badge until you share. The report lists your catches and getaways with the skill each happened at, any fish the collection is missing, and what the trunks you opened held, and nothing about who you are. With enough reports, OneCast can swap Classic's numbers for Forever's own.
-
 ## Feedback
-Feature requests and bug reports are very welcome. Leave a comment or open an issue here on CurseForge. The Zones tab, the tackle box and much of 1.0 started as comments there, so thank you to everyone who suggests something!
+Found a bug, or have an idea? Open the **Feedback** tab (or type `/onecast feedback`), pick Bug or Idea and write it. OneCast can add your version and setup (no names), then you copy the text and paste it in a comment here or in a [GitHub issue](https://github.com/rynmon/OneCast/issues/new/choose). The Zones tab, the tackle box and much of 1.0 started as comments, so thank you to everyone who suggests something!
+
+### Data report
+Nobody has published Forever's real zone fishing levels or all of its loot, so OneCast learns them from players. Pick **Data report** on the Feedback tab (or type `/onecast report`) to see what you've found that OneCast doesn't know yet: a zone's real level, a fish or treasure that's new, what a camp buff brings in. A green dot on the tab says when there's something new. Copy the report and paste it in a comment or the [data report form](https://github.com/rynmon/OneCast/issues/new?template=data-report.yml). It holds fishing numbers only: no character name, realm or guild.
 
 ---
 

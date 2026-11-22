@@ -18,8 +18,11 @@ Each cast and reel is still one hardware press; nothing is automated.
 
 | File | What it holds |
 |---|---|
+| `Themes.lua` | Window themes: tints registered textures (`Theme.Register`, `Theme.Frame`), parchment ink, and each theme's scene (scenery, particles, emblem, Fishing bar water). Forever, the default, never touches a texture |
 | `Camp.lua` | Forever's camp fishing crafts, the Uncommon and Rare Fishing buffs, catches made under them, and the Camp page |
-| `Report.lua` | `/onecast report`: what's new to OneCast and the evidence for zone levels, as copyable text, and the report window |
+| `CatchWindow.lua` | The catch window: this session's catch popped out of the stats window, with the stats window's own rows |
+| `Feedback.lua` | `/onecast feedback`: a bug report, an idea or the data report, as copyable text, and the links to paste it at |
+| `Report.lua` | The data report: findings (what this character saw that OneCast doesn't know), which are shared once copied, and the report text; shown on the Feedback page |
 | `OneCast.lua` | Cast button, reel key override, CVar leases, the options (described once in `OPTIONS`, `CHOICES`, `OPTION_MAIN` and `OPTION_PAGES` for both the game's panel and the window's Options tab), minimap button, slash commands |
 | `Gear.lua` | Equipping the pole and any fishing gear from the bags, and putting weapons and gear back |
 | `Food.lua` | Fishing food: Forever's cooked fish that raise Fishing while Well Fed, the buff's time left, the reminder and the zone hint |
@@ -33,7 +36,7 @@ Each cast and reel is still one hardware press; nothing is automated.
 | `FishData.lua` | Every fish and treasure in the collection: category, zones (most common first) and recipes |
 | `Odds.lua` | Each catch's chance per cast by zone and pool, from Classic's loot tables (generated), its rarity tier, what each pool gives, and pool names in each client language (from AzerothCore) |
 | `Collection.lua` | Account-wide record of which characters caught each fish, synced from each character's stats, and the "caught by" line on item tooltips |
-| `Extravaganza.lua` | The Stranglethorn Fishing Extravaganza: schedule, Tastyfish counter, reminders, and Forever's prizes |
+| `Extravaganza.lua` | The Stranglethorn Fishing Extravaganza and its page: schedule, the race and its pace, the checklist, reminders, wins, records and Forever's prizes |
 | `MapOverlays.lua` | Every explored-area overlay of each zone map, so the book's maps show fully revealed (generated from game data) |
 | `Book.lua` | The collection book window: fish grid, each fish's page with zones, map and recipes, and the Zones ladder of every zone's level |
 | `Changelog.lua` | Release notes, shown in the What's new window and used for releases |
@@ -63,7 +66,7 @@ Each cast and reel is still one hardware press; nothing is automated.
 - **One window:** every page is its own frame, attached with `Hub.Attach`. Only one is shown at a time, all at the same height (`ns.UI.PAGE_HEIGHT`) and at the window scale (`statsScale`), each placed at a shared top-left corner saved in UI units (`windowPoints.hub`), so dragging any page moves them all. The side tabs follow the open page.
 - **Spots, hours and skill-ups:** each zone's totals keep `spots` by sub-zone (`GetSubZoneText` at the cast). Lifetime items keep `hours`, catches by realm hour (`GetGameTime`), which the collection copies for the book's time of day. `OneCastCharDB.skill` counts catches since the last skill-up; the next-point estimate uses Classic's rule of thumb (1 catch per point to 75, then one more per 25 points).
 - **Session summary** prints after `ACTIVE_GAP` (2 minutes) without a cast, once per stretch of new catches.
-- **Zone levels** are keyed by English zone name, and `ZoneNames.lua` swaps those for the client's own at load, by area ID (`C_Map.GetAreaInfo`), so they match `GetRealZoneText` in any language. A new zone needs an area ID there. OneCast counts real getaways (`ERR_FISH_ESCAPED`), and zones without data are judged from them. `Stats.ZoneStatus` holds that judgement, and the stats window's zone strip, the book's Zones view and the data report all read it.
+- **Zone levels** are keyed by English zone name, and `ZoneNames.lua` swaps those for the client's own at load, by area ID (`C_Map.GetAreaInfo`), so they match `GetRealZoneText` in any language. A new zone needs an area ID there. OneCast counts real getaways (`ERR_FISH_ESCAPED`), and zones without data are judged from them. `Stats.ZoneStatus` holds that judgement, and the stats window's zone strip, and the book's Zones view both read it.
 - **Auction prices** come from Auctionator (`GetAuctionPriceByItemID`), TSM (`dbmarket`) or Naowh Forever (`NaowhForever.AuctionPrice`, its namespace; its stand-in for Auctionator's API is told apart by Auctionator not being loaded). The scan hands every caught item to Auctionator's `MultiSearchExact`.
 - **Wanted items** are account-wide (`OneCastDB.wanted`); stats are per character (`OneCastCharDB`).
 - **Collection:** `OneCastDB.collection.items[itemID].byChar[character]` holds each character's count and zones, copied from that character's `OneCastCharDB` at login and after each catch, so earlier catches count and nothing is counted twice. Any "Meat" trade good you fish up that isn't in `FishData.lua` joins the book as a discovered fish.

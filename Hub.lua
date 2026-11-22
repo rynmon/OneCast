@@ -1,6 +1,6 @@
 -- OneCast hub: every OneCast window as one, with side tabs to move between them.
 --
--- The stats window, tackle box, collection book, data report and What's new stay their own
+-- The stats window, tackle box, collection book, feedback and What's new stay their own
 -- frames, so everything inside them works as before. The hub makes them act as one window:
 -- only one is open at a time, each opens where the last one was (dragging any of them moves
 -- "the window"), and a rail of side tabs on the open one's right edge switches between them.
@@ -176,8 +176,10 @@ local TABS = {
 		open = function() ns.Journey.Show() end },
 	{ key = "camp", hint = "/onecast camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
 		open = function() ns.Camp.ShowPage() end },
-	{ key = "report", hint = "/onecast report", label = "Data report", icon = "Interface\\Icons\\INV_Letter_15",
-		open = function() ns.Report.Show() end },
+	{ key = "contest", hint = "/onecast contest", label = "Fishing Extravaganza", item = 19807, icon = "Interface\\Icons\\INV_Misc_Fish_18",
+		open = function() ns.Extravaganza.ShowPage() end },
+	{ key = "feedback", hint = "/onecast feedback", label = "Feedback and data report", icon = "Interface\\Icons\\INV_Letter_15",
+		open = function() ns.Feedback.Show() end },
 	{ key = "news", hint = "/onecast new", label = "What's new", icon = "Interface\\Icons\\INV_Misc_Note_01",
 		open = function() ns.WhatsNew.Show() end },
 	{ key = "options", hint = "/onecast", label = "Options", icon = "Interface\\Icons\\INV_Misc_Gear_01",
@@ -227,7 +229,7 @@ end
 
 -- A green dot on a tab with something waiting: findings to share, a version not yet read.
 local BADGES = {
-	report = function()
+	feedback = function()
 		return ns.Report and #ns.Report.Unshared() > 0
 	end,
 	news = function()
@@ -600,7 +602,7 @@ function Hub.ShowTour()
 		tour.text:SetPoint("TOPLEFT", tour.title, "BOTTOMLEFT", 0, -4)
 		tour.text:SetWidth(196)
 		tour.text:SetJustifyH("LEFT")
-		tour.text:SetText("These tabs switch pages: stats, tackle box, collection, Camp, data report, What's new and options. Hover one to see which.")
+		tour.text:SetText("These tabs switch pages: stats, tackle box, collection, Camp, the Extravaganza, feedback, What's new and options. Hover one to see which.")
 		local ok = CreateFrame("Button", nil, tour, "UIPanelButtonTemplate")
 		ok:SetSize(70, 20)
 		ok:SetPoint("BOTTOMRIGHT", -8, 8)
@@ -833,7 +835,7 @@ local function CreateOptions()
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	f:SetPoint("CENTER")
 
-	-- Right of the portrait, above the inset, as on the data report.
+	-- Right of the portrait, above the inset.
 	f.status = f:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	f.status:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", 62, 6)
 	f.status:SetPoint("RIGHT", inset, "RIGHT", -6, 0)

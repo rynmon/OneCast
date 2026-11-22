@@ -23,6 +23,8 @@ ns.BINDING_COMMAND = BINDING_COMMAND
 local defaults = {
 	largerText = false,      -- accessibility: OneCast's small print at the normal size
 	glyphSize = "normal",    -- accessibility: controller button icons, normal, large or largest
+	theme = "forever",       -- the windows' colours (Themes.lua); Forever is the game's own look
+	themeEffects = "all",    -- what a theme adds besides colour: all, still or off
 	rowShading = "strong",   -- accessibility: every other row of a list shaded, off, light or strong
 	collectionTicks = true,  -- accessibility: a tick on what you've caught
 	reduceMotion = false,    -- accessibility: OneCast's animations stopped
@@ -38,6 +40,7 @@ local defaults = {
 	escapeCloses = false,
 	catchTooltip = true,
 	fadeStats = false,
+	catchWindow = false, -- this session's catch in a small window of its own
 	lockWindow = false,
 	tabSide = "right", -- the OneCast window's side tabs: "right" or "left"
 	alert = true,
@@ -86,6 +89,7 @@ local defaults = {
 	campReminder = true,
 }
 -- Per character: skill and bags differ, and lures get used up.
+ns.DEFAULTS = defaults -- for the feedback page's "settings changed"
 local charDefaults = {
 	autoLure = false,
 	lureChoice = 0, -- Lure.NONE
@@ -133,6 +137,8 @@ local OPTIONS = {
 		tooltip = "When you press Done fishing, close the stats window (or the mini bar) as well as putting your weapons and gear back on. Off, it stays open, even if it opened by itself when you cast." },
 	{ cmd = "escclose", key = "escapeCloses", label = "Escape closes OneCast windows",
 		tooltip = "Escape closes OneCast's windows, newest first, once the game's own windows (bags, map) are closed, and then opens the game menu as usual. Off, OneCast's windows stay open through Escape and close with their X." },
+	{ cmd = "catches", key = "catchWindow", label = "Catch window",
+		tooltip = "This session's catch in a small window of its own, to keep beside you while you fish. Drag it anywhere and pull its corner for more rows. Pop out on the stats window's list opens it too." },
 	{ cmd = "fade", key = "fadeStats", label = "Fade stats while fishing",
 		tooltip = "While you're fishing, the stats window fades to see-through when your mouse isn't over it, so it hides less of the water." },
 	{ cmd = "lock", key = "lockWindow", label = "Lock the window",
@@ -182,7 +188,7 @@ local OPTIONS = {
 	{ cmd = "map", key = "mapStrip", label = "Fishing levels on the world map",
 		tooltip = "A small card on the world map with the zone's fishing level, how your skill stands and your fish caught there. On a continent, it follows the zone under the mouse. Drag it anywhere, Ctrl + mouse wheel over it to size it, right-click to put it back." },
 	{ cmd = "badges", key = "tabBadges", label = "Green dots on the side tabs",
-		tooltip = "A green dot on the Report tab when you've found something to share, and on What's new when there's a version you haven't read." },
+		tooltip = "A green dot on the Feedback tab when your data report has something new to share, and on What's new when there's a version you haven't read." },
 	{ cmd = "minimap", key = "minimapButton", label = "Show minimap button",
 		tooltip = "Show the OneCast button on the minimap. Drag it to move it." },
 }
@@ -216,7 +222,7 @@ local OPTION_PAGES = {
 		{ "Motion", "reduceMotion" },
 	},
 	{ name = "Stats and sessions",
-		{ "Windows", "openOnCast", "openOnPole", "statsMini", "closeOnDone", "doneCloses", "escapeCloses", "fadeStats" },
+		{ "Windows", "openOnCast", "openOnPole", "statsMini", "catchWindow", "closeOnDone", "doneCloses", "escapeCloses", "fadeStats" },
 		{ "Sessions", "sessionStart", "sessionBreak", "sessionSummary" },
 	},
 	{ name = "Alerts",
@@ -368,6 +374,26 @@ local CHOICES = {
 				ns.Controller.Update()
 			end
 		end },
+	theme = { label = "Theme", kind = "string",
+		tooltip = "The colours of OneCast's windows, every page of them. Forever is the game's own look. Changes as soon as you pick one.",
+		list = function()
+			local list = {}
+			for _, id in ipairs(ns.Theme.ORDER) do
+				list[#list + 1] = { id, ns.Theme.LIST[id].label }
+			end
+			return list
+		end,
+		onChange = function()
+			ns.Theme.Apply()
+		end },
+	themeEffects = { label = "Theme effects", kind = "string",
+		tooltip = "What a theme adds besides its colours: scenery along the foot of each window, particles drifting over it (bubbles, snow, embers, fireflies), an emblem in the title bar and its own water in the Fishing bar. Still keeps everything but the particles, as Reduce motion does.",
+		list = function()
+			return { { "all", "Full" }, { "still", "Still" }, { "off", "Colours only" } }
+		end,
+		onChange = function()
+			ns.Theme.Apply()
+		end },
 	rowShading = { label = "Row shading", kind = "string",
 		tooltip = "Shades every other row of OneCast's lists (stats, catches and options), so your eye can follow a row across, and the backing of the headline numbers. Light is fainter; Off leaves the rows plain.",
 		list = function()
@@ -444,7 +470,7 @@ local CHOICES = {
 
 -- The options on the main page, before OPTION_PAGES, for the window's Options page.
 local OPTION_MAIN = {
-	{ "Look", "tabSide", "statsScale" },
+	{ "Look", "theme", "themeEffects", "tabSide", "statsScale" },
 	{ "General", "lockWindow", "minimapButton", "tabBadges", "loginMessage" },
 	{ "Tooltips and map", "catchTooltip", "poolTooltip", "mapStrip", "rememberPools" },
 }
@@ -1044,7 +1070,8 @@ local function SettingsPage()
 		{ "Fishing wardrobe", function() ns.Wardrobe.Show() end },
 		{ "Fishing collection", function() ns.Book.Show() end },
 		{ "Fisherman's journey", function() ns.Journey.Show() end },
-		{ "Data report", function() ns.Report.Show() end },
+		{ "Feedback", function() ns.Feedback.Show() end },
+		{ "Data report", function() ns.Feedback.ShowReport() end },
 		{ "What's new", function() ns.WhatsNew.Show() end },
 	}) do
 		Button(entry[1], entry[2], i % 2 == 1 and 16 or 232)
@@ -1060,6 +1087,11 @@ local function SetupSettings()
 
 	local ON_CHANGE = {
 		minimapButton = UpdateMinimapVisibility,
+		catchWindow = function()
+			if ns.CatchWindow then
+				ns.CatchWindow.Apply()
+			end
+		end,
 		escapeCloses = function()
 			if ns.UI and ns.UI.UpdateEscape then
 				ns.UI.UpdateEscape()
@@ -1176,6 +1208,10 @@ function ns.FillTooltip(tip, isMinimap)
 	local contest = ns.Extravaganza and ns.Extravaganza.StatusLine(ns.Stats.CurrentZone())
 	if contest then
 		Row("Extravaganza", contest)
+		local pace = ns.Extravaganza.PaceLine()
+		if pace then
+			Row("Race", pace)
+		end
 	end
 
 	tip:AddLine(" ")
@@ -1200,7 +1236,9 @@ local MENU = {
 	{ "Fishing collection", function() ns.Book.Toggle() end },
 	{ "Fisherman's journey", function() ns.Journey.Show() end },
 	{ "Camp", function() ns.Camp.ShowPage() end },
-	{ "Data report", function() ns.Report.Toggle() end },
+	{ "Fishing Extravaganza", function() ns.Extravaganza.ShowPage() end },
+	{ "Feedback", function() ns.Feedback.Toggle() end },
+	{ "Data report", function() ns.Feedback.ToggleReport() end },
 	{ "What's new", function() ns.WhatsNew.Toggle() end },
 	false, -- a divider
 	{ "Options", function() ns.Hub.ShowOptions() end },
@@ -1447,7 +1485,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 			ns.db = db
 			-- Settings of features 1.0 removed (themes, milestones, the clean view, the bobber's
 			-- styles and height, the auction source, the report's chat hints): gone from the saves.
-			for _, key in ipairs({ "theme", "themeEffects",
+			for _, key in ipairs({ "pageTheme",
 				"reportHint", "milestones", "milestonesSeeded", "milestonesOn",
 				"milestoneAlerts", "sellJunk" }) do
 				db[key] = nil
@@ -1464,6 +1502,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 				end
 			end
 			ns.ApplyTextSize()
+			ns.Theme.Init()
 			SetupSettings()
 			SetupMinimapButton()
 		end
@@ -1600,8 +1639,14 @@ SlashCmdList.ONECAST = function(msg)
 	elseif cmd == "camp" then
 		ns.Camp.ShowPage()
 		return
-	elseif cmd == "report" then
-		ns.Report.Show()
+	elseif cmd == "contest" then
+		ns.Extravaganza.ShowPage()
+		return
+	elseif cmd == "feedback" or cmd == "bug" then
+		ns.Feedback.Show()
+		return
+	elseif cmd == "report" or cmd == "data" then
+		ns.Feedback.ShowReport()
 		return
 	elseif cmd == "new" or cmd == "whatsnew" then
 		ns.WhatsNew.Toggle()
@@ -1617,6 +1662,11 @@ SlashCmdList.ONECAST = function(msg)
 		ns.Pools.Forget()
 		ns.Book.RefreshIfShown()
 		Print("remembered pools cleared.")
+		return
+	elseif cmd == "theme" or cmd:match("^theme%s") then
+		local name = cmd:match("^theme%s+(%a+)")
+		local label = ns.Theme.Choose(name)
+		Print(label and ("theme: " .. label) or ("no theme called " .. name .. ". Try " .. table.concat(ns.Theme.ORDER, ", ") .. "."))
 		return
 	elseif cmd == "scale" or cmd:match("^scale%s") then
 		local percent = tonumber(cmd:match("^scale%s+(%d+)"))
@@ -1645,10 +1695,12 @@ SlashCmdList.ONECAST = function(msg)
 	Print("/onecast search <words> - search catches, zones, recipes, gear, ranks and settings")
 	Print("/onecast wardrobe - choose what you wear to fish")
 	Print("/onecast journey - the Fishing ranks, and where to learn the next")
-	Print("/onecast riggle - a waypoint to Riggle Bassbait, for the Fishing Extravaganza")
+	Print("/onecast contest - the Fishing Extravaganza (/onecast riggle for a waypoint to Booty Bay)")
 	Print("/onecast beam - pick your own colour for the bobber's beam")
 	Print("/onecast book - fishing collection (/onecast camp for the Camp page)")
-	Print("/onecast report - your fishing data as text, to share and help fill in Forever's numbers")
+	Print("/onecast feedback - report a bug or suggest an idea")
+	Print("/onecast report - your fishing data, to share and help fill in Forever's numbers")
+	Print("/onecast theme [name] - window colours (no name: the next one)")
 	Print("/onecast tackle - tackle box (/onecast tackle reset moves its button back)")
 	Print("/onecast stats - stats window (or /onecast session|spots|alltime for a tab)")
 	Print("/onecast reset - start a new session")

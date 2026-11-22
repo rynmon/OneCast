@@ -35,7 +35,7 @@ local SUMMARY_TOP = STRIP_TOP - STRIP_HEIGHT - GAP
 local TILES_TOP, TILE_HEIGHT, TILE_GAP = SUMMARY_TOP - HEADER_HEIGHT - HEADER_GAP, 44, 5
 local STATS_TOP = TILES_TOP - TILE_HEIGHT - HEADER_GAP
 local STAT_ROWS, STAT_HEIGHT = 8, 21 -- room around each line: one fact a row, the rest on hover
-local MAX_ROWS, ITEM_HEIGHT = 20, 22
+local MAX_ROWS, ITEM_HEIGHT = 28, 22 -- enough for the list with the summary folded away
 local LATEST_HEIGHT = 40 -- the latest catch's card, above the session's list
 local VIEWS = {
 	{ key = "session", label = "Session", tip = "This session: what you've caught, gold and fish per hour, and your skill." },
@@ -130,6 +130,9 @@ end
 local function RefreshIfShown()
 	if frame and frame:IsShown() then
 		Stats.Refresh()
+	end
+	if ns.CatchWindow then
+		ns.CatchWindow.Refresh()
 	end
 	if ns.Mini then
 		ns.Mini.Refresh()
@@ -1804,9 +1807,8 @@ local function NowView(zone)
 	end
 	-- What it's worth, vendor and auction in one row.
 	stats[#stats + 1] = WorthRow(value, worth)
-	local contest = ns.Extravaganza and ns.Extravaganza.StatusLine(zone)
-	if contest then
-		stats[#stats + 1] = { "Extravaganza", contest }
+	if ns.Extravaganza then
+		Append(stats, ns.Extravaganza.StatusRows(zone))
 	end
 	local camp = ns.Camp and ns.Camp.StatusText()
 	if camp then
@@ -2305,6 +2307,7 @@ local function CreateShell(name, titleText, icon)
 		f.Inset:ClearAllPoints()
 		f.Inset:SetPoint("TOPLEFT", 4, -60)
 		f.Inset:SetPoint("BOTTOMRIGHT", -6, 28)
+		ns.Theme.Frame(f, f.Inset)
 		return f, f.Inset
 	end
 
@@ -2323,6 +2326,7 @@ local function CreateShell(name, titleText, icon)
 	local inset = TryCreate("Frame", nil, f, "InsetFrameTemplate") or CreateFrame("Frame", nil, f)
 	inset:SetPoint("TOPLEFT", 10, -60)
 	inset:SetPoint("BOTTOMRIGHT", -10, 32)
+	ns.Theme.Frame(f, inset)
 	return f, inset
 end
 
@@ -2409,20 +2413,34 @@ local function WaterBar(parent, name)
 	flipbook:SetFlipBookFrameWidth(0)
 	flipbook:SetFlipBookFrameHeight(0)
 
-	-- Fishing's own water: a flipbook of 2 columns of 34-pixel frames.
-	do
-		fill:SetAtlas(WATER_FILL)
-		local info = C_Texture.GetAtlasInfo(WATER_FILL)
+	-- The theme's water: Fishing's own, another profession's flipbook (Alchemy's bubbling green,
+	-- Blacksmithing's molten metal), or Fishing's tinted. Each has 2 columns of 34-pixel frames.
+	local function ApplyWater()
+		local atlas, flareName, tint = WATER_FILL, WATER_FLARE, nil
+		if ns.Theme and ns.Theme.Water then
+			atlas, flareName, tint = ns.Theme.Water()
+		end
+		flow:Stop()
+		fill:SetAtlas(atlas)
+		local info = C_Texture.GetAtlasInfo(atlas)
 		local rows = info and info.height and math.max(1, math.floor(info.height / WATER_FRAME_HEIGHT + 0.5)) or 30
 		flipbook:SetFlipBookRows(rows)
 		flipbook:SetFlipBookFrames(rows * 2)
-		if HasAtlas(WATER_FLARE) then
-			flare:SetAtlas(WATER_FLARE)
+		fill:SetDesaturated(tint ~= nil)
+		fill:SetVertexColor(tint and tint[1] or 1, tint and tint[2] or 1, tint and tint[3] or 1)
+		local flareAtlas = HasAtlas(flareName) and flareName or WATER_FLARE
+		if HasAtlas(flareAtlas) then
+			flare:SetAtlas(flareAtlas)
 		end
-		surge:SetVertexColor(0.55, 0.85, 1)
+		flare:SetVertexColor(tint and tint[1] or 1, tint and tint[2] or 1, tint and tint[3] or 1)
+		surge:SetVertexColor(tint and tint[1] or 0.55, tint and tint[2] or 0.85, tint and tint[3] or 1)
 		if not ns.ReduceMotion() then
 			flow:Play()
 		end
+	end
+	ApplyWater()
+	if ns.Theme and ns.Theme.OnChange then
+		ns.Theme.OnChange(ApplyWater)
 	end
 
 	local flash = surge:CreateAnimationGroup()
@@ -2748,6 +2766,7 @@ local function SectionHeader(parent, y)
 	else
 		bg:SetColorTexture(0.12, 0.1, 0.08, 0.9)
 	end
+	ns.Theme.Register(bg, "header")
 	h.bg = bg
 	h.text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	h.text:SetPoint("LEFT", 10, 0)
@@ -2760,14 +2779,18 @@ end
 -- A headline number's backing (`bg.tile`) is a little stronger again, and never goes plain.
 local function ShadeRow(bg)
 	local shading = ns.db and ns.db.rowShading or "strong"
-	bg:SetShown(shading ~= "off" or bg.tile)
+	bg:SetShown((shading ~= "off" or bg.tile) and not bg.unshaded)
+	local r, g, b = 1, 1, 1
+	bg:SetVertexColor(1, 1, 1)
+	bg:SetAlpha(1)
 	if shading == "strong" then
-		bg:SetColorTexture(1, 1, 1, bg.tile and 0.12 or 0.09)
+		bg:SetColorTexture(r, g, b, bg.tile and 0.12 or 0.09)
 	elseif HasAtlas("UI-Character-Info-Line-Bounce") then
 		bg:SetAtlas("UI-Character-Info-Line-Bounce")
+		bg:SetVertexColor(r, g, b)
 		bg:SetAlpha(bg.tile and 0.5 or 0.3)
 	else
-		bg:SetColorTexture(1, 1, 1, bg.tile and 0.06 or 0.04)
+		bg:SetColorTexture(r, g, b, bg.tile and 0.06 or 0.04)
 	end
 end
 
@@ -3426,6 +3449,7 @@ local function IconButton(parent, art, tooltip, onClick)
 		b.icon:SetPoint("CENTER")
 	end
 	b:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
+	ns.Theme.Register(b, "button", { [b.icon] = true })
 	b.icon:ClearAllPoints()
 	b.icon:SetPoint("CENTER")
 	local native = NATIVE_ICONS[art]
@@ -3507,37 +3531,24 @@ ns.UI = {
 	RankBar = function(parent, name) return RankBar(parent, name) end, -- Forever's Fishing bar: (parent, name), then :SetRank(fraction, "186/225")
 	SectionHeader = SectionHeader,
 	RowBackground = RowBackground,
-	-- A card, as the zone's under the Fishing bar: the headline numbers' backing (Row shading),
-	-- a bar down its left and a glow fading out from it. card:SetColor(r, g, b, glow) colours them.
+	-- An entry drawn as the stats window's lists are: no box of its own, only the list's row shading
+	-- when it's given a place in one (card:SetIndex(i): odd rows shaded, as everywhere else).
+	-- Without an index it sits plain on the page. card:SetColor is kept for the pages that call it
+	-- and does nothing: state is said in words, as in the stats window.
 	Card = function(parent, kind)
 		local card = CreateFrame(kind or "Frame", nil, parent)
-		local base = card:CreateTexture(nil, "BACKGROUND", nil, 0)
-		base:SetAllPoints()
-		base.tile = true
+		local stripe = card:CreateTexture(nil, "BACKGROUND", nil, 0)
+		stripe:SetAllPoints()
+		stripe.unshaded = true
 		Stats.shadedRows = Stats.shadedRows or {}
-		table.insert(Stats.shadedRows, base)
-		ShadeRow(base)
-		local glow = card:CreateTexture(nil, "BACKGROUND", nil, 1)
-		glow:SetPoint("TOPLEFT")
-		glow:SetPoint("BOTTOMLEFT")
-		glow:SetPoint("RIGHT", card, "CENTER", 0, 0)
-		glow:SetTexture("Interface\\Buttons\\WHITE8x8")
-		glow:SetBlendMode("ADD")
-		local accent = card:CreateTexture(nil, "BORDER")
-		accent:SetPoint("TOPLEFT")
-		accent:SetPoint("BOTTOMLEFT")
-		accent:SetWidth(3)
-		function card:SetColor(r, g, b, strength)
-			accent:SetColorTexture(r, g, b, 0.9)
-			local a = strength or 0.16
-			if glow.SetGradient and CreateColor then
-				glow:SetVertexColor(1, 1, 1, 1)
-				glow:SetGradient("HORIZONTAL", CreateColor(r, g, b, a), CreateColor(r, g, b, 0))
-			else
-				glow:SetVertexColor(r, g, b, a / 2)
-			end
+		table.insert(Stats.shadedRows, stripe)
+		ShadeRow(stripe)
+		card.stripe = stripe
+		function card:SetIndex(i)
+			stripe.unshaded = not i or i % 2 == 0
+			ShadeRow(stripe)
 		end
-		card:SetColor(0.5, 0.5, 0.5, 0)
+		function card:SetColor() end
 		return card
 	end,
 	-- For a choice or a way to somewhere else: red buttons (UIPanelButtonTemplate) are kept for the
@@ -3643,6 +3654,8 @@ ns.UI = {
 		b:HookScript("OnDisable", Look)
 		function b:SetMenu(menu)
 			arrow:SetShown(menu)
+			lit:SetShown(menu) -- the arrow's own light: without the arrow, a stray blue square
+			b.arrowLight = lit
 			text:ClearAllPoints()
 			text:SetPoint("LEFT", 10, 0)
 			text:SetPoint("RIGHT", menu and arrow or self, menu and "LEFT" or "RIGHT", menu and 0 or -10, 0)
@@ -3672,6 +3685,7 @@ ns.UI = {
 			ShadeRow(bg)
 		end
 	end,
+
 	StatRow = StatRow,
 	IconButton = IconButton,
 	ShowWowhead = ShowWowhead,
@@ -3679,6 +3693,8 @@ ns.UI = {
 	ShowMenu = ShowMenu,
 	StatTile = StatTile, -- a headline number: (parent, 1 to 3, top), with .value, .caption and .tooltip
 	ShowItemMenu = ShowItemMenu,
+	ItemRow = ItemRow, -- a catch's row: (parent, index, y), as the stats window's list
+	ITEM_HEIGHT = ITEM_HEIGHT,
 }
 
 -- Top tabs like the Options window's Game / AddOns, else classic tabs under the frame.
@@ -3691,6 +3707,7 @@ local function CreateTabs(f, inset)
 			top = false
 			tab = CreateFrame("Button", "OneCastStatsFrameTab" .. i, f, "PanelTabButtonTemplate")
 		end
+		ns.Theme.Register(tab, "button")
 		tab:SetID(i)
 		tab:SetText(v.label)
 		tab.view = v.key
@@ -3851,6 +3868,9 @@ local function CreateWindow()
 			entries[#entries + 1] = { mark .. choice[2], function()
 				charDB.catchSort = choice[1]
 				Stats.Refresh()
+				if ns.CatchWindow then
+					ns.CatchWindow.Refresh()
+				end
 			end }
 		end
 		ShowMenu("Sort by", entries)
@@ -3866,6 +3886,57 @@ local function CreateWindow()
 		GameTooltip:Show()
 	end)
 	f.listSort:SetScript("OnLeave", GameTooltip_Hide)
+	-- The header folds the summary away, as the quest log's headers do: a plus to show more of
+	-- the list, a minus to bring the summary back. Its title is the button.
+	local expand = CreateFrame("Button", nil, f.listHeader)
+	expand:SetPoint("TOPLEFT", 0, 0)
+	expand:SetPoint("BOTTOMLEFT", 0, 0)
+	expand:SetWidth(200)
+	expand.icon = expand:CreateTexture(nil, "ARTWORK")
+	expand.icon:SetSize(14, 14)
+	expand.icon:SetPoint("LEFT", 8, 0)
+	local lit = expand:CreateTexture(nil, "HIGHLIGHT")
+	lit:SetAllPoints(expand.icon)
+	lit:SetTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+	lit:SetBlendMode("ADD")
+	f.listHeader.text:ClearAllPoints()
+	f.listHeader.text:SetPoint("LEFT", expand.icon, "RIGHT", 6, 0)
+	function expand:Paint(open)
+		self.open = open
+		self.icon:SetTexture(open and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+		self:SetWidth(math.max(60, (f.listHeader.text:GetStringWidth() or 120) + 34))
+	end
+	expand:SetScript("OnClick", function()
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		charDB.listExpanded = not charDB.listExpanded or nil
+		Stats.Refresh()
+	end)
+	expand:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(self.open and "Show the summary again" or "Show more of the list")
+		GameTooltip:AddLine(self.open and "Bring back the numbers above the list."
+			or "Fold the numbers above away, so the list fills the window.", 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	expand:SetScript("OnLeave", GameTooltip_Hide)
+	f.listExpand = expand
+	-- Pop out: the catch in a small window of its own, to keep beside you while you fish.
+	f.listPopout = ns.UI.HeaderButton(f.listHeader)
+	f.listPopout:SetLabel(nil, "Pop out")
+	f.listPopout:SetScript("OnClick", function()
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		if ns.CatchWindow then
+			ns.CatchWindow.Toggle()
+		end
+	end)
+	f.listPopout:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText("Pop out")
+		GameTooltip:AddLine("This session's catch in a small window of its own, to keep beside you while you fish. "
+			.. "The Catch window setting keeps it open.", 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	f.listPopout:SetScript("OnLeave", GameTooltip_Hide)
 	f.rows = {}
 	f.latest = ItemRow(inset, 1, 0)
 	f.latest:SetHeight(LATEST_HEIGHT)
@@ -4008,6 +4079,21 @@ local function LayoutBottomButtons(view)
 	end
 end
 
+-- This session's catch as the list shows it, for the catch window (CatchWindow.lua).
+function Stats.SessionRows()
+	local s = Session()
+	if not (s and s.catches > 0) then
+		return {}
+	end
+	local rows = ShareRows(s.items, charDB.catchSort, s)
+	if s.inside then
+		rows = WithContents(rows, s)
+	else
+		Append(rows, ContentRows(s))
+	end
+	return rows
+end
+
 function Stats.Refresh()
 	local view = CurrentView()
 	local title, tiles, stats, rows, listTitle, emptyText = BuildView(view)
@@ -4059,8 +4145,19 @@ function Stats.Refresh()
 		end
 	end
 
-	-- The list starts under the detail rows and fills the rest of the window.
-	local listTop = STATS_TOP - shownStats * statHeight - GAP
+	-- The list starts under the detail rows and fills the rest of the window; expanded, the
+	-- summary folds away and the list starts where it did.
+	local expanded = charDB.listExpanded and true or false
+	frame.summaryHeader:SetShown(not expanded)
+	for _, tile in ipairs(frame.tiles) do
+		tile:SetShown(not expanded)
+	end
+	if expanded then
+		for _, row in ipairs(frame.stats) do
+			row:Hide()
+		end
+	end
+	local listTop = expanded and SUMMARY_TOP or (STATS_TOP - shownStats * statHeight - GAP)
 	local rowsTop = listTop - HEADER_HEIGHT - HEADER_GAP
 	-- This session's latest catch, as a card above the list.
 	local last = view == "session" and Session().catches > 0 and Stats.LatestCatch()
@@ -4100,6 +4197,15 @@ function Stats.Refresh()
 	local offset = frame.listOffset
 	frame.listToggle:SetShown(view == "farm" or view == "records")
 	frame.listSort:SetShown(view == "session" and #rows > 1)
+	frame.listExpand:Paint(expanded)
+	frame.listPopout:SetShown(view == "session")
+	frame.listPopout:ClearAllPoints()
+	local rightmost = frame.listSort:IsShown() and frame.listSort or frame.listToggle:IsShown() and frame.listToggle
+	if rightmost then
+		frame.listPopout:SetPoint("RIGHT", rightmost, "LEFT", -4, 0)
+	else
+		frame.listPopout:SetPoint("RIGHT", -2, 0)
+	end
 	if frame.listSort:IsShown() then
 		frame.listSort:Paint()
 	end

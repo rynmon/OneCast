@@ -98,6 +98,11 @@ local function Create()
 	bg:SetHorizTile(true)
 	bg:SetVertTile(true)
 	f.inset = inset
+	ns.Theme.Frame(f, inset, true)
+	ns.Theme.Register(band, "header") -- after the frame, so the band takes the header's tint
+	if border then
+		ns.Theme.Register(border, "frame")
+	end
 	f:SetSize(WIDTH, 80)
 	f:SetPoint("TOP", UIParent, "TOP", 0, -140)
 	f:SetFrameStrata("MEDIUM")
@@ -174,6 +179,8 @@ local function Create()
 	-- The Fishing Extravaganza: while it runs, or in the hours before.
 	f.contest = Line(inset)
 	f.contest:SetPoint("RIGHT", -PAD, 0)
+	f.pace = Line(inset)
+	f.pace:SetPoint("RIGHT", -PAD, 0)
 	f.goals = {}
 
 	-- Lure time and rates tick over: redraw once a second while shown.
@@ -279,6 +286,17 @@ function Mini.Refresh()
 	frame.contest:SetShown(contest ~= nil)
 	if contest then
 		previous = frame.contest
+		lines = lines + 1
+	end
+	-- While it runs: whether 40 comes in time.
+	local pace = contest and ns.Extravaganza.PaceLine and ns.Extravaganza.PaceLine()
+	frame.pace:ClearAllPoints()
+	frame.pace:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -3)
+	frame.pace:SetPoint("RIGHT", -PAD, 0)
+	frame.pace:SetText(pace and ("|cffffd100Race:|r " .. pace) or "")
+	frame.pace:SetShown(pace ~= nil)
+	if pace then
+		previous = frame.pace
 		lines = lines + 1
 	end
 	for i, entry in ipairs(list) do

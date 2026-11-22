@@ -6,6 +6,50 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.0.7",
+		date = "22 November 2026",
+		sections = {
+			{ "New", {
+				{ "Extravaganza page.", "Countdown, race, checklist, prizes and your records in one place." },
+				{ "The race.", "Your Tastyfish pace, and whether 40 comes in time." },
+				{ "Get ready.", "An hour before, chat says what you're missing." },
+				{ "Best spots.", "Where Tastyfish bite best for you." },
+				{ "Results.", "A summary when it ends; best haul, fastest 40 and wins." },
+				{ "Wins spotted.", "Handing in stops the alerts and is kept as a win." },
+				{ "Catch window.", "Pop your session's catch out into a small window." },
+				{ "Bigger list.", "Click the list's header to fold the summary away." },
+			} },
+			{ "Changed", {
+				{ "Feedback tab.", "Report a bug, suggest an idea or share your data report." },
+				{ "A cleaner look.", "Every page now matches the stats window." },
+				{ "Themes are back.", "33 window themes, 19 of them new, in Options → Look." },
+				{ "250 winners.", "The Extravaganza's prize count is now Forever's 250." },
+			} },
+			{ "Fixed", {
+				{ "Blue squares.", "Gold buttons no longer show a stray blue square." },
+				{ "Trunk names.", "The report names containers the game hasn't loaded. Thanks to darkkostorm!" },
+			} },
+			{ "Reported by elxtrick", {
+				{ "Darkshore.", "Its level of 75 holds in Forever." },
+			} },
+			{ "Reported by user_vlqzwhsmfy7zfn3u", {
+				{ "Bait and Tackle.", "Taught by Fishing trainers, from skill 6." },
+			} },
+			{ "Reported by user_f9l821d0lwaxvvsd", {
+				{ "Zephras Isle.", "Its 25 confirmed; its trainers teach Journeyman." },
+			} },
+			{ "Reported by JHernPh", {
+				{ "Dun Morogh.", "Its 25 confirmed, and Journeyman from its trainer." },
+			} },
+			{ "Reported by tamorok44", {
+				{ "Zephras Isle.", "Confirmed again, from a German client." },
+			} },
+			{ "Reported by darkkostorm", {
+				{ "Redridge Mountains.", "Its level of 150 holds in Forever." },
+			} },
+		},
+	},
+	{
 		version = "1.0.6",
 		date = "21 November 2026",
 		sections = {

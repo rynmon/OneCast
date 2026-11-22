@@ -28,9 +28,9 @@ local lootOpen = false  -- shown for a loot window that needs clicking
 -- children: some of those are the game's forbidden frames (the shop, Edit Mode), which addon
 -- code can't so much as ask the name of.
 local KEEP = {
-	"OneCastStatsFrame", "OneCastMiniFrame", "OneCastSkillToast", "OneCastHubTabs",
+	"OneCastStatsFrame", "OneCastMiniFrame", "OneCastCatchWindow", "OneCastSkillToast", "OneCastHubTabs",
 	"OneCastTackleButton", "OneCastApplyLureButton", "OneCastTackleWindow", "OneCastBookFrame",
-	"OneCastWardrobeFrame", "OneCastJourneyFrame", "OneCastCampFrame", "OneCastReportFrame", "OneCastOptionsWindow",
+	"OneCastWardrobeFrame", "OneCastJourneyFrame", "OneCastCampFrame", "OneCastContestFrame", "OneCastFeedbackFrame", "OneCastOptionsWindow",
 	"OneCastWhatsNewFrame", "OneCastWelcome", "OneCastMenu", "OneCastItemMenu",
 	"GameTooltip", "ItemRefTooltip",
 }

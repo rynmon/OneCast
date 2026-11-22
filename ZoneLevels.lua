@@ -17,13 +17,17 @@ local LEVELS = {
 		-- Forever's own, from a player's /onecast report (13 November 2026): 10 catches at skill
 		-- 0-24 and none got away. Its fish are the starting zones' (Brilliant Smallfish, the Mud
 		-- Snappers). Not a Classic number: a getaway above 25 would overrule it, as for any zone.
+		-- Three more reports (19 to 22 November 2026) agree: 2 to 5 got away at 0-24 each, and
+		-- none in over 300 catches from 25 up. Mulgore's and Dun Morogh's 25 hold in Forever too
+		-- (4 of 9 got away at 0-24 in Mulgore; 1 of 24 at 0-24 in Dun Morogh, none in 48 above).
 		"Zephras Isle",
 	},
 	[75] = {
 		"Darkshore", "Loch Modan", "Silverpine Forest", "Westfall",
 		-- Orgrimmar's 75 is confirmed in Forever by a player's report (10 November 2026): 3 got away at
 		-- skill 50-74, none in 178 catches from 75 up. Stormwind City's too (13 November 2026): 12 of
-		-- 36 got away at 25-49, as 75 would have it, and none in 22 catches at 50-74.
+		-- 36 got away at 25-49, as 75 would have it, and none in 22 catches at 50-74. Darkshore's
+		-- as well (22 November 2026): 8 of 31 got away at 50-74, none at 75 up.
 		"Stormwind City", "Orgrimmar", "Ironforge", "Thunder Bluff", "Undercity", "Darnassus",
 		"The Deadmines", "Wailing Caverns", "Blackfathom Deeps",
 	},
@@ -35,7 +39,8 @@ local LEVELS = {
 	},
 	[150] = {
 		-- Stonetalon Mountains' 150 is confirmed in Forever by a player's report (14 November 2026):
-		-- 2 of 17 got away at skill 125-149.
+		-- 2 of 17 got away at skill 125-149. Redridge Mountains' too (18 November 2026): 3 of 33
+		-- got away at 125-149, none at 150 up.
 		"Ashenvale", "Duskwood", "Hillsbrad Foothills", "Redridge Mountains",
 		"Stonetalon Mountains", "Wetlands",
 	},

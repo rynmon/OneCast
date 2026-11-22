@@ -56,19 +56,15 @@ end
 -- Page --------------------------------------------------------------------------------
 -- Pooled: each version's notes reuse the last one's headings and cards.
 
-local pool = { headings = {}, cards = {}, bullets = {}, used = { headings = 0, cards = 0, bullets = 0 } }
+local pool = { headings = {}, rows = {}, used = { headings = 0, rows = 0 } }
+local LEAD_WIDTH = 150 -- the change's name, as a stat row's label; the few longer ones wrap
 
+-- A section's header, as every page's: its name in the section's colour, how many after it.
 local function Heading(content)
 	pool.used.headings = pool.used.headings + 1
 	local h = pool.headings[pool.used.headings]
 	if not h then
-		h = CreateFrame("Frame", nil, content)
-		h.bar = h:CreateTexture(nil, "ARTWORK")
-		h.bar:SetSize(4, 16)
-		h.bar:SetPoint("LEFT")
-		h.text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		h.text:SetPoint("LEFT", h.bar, "RIGHT", 8, 0)
-		h.text:SetJustifyH("LEFT")
+		h = ns.UI.SectionHeader(content, 0)
 		pool.headings[pool.used.headings] = h
 	end
 	h:ClearAllPoints()
@@ -76,40 +72,27 @@ local function Heading(content)
 	return h
 end
 
--- A section's card, and its bullet points: a dot in the section's colour, the change in white
--- and what it means in grey after it, wrapping under itself.
-local function Card(content)
-	pool.used.cards = pool.used.cards + 1
-	local c = pool.cards[pool.used.cards]
-	if not c then
-		c = ns.UI.Card(content)
-		pool.cards[pool.used.cards] = c
+-- A change, as the stats window's rows: its name in gold on the left, what it means beside it,
+-- every other row shaded. Both wrap in their own column, so nothing is cut short.
+local function Row(content)
+	pool.used.rows = pool.used.rows + 1
+	local r = pool.rows[pool.used.rows]
+	if not r then
+		r = ns.UI.Card(content)
+		r.lead = r:CreateFontString(nil, "OVERLAY", "OneCastFontNormalSmall")
+		r.lead:SetPoint("TOPLEFT", 10, -5)
+		r.lead:SetWidth(LEAD_WIDTH)
+		r.lead:SetJustifyH("LEFT")
+		r.lead:SetWordWrap(true)
+		r.note = r:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+		r.note:SetPoint("TOPLEFT", 10 + LEAD_WIDTH + 12, -5)
+		r.note:SetJustifyH("LEFT")
+		r.note:SetWordWrap(true)
+		pool.rows[pool.used.rows] = r
 	end
-	c:ClearAllPoints()
-	c:Show()
-	return c
-end
-
-local function Bullet(card)
-	pool.used.bullets = pool.used.bullets + 1
-	local b = pool.bullets[pool.used.bullets]
-	if not b then
-		b = {}
-		b.dot = card:CreateTexture(nil, "ARTWORK")
-		b.dot:SetSize(5, 5)
-		b.text = card:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
-		b.text:SetJustifyH("LEFT")
-		b.text:SetWordWrap(true)
-		b.text:SetSpacing(2)
-		pool.bullets[pool.used.bullets] = b
-	end
-	b.dot:SetParent(card)
-	b.text:SetParent(card)
-	b.dot:ClearAllPoints()
-	b.text:ClearAllPoints()
-	b.dot:Show()
-	b.text:Show()
-	return b
+	r:ClearAllPoints()
+	r:Show()
+	return r
 end
 
 local function RenderPage()
@@ -118,14 +101,10 @@ local function RenderPage()
 	for _, h in ipairs(pool.headings) do
 		h:Hide()
 	end
-	for _, c in ipairs(pool.cards) do
-		c:Hide()
+	for _, r in ipairs(pool.rows) do
+		r:Hide()
 	end
-	for _, b in ipairs(pool.bullets) do
-		b.dot:Hide()
-		b.text:Hide()
-	end
-	pool.used.headings, pool.used.cards, pool.used.bullets = 0, 0, 0
+	pool.used.headings, pool.used.rows = 0, 0
 
 	-- The header: the version, and when and how much on its right.
 	local count = CountChanges(release)
@@ -134,34 +113,29 @@ local function RenderPage()
 		release.version == ns.VERSION and "  ·  |cff20ff20installed|r" or ""))
 
 	local width = content:GetWidth()
-	local y = 4
+	local noteWidth = width - 10 - LEAD_WIDTH - 12 - 10
+	local y = 0
 	for _, section in ipairs(release.sections) do
 		local color = SectionColor(section[1])
 		local h = Heading(content)
-		h.bar:SetColorTexture(color[1], color[2], color[3], 0.95)
-		h.text:SetText(section[1])
+		h.text:SetText(section[1] .. "  " .. GREY .. "(" .. #section[2] .. ")|r")
 		h.text:SetTextColor(color[1], color[2], color[3])
 		h:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		h:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -y)
-		h:SetHeight(18)
-		y = y + 24
-		-- One card for the section, its changes as bullet points down it.
-		local c = Card(content)
-		c:SetColor(color[1], color[2], color[3], 0.08)
-		local by = 9
-		for _, bullet in ipairs(section[2]) do
-			local b = Bullet(c)
-			b.dot:SetColorTexture(color[1], color[2], color[3], 1)
-			b.dot:SetPoint("TOPLEFT", c, "TOPLEFT", 14, -by - 5)
-			b.text:SetWidth(width - 40)
-			b.text:SetText("|cffffffff" .. bullet[1]:gsub("%.$", "") .. "|r  |cffc8c8c8" .. bullet[2] .. "|r")
-			b.text:SetPoint("TOPLEFT", c, "TOPLEFT", 28, -by)
-			by = by + (b.text:GetStringHeight() or 12) + 6
+		y = y + HEADER + 2
+		for i, change in ipairs(section[2]) do
+			local r = Row(content)
+			r:SetIndex(i)
+			r.lead:SetText(change[1]:gsub("%.$", ""))
+			r.note:SetWidth(noteWidth)
+			r.note:SetText(change[2])
+			local rh = math.max(r.lead:GetStringHeight() or 12, r.note:GetStringHeight() or 12) + 10
+			r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+			r:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -y)
+			r:SetHeight(math.max(20, rh))
+			y = y + math.max(20, rh)
 		end
-		c:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-		c:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -y)
-		c:SetHeight(by + 4)
-		y = y + by + 4 + 14
+		y = y + 14
 	end
 
 	content:SetHeight(math.max(y, 1))
@@ -368,9 +342,9 @@ local function CreateWindow()
 	-- Along the bottom: where to send requests, and the project page, selectable to copy.
 	local footer = f:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	footer:SetPoint("BOTTOMLEFT", 14, 9)
-	footer:SetText("Feature requests and bug reports are welcome on CurseForge")
+	footer:SetText("OneCast on CurseForge")
 	local url = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-	url:SetSize(290, 18) -- the whole address, never cut short
+	url:SetSize(320, 18) -- the whole address (300 wide), never cut short
 	url:SetFontObject("OneCastFontHighlightSmall") -- not the chat font text boxes come with
 	url:SetPoint("LEFT", footer, "RIGHT", 14, 0)
 	url:SetAutoFocus(false)

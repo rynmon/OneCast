@@ -1,0 +1,23 @@
+name: Bug report
+description: Something in OneCast isn't working as it should.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you! In game, open OneCast's **Feedback** tab (or type `/onecast feedback`), write what happened, click **Select all**, press Ctrl+C, and paste it below.
+  - type: textarea
+    id: report
+    attributes:
+      label: What happened
+      description: The text from the Feedback tab, or your own words.
+      placeholder: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: Optional. If BugSack or the game showed a Lua error, paste it here.
+      render: text

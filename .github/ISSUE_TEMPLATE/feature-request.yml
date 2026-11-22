@@ -1,0 +1,17 @@
+name: Feature request
+description: An idea for OneCast.
+title: "Idea: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you! In game, open OneCast's **Feedback** tab (or type `/onecast feedback`), pick **Idea**, write it, click **Select all**, press Ctrl+C, and paste it below.
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: The text from the Feedback tab, or your own words.
+      placeholder: What it would do for you, and where in OneCast it would go.
+    validations:
+      required: true

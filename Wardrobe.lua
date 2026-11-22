@@ -356,6 +356,7 @@ local function CreateWindow()
 	for i, tab in ipairs({ { "outfit", "Outfit" }, { "gear", "Gear guide" } }) do
 		local b = UI.TryCreate("Button", "OneCastWardrobeFrameTab" .. i, f, "PanelTopTabButtonTemplate")
 			or CreateFrame("Button", "OneCastWardrobeFrameTab" .. i, f, "UIPanelButtonTemplate")
+		ns.Theme.Register(b, "button")
 		b:SetID(i)
 		b:SetText(tab[2])
 		b:SetWidth(i == 1 and 90 or 110)
