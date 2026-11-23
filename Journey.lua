@@ -275,7 +275,8 @@ Journey.GEAR = {
 	{ id = 276203, name = "Primitive Fishing Pole", short = "Vendor, Riverglades", kind = "Pole", from = "New in Forever: sold in Riverglades.", forever = true, ifBonus = true },
 	{ id = 276272, name = "Master Angler's Fishing Hat", short = "Extravaganza coin, from Jang", kind = "Head", from = "New in Forever: Jang in Booty Bay trades it for an Extravagant Extravaganza Coin, the Fishing Extravaganza winners' prize.", forever = true,
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Jang, Booty Bay" }, source = { "npc", 15078, "Jang" } },
-	{ id = 259846, name = "Wide-Brimmed Fishing Hat", short = "Source not known yet", kind = "Head", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
+	-- No Fishing of its own, but its Use puts a +25 lure on your pole as often as you like (Lure.lua).
+	{ id = 259846, name = "Wide-Brimmed Fishing Hat", short = "Source not known yet", kind = "Head", from = "New in Forever: while you wear it, its Use puts a +25 lure on your pole as often as you like, and the tackle box can apply it. Where it comes from isn't known yet.", forever = true },
 	{ id = 244229, name = "Angler's Mantle", short = "Source not known yet", kind = "Shoulder", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
 	{ id = 19972, name = "Lucky Fishing Hat", short = "Extravaganza: Keefer's Angelfish", kind = "Head", from = "Fishing Extravaganza: hand a Keefer's Angelfish to Fishbot 5000 in Booty Bay.",
 		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8221, "Rare Fish - Keefer's Angelfish" } },

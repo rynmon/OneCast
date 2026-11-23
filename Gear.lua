@@ -319,7 +319,8 @@ function Gear.FindOutfit()
 						end
 					end
 				end
-			else
+			elseif not (ns.Lure and ns.Lure.KeepsWorn and ns.Lure.KeepsWorn(wornID)) then
+				-- Automatic: the biggest Fishing bonus, unless what you wear is the lure you fish with.
 				local best = candidates[1]
 				if best and not best.worn and best.bonus > 0 and best.bonus > wornBonus then
 					picks[invSlot] = { link = best.link, bonus = best.bonus }

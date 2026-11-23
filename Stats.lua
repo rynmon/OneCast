@@ -382,7 +382,14 @@ local function SkillParts()
 		end
 	end
 	local food = ns.Food and ns.Food.Active and ns.Food.Active() or 0
-	local gearInGame = gear > 0 and not lureUnknown and modifier >= lure + food + enchants + gear
+	-- Forever's Shiny Silver Coin: a +30 Fishing buff (spell 1321323, build 1.60.1.71037), named
+	-- here so it's never taken for gear the game counts.
+	local coin = 0
+	local coinAura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(1321323)
+	if type(coinAura) == "table" then
+		coin = type(coinAura.points) == "table" and tonumber(coinAura.points[1]) or 30
+	end
+	local gearInGame = gear > 0 and not lureUnknown and modifier >= lure + food + coin + enchants + gear
 	local added = (gear > 0 and not gearInGame) and gear or 0
 	local parts = {}
 	for _, p in ipairs(gearParts or {}) do
@@ -396,7 +403,7 @@ local function SkillParts()
 		end
 	end
 	-- What the game's number holds that isn't a lure, food or an enchant OneCast can see.
-	local other = modifier - food - enchants - (gearInGame and gear or 0) - (lureUnknown and 0 or lure)
+	local other = modifier - food - coin - enchants - (gearInGame and gear or 0) - (lureUnknown and 0 or lure)
 	if lure > 0 or lureUnknown then
 		parts[#parts + 1] = { kind = "lure", label = lureName or "A lure", bonus = lureUnknown and math.max(0, other) or lure }
 		if lureUnknown then
@@ -405,6 +412,9 @@ local function SkillParts()
 	end
 	if food > 0 then
 		parts[#parts + 1] = { kind = "food", label = "Fishing food", bonus = food }
+	end
+	if coin > 0 then
+		parts[#parts + 1] = { kind = "coin", label = "Shiny Silver Coin", bonus = coin }
 	end
 	if other > 0 then
 		parts[#parts + 1] = { kind = "other", label = "Other bonuses", bonus = other }

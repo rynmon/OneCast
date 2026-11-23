@@ -126,6 +126,7 @@ And around it:
 
 - A **Camp page** for Forever's fishing crafts: the **Fish Bowl**, **Fishing Rack** and **Fishing Hut**, with what each does, whether you've learned it, and your reagents against what it takes.
 - **Where the blueprints drop**, with a click for a waypoint to the dungeon's entrance.
+- The Fishing Rack's **Camper's Lure** (+60 Fishing for 5 minutes) is one of the tackle box's lures, so the cast key can put it on.
 - The **campfires**, how many features each holds, and where the Journeyman and Expert blueprints come from.
 - The **Uncommon or Rare Fishing** buff from a Rack or Hut shows with its time left, and chat tells you when it wears off. What you catch while it's on is kept, to show what its extra rewards really are: Rare Fishing brings up ore, metal bars, herbs, hides and Dream Dust beside the fish, and more trunks.
 

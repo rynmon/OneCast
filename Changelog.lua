@@ -6,6 +6,19 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.1.0",
+		date = "23 November 2026",
+		sections = {
+			{ "New", {
+				{ "Hat lure.", "The Wide-Brimmed Fishing Hat's free +25 lure is in the tackle box, and Best I can use takes it while you wear the hat, which your fishing outfit now leaves on." },
+				{ "Shiny Silver Coin.", "Its +30 Fishing shows in your skill breakdown, and no longer hides your gear's bonus." },
+			} },
+			{ "Reported by duerrewildstar", {
+				{ "Camper's Lure.", "The Fishing Rack's lure is now in the tackle box: +60 Fishing for 5 minutes, from Fishing 50." },
+			} },
+		},
+	},
+	{
 		version = "1.0.9",
 		date = "23 November 2026",
 		sections = {

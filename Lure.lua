@@ -21,10 +21,17 @@ ns.Lure = Lure
 -- fishing guide (3 November 2026). Equal bonuses keep the easier-to-get lure first, which is the
 -- one "best" picks. "Secret" Bait is new in Forever and casts Shiny Bauble's own spell.
 local LURES = {
+	-- New in Forever (build 1.60.1.71037): the hat's Use, "Fishing Hat Lure" (spell 1265220), puts on
+	-- Shiny Bauble's enchant (263, +25 for 10 minutes), with no charges: free, as often as you like,
+	-- but only while you wear it (`worn`). First of the +25s, so "best" takes it before a bauble.
+	{ id = 259846, spell = 1265220, name = "Wide-Brimmed Fishing Hat", bonus = 25, minutes = 10, req = 0, worn = true },
 	{ id = 6529, spell = 8087, name = "Shiny Bauble", bonus = 25, minutes = 10, req = 0 },
 	{ id = 268880, spell = 8087, name = "\"Secret\" Bait", bonus = 25, minutes = 10, req = 0 },
 	{ id = 6530, spell = 8088, name = "Nightcrawlers", bonus = 50, minutes = 10, req = 50 },
 	{ id = 6811, spell = 8532, name = "Aquadynamic Fish Lens", bonus = 50, minutes = 10, req = 50 },
+	-- New in Forever: the Fishing Rack's lure, from a camp (build 1.60.1.71037). Its spell, 1331725,
+	-- puts on enchant 8773, "Fishing Lure", for 5 minutes, with Fishing Skill +60 (spell 1331727).
+	{ id = 291005, spell = 1331725, name = "Camper's Lure", bonus = 60, minutes = 5, req = 50 },
 	{ id = 6532, spell = 8090, name = "Bright Baubles", bonus = 75, minutes = 10, req = 100 },
 	{ id = 7307, spell = 9092, name = "Flesh Eating Worm", bonus = 75, minutes = 10, req = 100 },
 	{ id = 6533, spell = 8089, name = "Aquadynamic Fish Attractor", bonus = 100, minutes = 5, req = 100 },
@@ -95,8 +102,26 @@ function Lure.Icon(lure)
 	return C_Item.GetItemIconByID(lure.id) or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
+-- How many you have: for a lure that's an item's Use (the hat's), 1 while you wear it, else 0.
 function Lure.Count(lure)
+	if lure.worn then
+		return C_Item.IsEquippedItem and C_Item.IsEquippedItem(lure.id) and 1 or 0
+	end
 	return ns.ItemCount(lure.id)
+end
+
+-- Whether the item you wear is a lure your choice will use (the hat's): the fishing outfit keeps
+-- it on rather than swap in a hat with more Fishing and lose the lure.
+function Lure.KeepsWorn(itemID)
+	local lure = itemID and byID[itemID]
+	if not (lure and lure.worn) then
+		return false
+	end
+	local choice = Lure.Choice()
+	if choice == itemID then
+		return true
+	end
+	return choice == Lure.BEST and Lure.Selected() == lure
 end
 
 -- True if this character's Fishing is high enough, or can't be read (the game will say).
@@ -152,6 +177,9 @@ function Lure.ReasonText(reason, lure)
 	elseif reason == "best" then
 		return "No lure you can use in your bags."
 	elseif reason == "out" then
+		if lure.worn then
+			return string.format("Put on your %s to use its lure.", Lure.Name(lure))
+		end
 		return string.format("No %s left.", Lure.Name(lure))
 	elseif reason == "skill" then
 		return string.format("%s needs %d Fishing.", Lure.Name(lure), lure.req)
