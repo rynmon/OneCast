@@ -25,6 +25,7 @@ local INSET_TOP, INSET_BOTTOM = 60, 28 -- the frame around the inset (see Create
 local COUNT_WIDTH, MINUTES_WIDTH, BONUS_WIDTH = 30, 26, 32
 
 local button, window
+local DockEat, UndockEat -- below: the Eat button in and out of the window around fights
 local inCombat = false
 
 local function CharDB()
@@ -471,9 +472,12 @@ local function CreateWindow()
 	food.icon:SetSize(26, 26)
 	food.icon:SetPoint("LEFT", 2, 0)
 	food.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-	food.eat = CreateFrame("Button", "OneCastEatFoodButton", food, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+	-- The Eat button is secure, and a window holding a secure button is protected: in combat the
+	-- game won't let it open, close or switch tabs (ADDON_ACTION_BLOCKED, 23 November 2026). So it
+	-- sits in the window only out of combat (DockEat), and steps out of it as a fight starts.
+	food.eat = CreateFrame("Button", "OneCastEatFoodButton", UIParent, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+	food.eat:Hide()
 	food.eat:SetSize(64, 22)
-	food.eat:SetPoint("RIGHT", -2, 0)
 	food.eat:SetText("Eat")
 	food.eat:SetAttribute("type", "item")
 	-- As the lure buttons: the press and the release, since the game uses the item on whichever
@@ -493,7 +497,7 @@ local function CreateWindow()
 	-- Two lines if it needs them, never cut short.
 	food.text = food:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	food.text:SetPoint("LEFT", food.icon, "RIGHT", 8, 0)
-	food.text:SetPoint("RIGHT", food.eat, "LEFT", -8, 0)
+	food.text:SetPoint("RIGHT", food, "RIGHT", -(2 + 64 + 8), 0) -- clear of the Eat button, docked or not
 	food.text:SetJustifyH("LEFT")
 	food.text:SetWordWrap(true)
 	f.food = food
@@ -535,14 +539,21 @@ local function CreateWindow()
 	return f
 end
 
+local function Window()
+	if not window then
+		window = CreateWindow()
+		DockEat() -- made in a fight, it waits for the fight to end
+	end
+	return window
+end
+
 function TackleBox.ShowWindow()
-	window = window or CreateWindow()
-	window:Show()
+	Window():Show()
 end
 
 function TackleBox.ToggleWindow()
-	window = window or CreateWindow()
-	window:SetShown(not window:IsShown())
+	local w = Window()
+	w:SetShown(not w:IsShown())
 end
 
 -- False if it can't be done now: the button can't move during a fight.
@@ -567,6 +578,28 @@ Lure.OnChange(function()
 	RedrawWindow()
 end)
 
+-- The Eat button in the window's food row, out of combat only; and out of the window again, hidden,
+-- as a fight starts (the last moment it can be moved), so the window is never protected.
+DockEat = function()
+	local eat = window and window.food and window.food.eat
+	if eat and not InCombatLockdown() then
+		eat:SetParent(window.food)
+		eat:ClearAllPoints()
+		eat:SetPoint("RIGHT", -2, 0)
+		eat:Show()
+	end
+end
+TackleBox.DockEat = DockEat
+
+UndockEat = function()
+	local eat = window and window.food and window.food.eat
+	if eat then
+		eat:Hide()
+		eat:ClearAllPoints()
+		eat:SetParent(UIParent)
+	end
+end
+
 -- Made once, out of combat: a reload during a fight waits for it to end.
 local function BuildButton()
 	if not button and not InCombatLockdown() then
@@ -590,9 +623,11 @@ events:SetScript("OnEvent", function(_, event)
 		if button then
 			button:Hide()
 		end
+		UndockEat()
 	else
 		inCombat = false
 		BuildButton()
 		UpdateVisibility()
+		DockEat()
 	end
 end)

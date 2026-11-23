@@ -6,6 +6,15 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.1.1",
+		date = "23 November 2026",
+		sections = {
+			{ "Fixed", {
+				{ "Tackle box in combat.", "Opening, closing or switching away from the tackle box during a fight no longer fails with an error." },
+			} },
+		},
+	},
+	{
 		version = "1.1.0",
 		date = "23 November 2026",
 		sections = {
