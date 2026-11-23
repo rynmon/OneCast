@@ -21,6 +21,7 @@
 -- words, which Forever may not keep.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local X = {}
 ns.Extravaganza = X
@@ -28,7 +29,7 @@ ns.Extravaganza = X
 X.ZONE = "Stranglethorn Vale"
 X.TASTYFISH = 19807
 X.GOAL = 40
-X.SCHEDULE = "Sundays 14:00-16:00 realm time"
+X.SCHEDULE = L["Sundays 14:00-16:00 realm time"]
 X.WINNERS = 250
 X.COIN = 274026
 X.POLE = 19970 -- Arcanite Fishing Pole
@@ -36,7 +37,7 @@ X.QUEST = 8193 -- Master Angler, Riggle's
 X.RIGGLE_NAME = "Riggle Bassbait"
 -- Jang's prizes, a coin each: the swim-form trinket, water-walking shoes, the cosmetic hat and
 -- bucket, and a pet. { item, its name until the game has it }.
-X.JANG = { { 19979, "Hook of the Master Angler" }, { 276274, "Surfer Shoes" }, { 276272, "Master Angler's Fishing Hat" },
+X.JANG = { { 19979, L["Hook of the Master Angler"] }, { 276274, "Surfer Shoes" }, { 276272, "Master Angler's Fishing Hat" },
 	{ 276273, "Empty Fish Bucket" }, { 276275, "Bitter Baitling" } }
 -- Fishbot 5000's trades: rare fish -> { item, its name until the game has it }.
 X.RARE = {
@@ -101,11 +102,11 @@ function X.FormatWait(seconds)
 	seconds = math.max(0, math.floor(seconds))
 	local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
 	if d > 0 then
-		return string.format("%dd %dh", d, h)
+		return string.format(L["%dd %dh"], d, h)
 	elseif h > 0 then
-		return string.format("%dh %02dm", h, m)
+		return string.format(L["%dh %02dm"], h, m)
 	end
-	return string.format("%dm", math.max(m, 1))
+	return string.format(L["%dm"], math.max(m, 1))
 end
 
 function X.TastyfishInBags()
@@ -181,7 +182,7 @@ function X.SummaryText(c)
 	if not (c and (c.catches or 0) > 0) then
 		return nil
 	end
-	local parts = { string.format("%d Tastyfish", c.caught or 0) }
+	local parts = { string.format(L["%d Tastyfish"], c.caught or 0) }
 	for _, rare in ipairs(X.RARE_ORDER) do
 		local n = c.rares and c.rares[rare[1]]
 		if n and n > 0 then
@@ -190,21 +191,21 @@ function X.SummaryText(c)
 	end
 	local text = table.concat(parts, ", ")
 	if c.goalTime then
-		text = text .. string.format("; 40 in %s", X.FormatWait(c.goalTime))
+		text = text .. string.format(L["; 40 in %s"], X.FormatWait(c.goalTime))
 	end
 	if c.won then
-		text = text .. "; you won"
+		text = text .. L["; you won"]
 	end
 	local r = X.Records()
 	local news = {}
 	if (c.caught or 0) > r.best then
-		news[#news + 1] = "best haul"
+		news[#news + 1] = L["best haul"]
 	end
 	if c.goalTime and r.fastest and c.goalTime < r.fastest then
-		news[#news + 1] = "fastest 40"
+		news[#news + 1] = L["fastest 40"]
 	end
 	if #news > 0 then
-		text = text .. ". New record: " .. table.concat(news, " and ")
+		text = text .. L[". New record: "] .. table.concat(news, " and ")
 	end
 	return text .. "."
 end
@@ -294,13 +295,13 @@ end
 function X.PaceLine()
 	local kind, value = X.Forecast()
 	if kind == "won" then
-		return "|cff20ff20won this week|r"
+		return L["|cff20ff20won this week|r"]
 	elseif kind == "ready" then
-		return "|cff20ff20hand them to Riggle in Booty Bay|r"
+		return L["|cff20ff20hand them to Riggle in Booty Bay|r"]
 	elseif kind == "ahead" then
-		return string.format("|cff20ff20ahead|r, 40 in about %s", X.FormatWait(value))
+		return string.format(L["|cff20ff20ahead|r, 40 in about %s"], X.FormatWait(value))
 	elseif kind == "behind" then
-		return string.format("|cffff8040behind|r, 40 needs %.0f/hr", value)
+		return string.format(L["|cffff8040behind|r, 40 needs %.0f/hr"], value)
 	end
 end
 
@@ -312,10 +313,10 @@ function X.StatusLine(zone)
 		return nil
 	end
 	if running then
-		return string.format("Tastyfish %d/%d  ·  |cff9d9d9d%s left|r", X.TastyfishInBags(), X.GOAL, X.FormatWait(seconds))
+		return string.format(L["Tastyfish %d/%d  ·  |cff9d9d9d%s left|r"], X.TastyfishInBags(), X.GOAL, X.FormatWait(seconds))
 	end
 	if zone == X.ZONE or seconds <= 3 * 3600 then
-		return "starts in " .. X.FormatWait(seconds)
+		return L["starts in "] .. X.FormatWait(seconds)
 	end
 end
 
@@ -334,24 +335,24 @@ function X.StatusRows(zone)
 	if pace then
 		rows[#rows + 1] = { "Race", pace }
 	end
-	rows[#rows + 1] = { "Contest ends", "in " .. X.FormatWait(seconds) }
+	rows[#rows + 1] = { L["Contest ends"], "in " .. X.FormatWait(seconds) }
 	return rows
 end
 
 -- A sentence for the fish's page in the book: when it bites, and what it's handed in for.
 function X.Describe(fishID)
 	local running, seconds = X.Status()
-	local text = "Bites only during the Stranglethorn Fishing Extravaganza, " .. X.SCHEDULE .. "."
+	local text = L["Bites only during the Stranglethorn Fishing Extravaganza, "] .. X.SCHEDULE .. "."
 	local rare = fishID and X.RARE[fishID]
 	if rare then
-		text = text .. " Fishbot 5000 in Booty Bay trades it for " .. ItemName(rare[1], rare[2]) .. "."
+		text = text .. L[" Fishbot 5000 in Booty Bay trades it for "] .. ItemName(rare[1], rare[2]) .. "."
 	elseif fishID == X.TASTYFISH then
-		text = text .. string.format(" The first %d on your ruleset to bring Riggle Bassbait %d win the Arcanite Fishing Pole and a coin for one of Jang's prizes; Jang buys any you have left in fives.", X.WINNERS, X.GOAL)
+		text = text .. string.format(L[" The first %d on your ruleset to bring Riggle Bassbait %d win the Arcanite Fishing Pole and a coin for one of Jang's prizes; Jang buys any you have left in fives."], X.WINNERS, X.GOAL)
 	end
 	if running then
-		return text .. " It's on now: " .. X.FormatWait(seconds) .. " left."
+		return text .. L[" It's on now: "] .. X.FormatWait(seconds) .. " left."
 	elseif running == false then
-		return text .. " Next contest in " .. X.FormatWait(seconds) .. "."
+		return text .. L[" Next contest in "] .. X.FormatWait(seconds) .. "."
 	end
 	return text
 end
@@ -372,7 +373,7 @@ function X.Waypoint()
 		pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
 	end
 	if ok then
-		ns.Print("waypoint set: Riggle Bassbait, Booty Bay.")
+		ns.Print(L["waypoint set: Riggle Bassbait, Booty Bay."])
 	end
 	return ok
 end
@@ -435,46 +436,46 @@ function X.Checklist()
 	local rank, _, modifier = ns.Stats.FishingSkill()
 	local needed = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[X.ZONE]
 	if not rank then
-		rows[#rows + 1] = { "Fishing", GREY .. "not learned|r", false, "Learn Fishing from a trainer first." }
+		rows[#rows + 1] = { "Fishing", GREY .. L["not learned|r"], false, L["Learn Fishing from a trainer first."] }
 	elseif needed then
 		local effective = rank + (modifier or 0)
 		local ok = effective >= needed
-		rows[#rows + 1] = { "Fishing", string.format("%s%d|r of %d", ok and G or R, effective, needed), ok,
-			string.format("Stranglethorn's waters need %d Fishing to keep every catch. Yours is %d, with your gear and anything on you now.", needed, effective) }
+		rows[#rows + 1] = { "Fishing", string.format(L["%s%d|r of %d"], ok and G or R, effective, needed), ok,
+			string.format(L["Stranglethorn's waters need %d Fishing to keep every catch. Yours is %d, with your gear and anything on you now."], needed, effective) }
 	else
-		rows[#rows + 1] = { "Fishing", tostring(rank + (modifier or 0)), nil, "Your Fishing, with your gear and anything on you now." }
+		rows[#rows + 1] = { "Fishing", tostring(rank + (modifier or 0)), nil, L["Your Fishing, with your gear and anything on you now."] }
 	end
 	-- A pole.
 	local poles = ns.Gear and ns.Gear.Poles and ns.Gear.Poles() or {}
 	local worn = poles[1] and poles[1].worn
-	rows[#rows + 1] = { "Fishing pole", #poles == 0 and (R .. "none|r") or (G .. (worn and "in hand" or "in your bags") .. "|r"),
-		#poles > 0, "A fishing pole, worn or in your bags: OneCast puts it on when you cast." }
+	rows[#rows + 1] = { L["Fishing pole"], #poles == 0 and (R .. "none|r") or (G .. (worn and L["in hand"] or L["in your bags"]) .. "|r"),
+		#poles > 0, L["A fishing pole, worn or in your bags: OneCast puts it on when you cast."] }
 	-- Lures: they last 10 minutes, so a contest takes about a dozen.
 	local left = ns.Lure and ns.Lure.Left() or 0
 	local best = BestLure()
 	local count = best and ns.Lure.Count(best) or 0
 	if best then
 		rows[#rows + 1] = { "Lures", string.format("%s%d|r %s", count >= 12 and G or "|cffffd100", count, ns.Lure.Name(best)), count >= 12 or nil,
-			"Lures last about 10 minutes: the two hours take about 12." }
+			L["Lures last about 10 minutes: the two hours take about 12."] }
 	else
-		rows[#rows + 1] = { "Lures", left > 0 and (G .. "one on now|r") or (R .. "none in your bags|r"), left > 0 and nil or false,
-			"Lures last about 10 minutes: the two hours take about 12. A lure raises your Fishing and catches come quicker." }
+		rows[#rows + 1] = { "Lures", left > 0 and (G .. L["one on now|r"]) or (R .. L["none in your bags|r"]), left > 0 and nil or false,
+			L["Lures last about 10 minutes: the two hours take about 12. A lure raises your Fishing and catches come quicker."] }
 	end
 	-- Fishing food.
 	local food = ns.Food and ns.Food.Best()
 	local active = ns.Food and ns.Food.Active()
 	if active then
-		rows[#rows + 1] = { "Fishing food", G .. "Well Fed now|r", true, "Fishing food's bonus lasts 15 minutes." }
+		rows[#rows + 1] = { L["Fishing food"], G .. L["Well Fed now|r"], true, L["Fishing food's bonus lasts 15 minutes."] }
 	elseif food then
-		rows[#rows + 1] = { "Fishing food", string.format("%s%d|r %s", G, ns.Food.Count(food), ns.Food.Name(food)), true,
-			string.format("+%d Fishing for 15 minutes. Eat it when the contest starts.", food[2]) }
+		rows[#rows + 1] = { L["Fishing food"], string.format("%s%d|r %s", G, ns.Food.Count(food), ns.Food.Name(food)), true,
+			string.format(L["+%d Fishing for 15 minutes. Eat it when the contest starts."], food[2]) }
 	else
-		rows[#rows + 1] = { "Fishing food", GREY .. "none|r", nil, "Fishing food raises your Fishing for 15 minutes. Not needed, but it helps." }
+		rows[#rows + 1] = { L["Fishing food"], GREY .. "none|r", nil, L["Fishing food raises your Fishing for 15 minutes. Not needed, but it helps."] }
 	end
 	-- Room for the catch.
 	local free = FreeBagSlots()
-	rows[#rows + 1] = { "Bag space", string.format("%s%d|r free", free >= BAG_ROOM and G or R, free), free >= BAG_ROOM,
-		string.format("40 Tastyfish and the rest of the catch: keep at least %d slots free.", BAG_ROOM) }
+	rows[#rows + 1] = { L["Bag space"], string.format(L["%s%d|r free"], free >= BAG_ROOM and G or R, free), free >= BAG_ROOM,
+		string.format(L["40 Tastyfish and the rest of the catch: keep at least %d slots free."], BAG_ROOM) }
 	return rows
 end
 
@@ -511,7 +512,7 @@ local function Won()
 	c.won = GetServerTime()
 	announcedGoal = true
 	bagWatch:UnregisterEvent("BAG_UPDATE_DELAYED")
-	ns.Print("you're a Master Angler! Take your Extravagant Extravaganza Coin to Jang in Booty Bay for one of her prizes.")
+	ns.Print(L["you're a Master Angler! Take your Extravagant Extravaganza Coin to Jang in Booty Bay for one of her prizes."])
 	if RefreshPage then
 		RefreshPage()
 	end
@@ -538,8 +539,8 @@ local function CheckGoal()
 		return
 	end
 	announcedGoal = true
-	ns.Print(string.format("%d %s! Hand them to Riggle Bassbait in Booty Bay: the first %d win the Arcanite Fishing Pole and a coin for one of Jang's prizes.", X.GOAL, Tastyfish(), X.WINNERS))
-	ns.RaidWarning(X.GOAL .. " Tastyfish: hurry to Booty Bay!")
+	ns.Print(string.format(L["%d %s! Hand them to Riggle Bassbait in Booty Bay: the first %d win the Arcanite Fishing Pole and a coin for one of Jang's prizes."], X.GOAL, Tastyfish(), X.WINNERS))
+	ns.RaidWarning(X.GOAL .. L[" Tastyfish: hurry to Booty Bay!"])
 	PlaySound(SOUNDKIT.RAID_WARNING)
 	X.Waypoint()
 end
@@ -575,8 +576,8 @@ function X.OnCatch(loot)
 			c.rares[l.id] = (c.rares[l.id] or 0) + n
 			if Reminders() then
 				local prize = X.RARE[l.id]
-				ns.Print(string.format("%s! Fishbot 5000 in Booty Bay trades it for %s, today only.",
-					ns.ItemLink(l.id, "a rare fish"), ns.ItemLink(prize[1], prize[2])))
+				ns.Print(string.format(L["%s! Fishbot 5000 in Booty Bay trades it for %s, today only."],
+					ns.ItemLink(l.id, L["a rare fish"]), ns.ItemLink(prize[1], prize[2])))
 			end
 		end
 	end
@@ -625,25 +626,25 @@ local function Tick()
 		return
 	end
 	if running and not wasRunning and not (c and c.won) then
-		ns.Print(string.format("the Stranglethorn Fishing Extravaganza is on%s! Catch %d %s in Stranglethorn Vale and hand them to Riggle Bassbait in Booty Bay.",
+		ns.Print(string.format(L["the Stranglethorn Fishing Extravaganza is on%s! Catch %d %s in Stranglethorn Vale and hand them to Riggle Bassbait in Booty Bay."],
 			wasRunning == nil and (" (" .. X.FormatWait(seconds) .. " left)") or "", X.GOAL, Tastyfish()))
 	elseif not running and wasRunning and c and not c.summarized then
 		c.summarized = true
 		local summary = X.SummaryText(c)
 		if summary then
-			ns.Print("the Extravaganza is over: " .. summary)
+			ns.Print(L["the Extravaganza is over: "] .. summary)
 		end
 	elseif running and seconds <= LAST_CALL and not lastCall and not (c and c.won) and X.TastyfishInBags() >= X.GOAL then
 		lastCall = true
-		ns.Print(string.format("%s left: hand your %d Tastyfish to Riggle Bassbait before it ends.", X.FormatWait(seconds), X.GOAL))
+		ns.Print(string.format(L["%s left: hand your %d Tastyfish to Riggle Bassbait before it ends."], X.FormatWait(seconds), X.GOAL))
 	elseif not running and seconds <= READY_BEFORE and seconds > REMIND_BEFORE and not remindedReady then
 		remindedReady = true
 		local missing = X.Missing()
-		ns.Print("the Stranglethorn Fishing Extravaganza starts in " .. X.FormatWait(seconds)
-			.. (missing and (". Before you go: " .. missing .. ".") or ": you're ready."))
+		ns.Print(L["the Stranglethorn Fishing Extravaganza starts in "] .. X.FormatWait(seconds)
+			.. (missing and (L[". Before you go: "] .. missing .. ".") or L[": you're ready."]))
 	elseif not running and seconds <= REMIND_BEFORE and not remindedSoon then
 		remindedSoon = true
-		ns.Print("the Stranglethorn Fishing Extravaganza starts in " .. X.FormatWait(seconds) .. ".")
+		ns.Print(L["the Stranglethorn Fishing Extravaganza starts in "] .. X.FormatWait(seconds) .. ".")
 	end
 	if not running and seconds > READY_BEFORE then
 		remindedSoon, remindedReady = false, false
@@ -783,7 +784,7 @@ end
 local function BoothWaypoint()
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if not X.Waypoint() then
-		ns.Print("couldn't set a waypoint here.")
+		ns.Print(L["couldn't set a waypoint here."])
 	end
 end
 
@@ -799,22 +800,22 @@ local function Paint()
 	local bags = X.TastyfishInBags()
 
 	-- Left: this week's contest.
-	local L = f.left
+	local Left = f.left
 	local y = PlaceHeader(f.weekHeader, GAP)
-	f.weekHeader.waypoint:SetLabel(nil, "Waypoint: Booty Bay")
+	f.weekHeader.waypoint:SetLabel(nil, L["Waypoint: Booty Bay"])
 	local card = f.week
 	local title, sub, color
 	if running == nil then
-		title, sub, color = "Sundays, 14:00 to 16:00", "Realm time isn't known yet.", { 0.5, 0.5, 0.5 }
+		title, sub, color = "Sundays, 14:00 to 16:00", L["Realm time isn't known yet."], { 0.5, 0.5, 0.5 }
 	elseif c and c.won then
-		title, sub, color = GOOD .. "You won this week|r",
-			"You're a Master Angler. Trade your Extravagant Extravaganza Coin with Jang in Booty Bay.", { 0.12, 1, 0 }
+		title, sub, color = GOOD .. L["You won this week|r"],
+			L["You're a Master Angler. Trade your Extravagant Extravaganza Coin with Jang in Booty Bay."], { 0.12, 1, 0 }
 	elseif running then
-		title, sub, color = GOOD .. "On now|r  " .. GREY .. "·|r  " .. X.FormatWait(seconds) .. " left",
-			string.format("Catch %d Speckled Tastyfish in Stranglethorn Vale and bring them to Riggle Bassbait in Booty Bay. The first %d win.", X.GOAL, X.WINNERS),
+		title, sub, color = GOOD .. L["On now|r  "] .. GREY .. "·|r  " .. X.FormatWait(seconds) .. " left",
+			string.format(L["Catch %d Speckled Tastyfish in Stranglethorn Vale and bring them to Riggle Bassbait in Booty Bay. The first %d win."], X.GOAL, X.WINNERS),
 			{ 0.12, 1, 0 }
 	else
-		title, sub = "Starts in " .. X.FormatWait(seconds), "Sundays, 14:00 to 16:00 realm time, in Stranglethorn Vale."
+		title, sub = "Starts in " .. X.FormatWait(seconds), L["Sundays, 14:00 to 16:00 realm time, in Stranglethorn Vale."]
 		color = seconds <= 3 * 3600 and { 1, 0.82, 0 } or { 0.5, 0.5, 0.5 }
 	end
 	card:SetColor(color[1], color[2], color[3], running and 0.16 or 0.1)
@@ -823,13 +824,13 @@ local function Paint()
 	card.sub:SetText(sub)
 	card.sub:SetWidth(width - 12 - 34 - 10 - PAD)
 	local h = 8 + math.max(34, (card.title:GetStringHeight() or 13) + 4 + (card.sub:GetStringHeight() or 12)) + 8
-	Place(card, L, y, h)
+	Place(card, Left, y, h)
 	y = y + h + GAP
 
 	-- The race: Tastyfish in the bags against 40, then this contest's numbers. Between contests,
 	-- the last one's.
 	local last = not c and X.History()[1]
-	f.raceHeader.text:SetText((running or not (c or last)) and "The race" or (c and "This contest") or "Last contest")
+	f.raceHeader.text:SetText((running or not (c or last)) and L["The race"] or (c and L["This contest"]) or L["Last contest"])
 	y = PlaceHeader(f.raceHeader, y)
 	local bar = f.bar
 	local inBags = running or not (c or last)
@@ -838,31 +839,31 @@ local function Paint()
 	local done = shown >= X.GOAL
 	bar:SetStatusBarColor(done and 0.12 or 1, done and 0.8 or 0.7, done and 0.1 or 0)
 	bar.text:SetText(string.format("%d/%d %s", math.min(shown, 999), X.GOAL,
-		inBags and "Tastyfish in your bags" or "Tastyfish caught"))
-	Place(bar.holder, L, y, 22)
+		inBags and L["Tastyfish in your bags"] or L["Tastyfish caught"]))
+	Place(bar.holder, Left, y, 22)
 	y = y + 22 + 4
 	local lines = {}
 	if running or c then
-		lines[#lines + 1] = { "Caught this contest", tostring(c and c.caught or 0),
-			"Speckled Tastyfish you've caught since it started." }
+		lines[#lines + 1] = { L["Caught this contest"], tostring(c and c.caught or 0),
+			L["Speckled Tastyfish you've caught since it started."] }
 		local pace = X.Pace()
 		if running then
-			lines[#lines + 1] = { "Pace", pace and string.format("%.0f an hour", pace) or (GREY .. "after a few Tastyfish|r"),
-				"Tastyfish an hour, from your first this contest." }
-			lines[#lines + 1] = { "Forecast", X.PaceLine() or (GREY .. "after a few Tastyfish|r"),
-				"Whether 40 comes before the end, at your pace." }
+			lines[#lines + 1] = { "Pace", pace and string.format(L["%.0f an hour"], pace) or (GREY .. L["after a few Tastyfish|r"]),
+				L["Tastyfish an hour, from your first this contest."] }
+			lines[#lines + 1] = { "Forecast", X.PaceLine() or (GREY .. L["after a few Tastyfish|r"]),
+				L["Whether 40 comes before the end, at your pace."] }
 		end
 		if c and c.goalTime then
-			lines[#lines + 1] = { "40 reached in", X.FormatWait(c.goalTime), "From your first catch this contest." }
+			lines[#lines + 1] = { L["40 reached in"], X.FormatWait(c.goalTime), L["From your first catch this contest."] }
 		end
 		if c and (c.winners or 0) > 0 then
-			lines[#lines + 1] = { "Winners heard", tostring(c.winners), "Winners Riggle Bassbait has announced where you could hear him." }
+			lines[#lines + 1] = { L["Winners heard"], tostring(c.winners), L["Winners Riggle Bassbait has announced where you could hear him."] }
 		end
 	elseif last then
-		lines[#lines + 1] = { "When", date("%d %b", last.start), "The day of your last contest." }
-		lines[#lines + 1] = { "40 reached in", last.goalTime and X.FormatWait(last.goalTime) or (GREY .. "not reached|r"),
-			"From your first catch that contest." }
-		lines[#lines + 1] = { "Result", last.won and (GOOD .. "won|r") or (GREY .. "no prize|r"), "Whether you won the Arcanite Fishing Pole." }
+		lines[#lines + 1] = { "When", date("%d %b", last.start), L["The day of your last contest."] }
+		lines[#lines + 1] = { L["40 reached in"], last.goalTime and X.FormatWait(last.goalTime) or (GREY .. L["not reached|r"]),
+			L["From your first catch that contest."] }
+		lines[#lines + 1] = { "Result", last.won and (GOOD .. "won|r") or (GREY .. L["no prize|r"]), L["Whether you won the Arcanite Fishing Pole."] }
 	end
 	for i, row in ipairs(f.race) do
 		local line = lines[i]
@@ -870,16 +871,16 @@ local function Paint()
 		if line then
 			SetRow(row, line[1], line[2])
 			row.tip = line[3]
-			Place(row, L, y, ROW)
+			Place(row, Left, y, ROW)
 			y = y + ROW
 		end
 	end
 	f.raceNote:SetShown(#lines == 0)
 	if #lines == 0 then
-		f.raceNote:SetText("Your Tastyfish, pace and result show here when you fish a contest.")
+		f.raceNote:SetText(L["Your Tastyfish, pace and result show here when you fish a contest."])
 		f.raceNote:SetWidth(width - 8)
 		f.raceNote:ClearAllPoints()
-		f.raceNote:SetPoint("TOPLEFT", L, "TOPLEFT", EDGE + 4, -y - 2)
+		f.raceNote:SetPoint("TOPLEFT", Left, "TOPLEFT", EDGE + 4, -y - 2)
 		y = y + (f.raceNote:GetStringHeight() or 12) + 6
 	end
 	y = y + GAP
@@ -894,7 +895,7 @@ local function Paint()
 				or "|TInterface\\RaidFrame\\ReadyCheck-Waiting:14:14|t "
 			SetRow(row, mark .. line[1], line[2])
 			row.tip = line[4]
-			Place(row, L, y, ROW)
+			Place(row, Left, y, ROW)
 			y = y + ROW
 		end
 	end
@@ -906,20 +907,20 @@ local function Paint()
 		local spot = spots[i]
 		row:SetShown(spot ~= nil)
 		if spot then
-			SetRow(row, spot.name, spot.rate and string.format("%.0f/hr", spot.rate) or (spot.count .. " caught"))
-			row.tip = string.format("%d Tastyfish caught here.", spot.count)
+			SetRow(row, spot.name, spot.rate and string.format(L["%.0f/hr"], spot.rate) or (spot.count .. " caught"))
+			row.tip = string.format(L["%d Tastyfish caught here."], spot.count)
 			row.where = spot.spot.mapID and spot.spot.x and spot.spot
-			row.click = row.where and "Click: show it on the map."
-			Place(row, L, y, ROW)
+			row.click = row.where and L["Click: show it on the map."]
+			Place(row, Left, y, ROW)
 			y = y + ROW
 		end
 	end
 	f.spotsNote:SetShown(#spots == 0)
 	if #spots == 0 then
-		f.spotsNote:SetText("None caught yet. They bite from schools along Stranglethorn's coasts during the contest: your best spots show here, from your own catches.")
+		f.spotsNote:SetText(L["None caught yet. They bite from schools along Stranglethorn's coasts during the contest: your best spots show here, from your own catches."])
 		f.spotsNote:SetWidth(width - 8)
 		f.spotsNote:ClearAllPoints()
-		f.spotsNote:SetPoint("TOPLEFT", L, "TOPLEFT", EDGE + 4, -y - 2)
+		f.spotsNote:SetPoint("TOPLEFT", Left, "TOPLEFT", EDGE + 4, -y - 2)
 	end
 
 	-- Right: the rare fish, Fishbot 5000's trades.
@@ -935,12 +936,12 @@ local function Paint()
 		row:SetColor(have and 0.12 or 1, have and 1 or 0.82, have and 0 or 0, have and 0.08 or (today > 0 and 0.16 or 0.06))
 		row.icon:SetTexture(ItemIcon(id))
 		row.name:SetText(ItemName(id, rare[2]))
-		row.caught:SetText(today > 0 and (GOOD .. today .. " today|r") or caught > 0 and (GREY .. "caught " .. caught .. "|r") or (GREY .. "not caught|r"))
-		row.prize:SetText(GREY .. "For|r " .. ItemName(prize[1], prize[2])
+		row.caught:SetText(today > 0 and (GOOD .. today .. " today|r") or caught > 0 and (GREY .. "caught " .. caught .. "|r") or (GREY .. L["not caught|r"]))
+		row.prize:SetText(GREY .. L["For|r "] .. ItemName(prize[1], prize[2])
 			.. (have and " |TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t" or ""))
 		row.item = id
-		row.tip = string.format("Fishbot 5000 in Booty Bay trades it for %s, during the contest.%s", ItemName(prize[1], prize[2]),
-			have and " You have it." or "")
+		row.tip = string.format(L["Fishbot 5000 in Booty Bay trades it for %s, during the contest.%s"], ItemName(prize[1], prize[2]),
+			have and L[" You have it."] or "")
 		row:SetIndex(i)
 		Place(row, R, y, 40)
 		y = y + 40
@@ -949,17 +950,17 @@ local function Paint()
 
 	-- Jang's prizes, a coin each.
 	local coins = ns.ItemCount(X.COIN)
-	f.jangHeader.text:SetText("Jang's prizes  " .. GREY .. "(a coin each)|r")
+	f.jangHeader.text:SetText(L["Jang's prizes  "] .. GREY .. L["(a coin each)|r"])
 	y = PlaceHeader(f.jangHeader, y)
 	SetRow(f.coin, ItemName(X.COIN, "Extravagant Extravaganza Coin"), coins > 0 and (GOLD .. coins .. "|r") or (GREY .. "none|r"), ItemIcon(X.COIN))
 	f.coin.item = X.COIN
-	f.coin.tip = "Winners get one. Jang in Booty Bay trades it for any one of her prizes."
+	f.coin.tip = L["Winners get one. Jang in Booty Bay trades it for any one of her prizes."]
 	Place(f.coin, R, y, ROW)
 	y = y + ROW
 	for i, prize in ipairs(X.JANG) do
 		local row = f.jang[i]
 		local have = X.Owned(prize[1])
-		SetRow(row, ItemName(prize[1], prize[2]), have and (GOOD .. "have it|r") or "", ItemIcon(prize[1]))
+		SetRow(row, ItemName(prize[1], prize[2]), have and (GOOD .. L["have it|r"]) or "", ItemIcon(prize[1]))
 		row.item = prize[1]
 		row.tip = nil
 		Place(row, R, y, ROW)
@@ -971,10 +972,10 @@ local function Paint()
 	local r = X.Records()
 	y = PlaceHeader(f.recordsHeader, y)
 	local facts = {
-		{ "Contests fished", tostring(r.contests), "Contests you caught something in, of the last " .. HISTORY .. "." },
-		{ "Best haul", r.best > 0 and (r.best .. " Tastyfish") or (GREY .. "-|r"), "The most Tastyfish you've caught in one contest." },
-		{ "Fastest 40", r.fastest and X.FormatWait(r.fastest) or (GREY .. "-|r"), "Your quickest 40 Tastyfish, from your first catch." },
-		{ "Wins", tostring(r.wins), "Contests you've won the Arcanite Fishing Pole in." },
+		{ L["Contests fished"], tostring(r.contests), L["Contests you caught something in, of the last "] .. HISTORY .. "." },
+		{ L["Best haul"], r.best > 0 and (r.best .. " Tastyfish") or (GREY .. "-|r"), L["The most Tastyfish you've caught in one contest."] },
+		{ "Fastest 40", r.fastest and X.FormatWait(r.fastest) or (GREY .. "-|r"), L["Your quickest 40 Tastyfish, from your first catch."] },
+		{ "Wins", tostring(r.wins), L["Contests you've won the Arcanite Fishing Pole in."] },
 	}
 	for i, row in ipairs(f.records) do
 		local fact = facts[i]
@@ -1021,22 +1022,22 @@ local function CreatePage()
 	f.right = CreateFrame("Frame", nil, inset)
 	f.right:SetPoint("TOPLEFT", inset, "TOP", 0, 0)
 	f.right:SetPoint("BOTTOMRIGHT")
-	local L, R = f.left, f.right
+	local Left, R = f.left, f.right
 
-	f.weekHeader = UI.SectionHeader(L, -GAP)
-	f.weekHeader.text:SetText("This week")
+	f.weekHeader = UI.SectionHeader(Left, -GAP)
+	f.weekHeader.text:SetText(L["This week"])
 	local waypoint = UI.HeaderButton(f.weekHeader)
 	waypoint:SetPoint("RIGHT", -4, 0)
 	waypoint:SetScript("OnClick", BoothWaypoint)
 	waypoint:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText("Waypoint: Booty Bay", 1, 0.82, 0)
-		GameTooltip:AddLine("Riggle Bassbait takes the Tastyfish on the dock; Fishbot 5000 and Jang are with him.", 1, 1, 1, true)
+		GameTooltip:SetText(L["Waypoint: Booty Bay"], 1, 0.82, 0)
+		GameTooltip:AddLine(L["Riggle Bassbait takes the Tastyfish on the dock; Fishbot 5000 and Jang are with him."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	waypoint:SetScript("OnLeave", GameTooltip_Hide)
 	f.weekHeader.waypoint = waypoint
-	local week = UI.Card(L)
+	local week = UI.Card(Left)
 	week.icon = Icon(week, 34)
 	week.icon:SetPoint("TOPLEFT", 12, -8)
 	week.title = Text(week, "GameFontHighlight")
@@ -1047,8 +1048,8 @@ local function CreatePage()
 	week.sub:SetWordWrap(true)
 	f.week = week
 
-	f.raceHeader = UI.SectionHeader(L, -GAP)
-	local holder = CreateFrame("Frame", nil, L, "BackdropTemplate")
+	f.raceHeader = UI.SectionHeader(Left, -GAP)
+	local holder = CreateFrame("Frame", nil, Left, "BackdropTemplate")
 	if holder.SetBackdrop then
 		holder:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
 		holder:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
@@ -1065,30 +1066,30 @@ local function CreatePage()
 	bar.text:SetJustifyH("CENTER")
 	bar.holder = holder
 	f.bar = bar
-	f.race = Rows({}, L, 5)
-	f.raceNote = Text(L)
+	f.race = Rows({}, Left, 5)
+	f.raceNote = Text(Left)
 	f.raceNote:SetTextColor(0.66, 0.66, 0.66)
 	f.raceNote:SetWordWrap(true)
 
-	f.readyHeader = UI.SectionHeader(L, -GAP)
-	f.readyHeader.text:SetText("Get ready")
-	f.ready = Rows({}, L, 5)
+	f.readyHeader = UI.SectionHeader(Left, -GAP)
+	f.readyHeader.text:SetText(L["Get ready"])
+	f.ready = Rows({}, Left, 5)
 
-	f.spotsHeader = UI.SectionHeader(L, -GAP)
-	f.spotsHeader.text:SetText("Where they bite for you")
-	f.spots = Rows({}, L, 4, function(self)
+	f.spotsHeader = UI.SectionHeader(Left, -GAP)
+	f.spotsHeader.text:SetText(L["Where they bite for you"])
+	f.spots = Rows({}, Left, 4, function(self)
 		local w = self.where
 		if w then
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			ns.UI.ShowOnMap(w.mapID, w.x, w.y, self.label:GetText())
 		end
 	end)
-	f.spotsNote = Text(L)
+	f.spotsNote = Text(Left)
 	f.spotsNote:SetTextColor(0.66, 0.66, 0.66)
 	f.spotsNote:SetWordWrap(true)
 
 	f.rareHeader = UI.SectionHeader(R, -GAP)
-	f.rareHeader.text:SetText("Rare fish  " .. GREY .. "(Fishbot 5000)|r")
+	f.rareHeader.text:SetText(L["Rare fish  "] .. GREY .. L["(Fishbot 5000)|r"])
 	f.rares = {}
 	for i = 1, #X.RARE_ORDER do
 		local row = UI.Card(R, "Button")
@@ -1108,7 +1109,7 @@ local function CreatePage()
 			GameTooltip:SetItemByID(self.item)
 			GameTooltip:AddLine(" ")
 			GameTooltip:AddLine(self.tip, 1, 1, 1, true)
-			GameTooltip:AddLine("Click: a waypoint to Booty Bay.", 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Click: a waypoint to Booty Bay."], 0.6, 0.8, 1)
 			GameTooltip:Show()
 		end)
 		row:SetScript("OnLeave", GameTooltip_Hide)
@@ -1124,7 +1125,7 @@ local function CreatePage()
 	end
 
 	f.recordsHeader = UI.SectionHeader(R, -GAP)
-	f.recordsHeader.text:SetText("Your contests")
+	f.recordsHeader.text:SetText(L["Your contests"])
 	f.records = Rows({}, R, 4)
 
 	-- The clock and the bags change while it's open.

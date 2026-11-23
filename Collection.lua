@@ -5,6 +5,7 @@
 -- before the collection existed count too, and nothing is ever counted twice.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Collection = {}
 ns.Collection = Collection
@@ -94,7 +95,7 @@ function Collection.OnCatch(loot, zone)
 	end
 	if not (ns.db and ns.db.newCatchMessage == false) then
 		for _, l in ipairs(newFish) do
-			ns.Print("new for your collection: " .. (l.link or l.name or "?") .. "!")
+			ns.Print(L["new for your collection: "] .. (l.link or l.name or "?") .. "!")
 		end
 	end
 	if ns.Book and ns.Book.RefreshIfShown then
@@ -194,7 +195,7 @@ local function CharLabel(char)
 	end
 	local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
 	if color then
-		name = string.format("|cff%02x%02x%02x%s|r", math.floor(color.r * 255 + 0.5), math.floor(color.g * 255 + 0.5),
+		name = string.format(L["|cff%02x%02x%02x%s|r"], math.floor(color.r * 255 + 0.5), math.floor(color.g * 255 + 0.5),
 			math.floor(color.b * 255 + 0.5), name)
 	end
 	return icon .. name
@@ -221,23 +222,23 @@ local function AddCaughtLine(tooltip, data)
 		return
 	end
 	local GOLD_R, GOLD_G, GOLD_B = 1, 0.82, 0
-	tooltip:AddDoubleLine("OneCast", rarity and (ns.RARITY_COLOR[rarity.key] .. rarity.label .. "|r") or "",
+	tooltip:AddDoubleLine(L["OneCast"], rarity and (ns.RARITY_COLOR[rarity.key] .. L[rarity.label] .. "|r") or "",
 		0.44, 0.84, 1, 1, 1, 1)
 	if rarity then
 		-- How rare it is, from Classic's loot tables, and where it's likeliest.
-		tooltip:AddDoubleLine("Odds (Classic)", ns.OneIn(rarity.pct) .. " catches", GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
-		local where = rarity.where .. (rarity.others > 0 and string.format(" +%d more", rarity.others) or "")
-		tooltip:AddDoubleLine("Best in", where, GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
+		tooltip:AddDoubleLine(L["Odds (Classic)"], ns.OneIn(rarity.pct) .. L[" catches"], GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
+		local where = rarity.where .. (rarity.others > 0 and string.format(L[" +%d more"], rarity.others) or "")
+		tooltip:AddDoubleLine(L["Best in"], where, GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
 	end
 	-- Which of your characters caught it, as Baganator lists where items are: the total, then each
 	-- character with its class icon, in its class colour, and its count.
 	if info.total == 0 then
 		return
 	end
-	tooltip:AddDoubleLine("Caught by", tostring(info.total), GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
+	tooltip:AddDoubleLine(L["Caught by"], tostring(info.total), GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
 	for i, char in ipairs(info.chars) do
 		if i > MAX_NAMES then
-			tooltip:AddDoubleLine(string.format("and %d more", #info.chars - MAX_NAMES), " ", 0.7, 0.7, 0.7)
+			tooltip:AddDoubleLine(string.format(L["and %d more"], #info.chars - MAX_NAMES), " ", 0.7, 0.7, 0.7)
 			break
 		end
 		tooltip:AddDoubleLine(CharLabel(char), tostring(char.count), 1, 1, 1, 1, 1, 1)

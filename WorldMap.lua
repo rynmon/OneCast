@@ -6,6 +6,7 @@
 -- stays put whether the map is small or full screen; its size is OneCastDB.mapStripScale.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local WorldMap = {}
 ns.WorldMap = WorldMap
@@ -58,7 +59,7 @@ local function Parts(zone)
 		zone = zone,
 		need = badge.need,
 		status = (MOOD[badge.mood] or "") .. badge.status .. "|r",
-		caught = count.total > 0 and string.format("%d/%d fish caught", count.caught, count.total) or nil,
+		caught = count.total > 0 and string.format(L["%d/%d fish caught"], count.caught, count.total) or nil,
 	}
 end
 
@@ -190,14 +191,14 @@ WorldMap.Update = Update
 
 local function ShowTip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_TOP")
-	GameTooltip:SetText("Fishing" .. (self.zone and (": " .. self.zone) or ""))
+	GameTooltip:SetText(L["Fishing"] .. (self.zone and (": " .. self.zone) or ""))
 	if self.zone and ns.Stats and ns.Stats.ZoneVerdict then
 		GameTooltip:AddLine(ns.Stats.ZoneVerdict(self.zone), 1, 1, 1, true)
 	end
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine("Drag: move it", 0.6, 0.8, 1)
-	GameTooltip:AddLine("Ctrl + mouse wheel: size", 0.6, 0.8, 1)
-	GameTooltip:AddLine("Right-click: put it back", 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Drag: move it"], 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Ctrl + mouse wheel: size"], 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Right-click: put it back"], 0.6, 0.8, 1)
 	GameTooltip:Show()
 end
 

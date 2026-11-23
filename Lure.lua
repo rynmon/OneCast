@@ -11,6 +11,7 @@
 -- the cast key does nothing, because casting would interrupt it.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Lure = {}
 ns.Lure = Lure
@@ -26,12 +27,12 @@ local LURES = {
 	-- but only while you wear it (`worn`). First of the +25s, so "best" takes it before a bauble.
 	{ id = 259846, spell = 1265220, name = "Wide-Brimmed Fishing Hat", bonus = 25, minutes = 10, req = 0, worn = true },
 	{ id = 6529, spell = 8087, name = "Shiny Bauble", bonus = 25, minutes = 10, req = 0 },
-	{ id = 268880, spell = 8087, name = "\"Secret\" Bait", bonus = 25, minutes = 10, req = 0 },
+	{ id = 268880, spell = 8087, name = "\"Secret\" Bait", bonus = 25, minutes = 10, req = 0, conjured = true },
 	{ id = 6530, spell = 8088, name = "Nightcrawlers", bonus = 50, minutes = 10, req = 50 },
 	{ id = 6811, spell = 8532, name = "Aquadynamic Fish Lens", bonus = 50, minutes = 10, req = 50 },
 	-- New in Forever: the Fishing Rack's lure, from a camp (build 1.60.1.71037). Its spell, 1331725,
 	-- puts on enchant 8773, "Fishing Lure", for 5 minutes, with Fishing Skill +60 (spell 1331727).
-	{ id = 291005, spell = 1331725, name = "Camper's Lure", bonus = 60, minutes = 5, req = 50 },
+	{ id = 291005, spell = 1331725, name = "Camper's Lure", bonus = 60, minutes = 5, req = 50, conjured = true },
 	{ id = 6532, spell = 8090, name = "Bright Baubles", bonus = 75, minutes = 10, req = 100 },
 	{ id = 7307, spell = 9092, name = "Flesh Eating Worm", bonus = 75, minutes = 10, req = 100 },
 	{ id = 6533, spell = 8089, name = "Aquadynamic Fish Attractor", bonus = 100, minutes = 5, req = 100 },
@@ -138,17 +139,37 @@ function Lure.Choice()
 	return OneCastCharDB and OneCastCharDB.lureChoice or Lure.NONE
 end
 
+-- "Use conjured lures first": a conjured lure, while you have one, goes on before your choice.
+-- `conjured` is the item's Conjured flag in Forever's data (ItemSparse Flags_0 0x2, build
+-- 1.60.1.71037): Camper's Lure and "Secret" Bait, which are made rather than bought.
+function Lure.ConjuredFirst()
+	return OneCastCharDB and OneCastCharDB.conjuredFirst or false
+end
+
 local function AutoApply()
 	return OneCastCharDB and OneCastCharDB.autoLure or false
 end
 
 -- The lure that would go on now, or nil and why not: "none", "best", "out" or "skill"
--- (with the lure concerned). Never swaps a chosen lure for another.
+-- (with the lure concerned). Never swaps a chosen lure for another, except that "Use conjured
+-- lures first" puts the best conjured lure on before it (never when the choice is No lure).
 function Lure.Selected()
 	local choice = Lure.Choice()
 	if choice == Lure.NONE then
 		return nil, "none"
-	elseif choice == Lure.BEST then
+	end
+	if Lure.ConjuredFirst() then
+		local best
+		for _, lure in ipairs(LURES) do
+			if lure.conjured and Lure.Count(lure) > 0 and Lure.SkillOK(lure) and (not best or lure.bonus > best.bonus) then
+				best = lure
+			end
+		end
+		if best then
+			return best
+		end
+	end
+	if choice == Lure.BEST then
 		local best
 		for _, lure in ipairs(LURES) do
 			if Lure.Count(lure) > 0 and Lure.SkillOK(lure) and (not best or lure.bonus > best.bonus) then
@@ -173,16 +194,16 @@ end
 
 function Lure.ReasonText(reason, lure)
 	if reason == "none" then
-		return "No lure chosen in the tackle box."
+		return L["No lure chosen in the tackle box."]
 	elseif reason == "best" then
-		return "No lure you can use in your bags."
+		return L["No lure you can use in your bags."]
 	elseif reason == "out" then
 		if lure.worn then
-			return string.format("Put on your %s to use its lure.", Lure.Name(lure))
+			return string.format(L["Put on your %s to use its lure."], Lure.Name(lure))
 		end
-		return string.format("No %s left.", Lure.Name(lure))
+		return string.format(L["No %s left."], Lure.Name(lure))
 	elseif reason == "skill" then
-		return string.format("%s needs %d Fishing.", Lure.Name(lure), lure.req)
+		return string.format(L["%s needs %d Fishing."], Lure.Name(lure), lure.req)
 	end
 end
 
@@ -289,7 +310,7 @@ local function NoteFailure(lure)
 	if failures >= MAX_FAILURES then
 		failures = 0
 		holdUntil = GetTime() + RETRY_AFTER
-		ns.Print(string.format("couldn't put %s on, so the cast key will just cast for a minute.", Lure.ChatName(lure)))
+		ns.Print(string.format(L["couldn't put %s on, so the cast key will just cast for a minute."], Lure.ChatName(lure)))
 	end
 	Changed()
 end
@@ -334,7 +355,7 @@ function Lure.CastPress(down)
 		if not noted[reason] then
 			noted[reason] = true
 			notedCounts = LureCounts()
-			ns.Print(Lure.ReasonText(reason, about) .. " Casting without a lure.")
+			ns.Print(Lure.ReasonText(reason, about) .. L[" Casting without a lure."])
 		end
 		return nil
 	end
@@ -348,11 +369,11 @@ function Lure.ApplyPress(replace, down)
 		return nil
 	end
 	if not Lure.MainHandPole() then
-		Say("equip your fishing pole first.")
+		Say(L["equip your fishing pole first."])
 		return nil
 	end
 	if Lure.IsActive() and not replace then
-		Say("your pole already has a lure on. Ctrl-click the tackle box to replace it.")
+		Say(L["your pole already has a lure on. Ctrl-click the tackle box to replace it."])
 		return nil
 	end
 	local lure, reason, about = Lure.Selected()
@@ -390,8 +411,8 @@ end
 -- The Apply lure key binding's button: never shown, so it works with the tackle box hidden.
 local keyButton = CreateFrame("Button", "OneCastApplyLureButton", UIParent, "SecureActionButtonTemplate")
 Lure.WireButton(keyButton)
-_G["BINDING_NAME_CLICK OneCastApplyLureButton:LeftButton"] = "Apply lure"
-_G.BINDING_NAME_ONECAST_TACKLE = "Tackle box"
+_G["BINDING_NAME_CLICK OneCastApplyLureButton:LeftButton"] = L["Apply lure"]
+_G.BINDING_NAME_ONECAST_TACKLE = L["Tackle box"]
 
 -- Would a lure in the bags close a gap of `short` skill? For the zone verdict. Your chosen lure
 -- if it covers it, else the smallest that does, so it never nudges you to overspend.
@@ -411,7 +432,7 @@ function Lure.CoverHint(short)
 			end
 		end
 	end
-	return pick and string.format("Your %s (+%d) would cover it.", Lure.Name(pick), pick.bonus)
+	return pick and string.format(L["Your %s (+%d) would cover it."], Lure.Name(pick), pick.bonus)
 end
 
 -- mm:ss for a time left.
@@ -426,20 +447,20 @@ function Lure.StatusLine()
 	local left = Lure.Left()
 	if left > 0 then
 		local shown = Lure.Shown()
-		return string.format("%s  ·  %s left", shown and Lure.Name(shown) or "On", Lure.Clock(left))
+		return string.format(L["%s  ·  %s left"], shown and Lure.Name(shown) or L["On"], Lure.Clock(left))
 	end
 	if Lure.Choice() == Lure.NONE then
 		return nil
 	end
 	local lure, reason, about = Lure.Selected()
 	if lure then
-		return string.format("%s ready (x%d)", Lure.Name(lure), Lure.Count(lure))
+		return string.format(L["%s ready (x%d)"], Lure.Name(lure), Lure.Count(lure))
 	elseif reason == "out" then
-		return Lure.Name(about) .. ": none left", true
+		return Lure.Name(about) .. L[": none left"], true
 	elseif reason == "skill" then
-		return string.format("%s needs %d", Lure.Name(about), about.req), true
+		return string.format(L["%s needs %d"], Lure.Name(about), about.req), true
 	end
-	return "none usable in your bags", true
+	return L["none usable in your bags"], true
 end
 
 -- Selling your lure and you're running low? Say so; buying stays up to you.
@@ -466,7 +487,7 @@ local function CheckVendor()
 		end
 	end
 	if target and Lure.Count(target) < LOW_COUNT then
-		ns.Print(string.format("this vendor sells %s, and you have %d.", Lure.ChatName(target), Lure.Count(target)))
+		ns.Print(string.format(L["this vendor sells %s, and you have %d."], Lure.ChatName(target), Lure.Count(target)))
 	end
 end
 
@@ -477,7 +498,7 @@ function Lure.SetOption(key, value)
 	local setting = ns.optionSettings and ns.optionSettings[key]
 	if setting then
 		setting:SetValue(value)
-	elseif key == "autoLure" or key == "lureChoice" then
+	elseif key == "autoLure" or key == "lureChoice" or key == "conjuredFirst" then
 		OneCastCharDB[key] = value
 	else
 		ns.db[key] = value
@@ -523,7 +544,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 		local lure = LureForSpell(spellID)
 		if lure then
 			if not casting then
-				ns.Print(string.format("applying %s (+%d). Press again to cast once it's on.", Lure.ChatName(lure), lure.bonus))
+				ns.Print(string.format(L["applying %s (+%d). Press again to cast once it's on."], Lure.ChatName(lure), lure.bonus))
 			end
 			armed = nil
 			casting, castingAt = lure, GetTime()

@@ -13,6 +13,7 @@
 -- counts catches since the last Fishing skill-up to estimate the next one.
 
 local ADDON, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Stats = {}
 ns.Stats = Stats
@@ -37,11 +38,11 @@ local STATS_TOP = TILES_TOP - TILE_HEIGHT - HEADER_GAP
 local STAT_ROWS, STAT_HEIGHT = 8, 21 -- room around each line: one fact a row, the rest on hover
 local MAX_ROWS, ITEM_HEIGHT = 28, 22 -- enough for the list with the summary folded away
 local LATEST_HEIGHT = 40 -- the latest catch's card, above the session's list
-local VIEWS = {
-	{ key = "session", label = "Session", tip = "This session: what you've caught, gold and fish per hour, and your skill." },
-	{ key = "farm", label = "Spots", tip = "Whether this zone is worth fishing, its spots best first, and where each fish bites best." },
-	{ key = "records", label = "Records", tip = "All-time records: your personal bests, notable catches, lifetime totals and past sessions." },
-}
+local VIEWS = ns.Retranslate({
+	{ key = "session", label = L["Session"], tip = L["This session: what you've caught, gold and fish per hour, and your skill."] },
+	{ key = "farm", label = L["Spots"], tip = L["Whether this zone is worth fishing, its spots best first, and where each fish bites best."] },
+	{ key = "records", label = L["Records"], tip = L["All-time records: your personal bests, notable catches, lifetime totals and past sessions."] },
+})
 local TABS_LEFT, TAB_GAP = 62, 2 -- top tabs start right of the portrait, and share the rest evenly
 local NOTABLE_SIZE = 40
 local BEST_MIN_TIME = 15 * 60 -- fishing in a session before its rates can be a personal best
@@ -167,15 +168,15 @@ function Stats.SessionOver(event, now)
 	if rule == "break" and event == "cast" and s.lastCast then
 		local minutes = math.max(1, tonumber(ns.db.sessionBreak) or 30)
 		if now - s.lastCast > minutes * 60 then
-			return string.format("after a break of over %s", Stats.FormatDuration(minutes * 60):gsub(" 00s$", ""):gsub("^0h ", ""))
+			return string.format(L["after a break of over %s"], Stats.FormatDuration(minutes * 60):gsub(" 00s$", ""):gsub("^0h ", ""))
 		end
 	elseif rule == "day" and event == "cast" and s.lastCast and date
 		and date("%Y%m%d", s.lastCast) ~= date("%Y%m%d", now) then
-		return "for a new day"
+		return L["for a new day"]
 	elseif rule == "login" and event == "login" then
-		return "for a new login"
+		return L["for a new login"]
 	elseif rule == "done" and event == "done" then
-		return "after Done fishing"
+		return L["after Done fishing"]
 	end
 end
 
@@ -184,7 +185,7 @@ function Stats.AutoNewSession(event)
 	local why = Stats.SessionOver(event)
 	if why then
 		Stats.ResetSession()
-		ns.Print("started a new session " .. why .. ". The last one is in your session history (Records tab).")
+		ns.Print(L["started a new session "] .. why .. L[". The last one is in your session history (Records tab)."])
 		return true
 	end
 end
@@ -203,9 +204,9 @@ function Stats.FormatDuration(seconds)
 	local h = math.floor(seconds / 3600)
 	local m = math.floor(seconds % 3600 / 60)
 	if h > 0 then
-		return string.format("%dh %02dm", h, m)
+		return string.format(L["%dh %02dm"], h, m)
 	end
-	return string.format("%dm %02ds", m, seconds % 60)
+	return string.format(L["%dm %02ds"], m, seconds % 60)
 end
 
 -- The highest Fishing skill there is: the last rank's cap (Artisan's 300 in Forever).
@@ -257,10 +258,10 @@ function Stats.ToggleWanted(itemID, name)
 	charDB.wanted = charDB.wanted or {}
 	if charDB.wanted[itemID] then
 		charDB.wanted[itemID] = nil
-		ns.Print((name or ("item " .. itemID)) .. " is off your wanted list.")
+		ns.Print((name or ("item " .. itemID)) .. L[" is off your wanted list."])
 	else
 		charDB.wanted[itemID] = { name = name, got = 0 }
-		ns.Print((name or ("item " .. itemID)) .. " is on your wanted list: you'll get an alert when you catch it.")
+		ns.Print((name or ("item " .. itemID)) .. L[" is on your wanted list: you'll get an alert when you catch it."])
 	end
 	RefreshIfShown()
 end
@@ -273,8 +274,8 @@ local function WantedText(itemID)
 	elseif not w.target then
 		return " |cffffd100*|r"
 	end
-	return w.got >= w.target and string.format(" |cff20ff20%d/%d|r", w.got, w.target)
-		or string.format(" |cff71d5ff%d/%d|r", w.got, w.target)
+	return w.got >= w.target and string.format(L[" |cff20ff20%d/%d|r"], w.got, w.target)
+		or string.format(L[" |cff71d5ff%d/%d|r"], w.got, w.target)
 end
 
 -- How many you want: a number puts it on the list too; 0 (or nothing) keeps it on, no number.
@@ -285,11 +286,11 @@ local function SetWantedCount(itemID, target, name)
 	w.name, w.got = w.name or name, 0
 	if target and target > 0 then
 		w.target = target
-		ns.Print(string.format("wanted: %d %s. Progress shows on its row in the stats and on the mini bar.", target,
+		ns.Print(string.format(L["wanted: %d %s. Progress shows on its row in the stats and on the mini bar."], target,
 			name or ("item " .. itemID)))
 	else
 		w.target = nil
-		ns.Print((name or ("item " .. itemID)) .. " is on your wanted list, with no number.")
+		ns.Print((name or ("item " .. itemID)) .. L[" is on your wanted list, with no number."])
 	end
 	RefreshIfShown()
 end
@@ -304,23 +305,23 @@ local function CountWanted(loot)
 			if ns.db and ns.db.goalAlerts == false then
 				-- Counted, but quietly.
 			elseif not w.target then
-				ns.RaidWarning("Caught " .. name .. "!")
+				ns.RaidWarning(L["Caught "] .. name .. "!")
 				PlaySound(SOUNDKIT.RAID_WARNING)
-				ns.Print("wanted catch: " .. (l.link or name))
+				ns.Print(L["wanted catch: "] .. (l.link or name))
 			elseif before < w.target and w.got >= w.target then
-				ns.RaidWarning(string.format("Got your %d %s!", w.target, name))
+				ns.RaidWarning(string.format(L["Got your %d %s!"], w.target, name))
 				PlaySound(SOUNDKIT.UI_QUEST_ROLLING_FORWARD_01 or SOUNDKIT.RAID_WARNING)
-				ns.Print(string.format("you've caught the %d %s you wanted. Right-click it to want more, or take it off the list.",
+				ns.Print(string.format(L["you've caught the %d %s you wanted. Right-click it to want more, or take it off the list."],
 					w.target, name))
 			elseif before < w.target / 2 and w.got >= w.target / 2 and w.target >= 6 then
-				ns.Print(string.format("halfway: %d/%d %s.", w.got, w.target, name))
+				ns.Print(string.format(L["halfway: %d/%d %s."], w.got, w.target, name))
 			end
 		end
 	end
 end
 
-StaticPopupDialogs["ONECAST_GOAL"] = {
-	text = "How many %s do you want? (0 for no number)",
+StaticPopupDialogs["ONECAST_GOAL"] = ns.Retranslate({
+	text = L["How many %s do you want? (0 for no number)"],
 	button1 = OKAY or "OK",
 	button2 = CANCEL or "Cancel",
 	hasEditBox = true,
@@ -351,7 +352,7 @@ StaticPopupDialogs["ONECAST_GOAL"] = {
 	timeout = 0,
 	whileDead = true,
 	hideOnEscape = true,
-}
+})
 
 -- Fishing skill: rank, max rank and bonus (lure, pole), or nil if not found.
 local GameSkill
@@ -399,25 +400,25 @@ local function SkillParts()
 		if p.enchant > 0 then
 			local name = p.link:match("|h%[(.-)%]|h")
 			parts[#parts + 1] = { kind = "enchant", bonus = p.enchant,
-				label = p.slot == 16 and "Fishing line" or ("Enchant on " .. (name or "your gear")) }
+				label = p.slot == 16 and L["Fishing line"] or ("Enchant on " .. (name or L["your gear"])) }
 		end
 	end
 	-- What the game's number holds that isn't a lure, food or an enchant OneCast can see.
 	local other = modifier - food - coin - enchants - (gearInGame and gear or 0) - (lureUnknown and 0 or lure)
 	if lure > 0 or lureUnknown then
-		parts[#parts + 1] = { kind = "lure", label = lureName or "A lure", bonus = lureUnknown and math.max(0, other) or lure }
+		parts[#parts + 1] = { kind = "lure", label = lureName or L["A lure"], bonus = lureUnknown and math.max(0, other) or lure }
 		if lureUnknown then
 			other = 0
 		end
 	end
 	if food > 0 then
-		parts[#parts + 1] = { kind = "food", label = "Fishing food", bonus = food }
+		parts[#parts + 1] = { kind = "food", label = L["Fishing food"], bonus = food }
 	end
 	if coin > 0 then
-		parts[#parts + 1] = { kind = "coin", label = "Shiny Silver Coin", bonus = coin }
+		parts[#parts + 1] = { kind = "coin", label = L["Shiny Silver Coin"], bonus = coin }
 	end
 	if other > 0 then
-		parts[#parts + 1] = { kind = "other", label = "Other bonuses", bonus = other }
+		parts[#parts + 1] = { kind = "other", label = L["Other bonuses"], bonus = other }
 	end
 	return { rank = rank, maxRank = maxRank, modifier = modifier + added, parts = parts, gearAdded = added > 0 }
 end
@@ -432,12 +433,12 @@ end
 -- The breakdown, for the Fishing bar's tooltip.
 function Stats.SkillTooltip(tooltip)
 	local s = SkillParts()
-	tooltip:SetText(ns.GetFishingName and ns.GetFishingName() or "Fishing")
+	tooltip:SetText(ns.GetFishingName and ns.GetFishingName() or L["Fishing"])
 	if not s then
-		tooltip:AddLine("Your Fishing skill isn't known yet.", 1, 1, 1, true)
+		tooltip:AddLine(L["Your Fishing skill isn't known yet."], 1, 1, 1, true)
 		return
 	end
-	tooltip:AddDoubleLine("Your skill", string.format("%d/%d", s.rank, s.maxRank), 1, 0.82, 0, 1, 1, 1)
+	tooltip:AddDoubleLine(L["Your skill"], string.format("%d/%d", s.rank, s.maxRank), 1, 0.82, 0, 1, 1, 1)
 	for _, p in ipairs(s.parts) do
 		local label = p.link and (p.link:match("|h%[(.-)%]|h") or p.link) or p.label
 		local r, g, b = 1, 1, 1
@@ -451,9 +452,9 @@ function Stats.SkillTooltip(tooltip)
 		tooltip:AddDoubleLine(label, "+" .. p.bonus, r, g, b, 0.12, 1, 0)
 	end
 	if #s.parts == 0 then
-		tooltip:AddLine("Nothing adds to it right now: no fishing gear, lure or food.", 0.62, 0.62, 0.62, true)
+		tooltip:AddLine(L["Nothing adds to it right now: no fishing gear, lure or food."], 0.62, 0.62, 0.62, true)
 	end
-	tooltip:AddDoubleLine("In all", tostring(s.rank + s.modifier), 1, 0.82, 0, 1, 1, 1)
+	tooltip:AddDoubleLine(L["In all"], tostring(s.rank + s.modifier), 1, 0.82, 0, 1, 1, 1)
 end
 
 -- Hovering a Fishing bar shows the breakdown. Only the mouse's movement is taken where the game
@@ -588,7 +589,7 @@ end
 -- or TradeSkillMaster when one is installed, since the game has no price API of its own.
 local function Coins(copper)
 	local format = GetCoinTextureString or (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString)
-	return format and format(math.floor(copper)) or string.format("%.2fg", copper / 10000)
+	return format and format(math.floor(copper)) or string.format(L["%.2fg"], copper / 10000)
 end
 
 local itemRequests = {} -- itemID -> true while loading, false if it can't be loaded
@@ -978,32 +979,32 @@ local function AlertIfRare(loot)
 		if not IsWanted(l.id) and l.quality and l.quality >= db.alertQuality then
 			local color = Stats.QualityColor(l.quality)
 			local text = (color and color.hex or "|cffffffff") .. (l.name or "?") .. "|r"
-			ns.RaidWarning("Caught " .. text .. "!")
+			ns.RaidWarning(L["Caught "] .. text .. "!")
 			if db.alertSound ~= false then
 				PlaySound(SOUNDKIT.RAID_WARNING)
 			end
-			ns.Print("rare catch: " .. (l.link or text))
+			ns.Print(L["rare catch: "] .. (l.link or text))
 		end
 	end
 end
 
 -- Sum up the session in chat once the player has stopped for a while.
 function Stats.SessionSummaryText(s)
-	local parts = { string.format("%d catch%s", s.catches, s.catches == 1 and "" or "es") }
+	local parts = { string.format(s.catches == 1 and L["%d catch"] or L["%d catches"], s.catches) }
 	local rate = PerHour(s)
 	if rate then
-		parts[#parts + 1] = string.format("%.0f/hr", rate)
+		parts[#parts + 1] = string.format(L["%.0f/hr"], rate)
 	end
 	local vendor = TotalValue(Worth(s), VendorPrice)
 	if vendor > 0 then
-		parts[#parts + 1] = Coins(vendor) .. " vendor"
+		parts[#parts + 1] = Coins(vendor) .. L[" vendor"]
 	end
 	local gained = SkillGained(s)
 	if gained > 0 then
-		parts[#parts + 1] = string.format("+%d %s", gained, ns.GetFishingName and ns.GetFishingName() or "Fishing")
+		parts[#parts + 1] = string.format("+%d %s", gained, ns.GetFishingName and ns.GetFishingName() or L["Fishing"])
 	end
 	if (s.newFish or 0) > 0 then
-		parts[#parts + 1] = string.format("%d new for your collection", s.newFish)
+		parts[#parts + 1] = string.format(L["%d new for your collection"], s.newFish)
 	end
 	return table.concat(parts, ", ")
 end
@@ -1063,7 +1064,7 @@ function Stats.EndSession(close)
 	end
 	local s = Session()
 	if s.catches > 0 then
-		ns.Print("done fishing. Session so far: " .. Stats.SessionSummaryText(s) .. ".")
+		ns.Print(L["done fishing. Session so far: "] .. Stats.SessionSummaryText(s) .. ".")
 	end
 	Stats.AutoNewSession("done") -- "Start a new session" when you press Done fishing
 	if close and frame and frame:IsShown() then
@@ -1079,13 +1080,13 @@ function Stats.PrintSessionSummary()
 	if not (ns.db and ns.db.sessionSummary) or s.catches <= (s.summarized or 0) then
 		return
 	end
-	local lead = (s.summarized or 0) > 0 and "session so far: " or "session: "
+	local lead = (s.summarized or 0) > 0 and L["session so far: "] or "session: "
 	s.summarized = s.catches
 	ns.Print(lead .. Stats.SessionSummaryText(s) .. ".")
 end
 
-StaticPopupDialogs["ONECAST_RESET_SESSION"] = {
-	text = "Reset this session's stats?\n\nIts catches still count towards your zone and lifetime totals.",
+StaticPopupDialogs["ONECAST_RESET_SESSION"] = ns.Retranslate({
+	text = L["Reset this session's stats?\n\nIts catches still count towards your zone and lifetime totals."],
 	button1 = RESET or "Reset",
 	button2 = CANCEL or "Cancel",
 	OnAccept = function()
@@ -1094,28 +1095,28 @@ StaticPopupDialogs["ONECAST_RESET_SESSION"] = {
 	timeout = 0,
 	whileDead = true,
 	hideOnEscape = true,
-}
+})
 
-StaticPopupDialogs["ONECAST_AUTOLOOT"] = {
-	text = "Auto loot is off, so every catch opens a loot window you have to click.\n\nTurn on auto loot while you fish, so catches go straight to your bags? It goes back off when your weapons go back on. To keep it on all the time, use Options > Controls.",
-	button1 = "While fishing",
-	button2 = "Not now",
-	button3 = "Don't ask again",
+StaticPopupDialogs["ONECAST_AUTOLOOT"] = ns.Retranslate({
+	text = L["Auto loot is off, so every catch opens a loot window you have to click.\n\nTurn on auto loot while you fish, so catches go straight to your bags? It goes back off when your weapons go back on. To keep it on all the time, use Options > Controls."],
+	button1 = L["While fishing"],
+	button2 = L["Not now"],
+	button3 = L["Don't ask again"],
 	OnAccept = function()
 		ns.db.autoLootFishing = true
 		if ns.UpdateLoot then
 			ns.UpdateLoot()
 		end
-		ns.Print("auto loot is on while you fish. Change it under Fishing in OneCast's options.")
+		ns.Print(L["auto loot is on while you fish. Change it under Fishing in OneCast's options."])
 	end,
 	OnAlt = function()
 		ns.db.autoLootHint = false
-		ns.Print("won't offer auto loot again. Turn the offer back on in OneCast's options.")
+		ns.Print(L["won't offer auto loot again. Turn the offer back on in OneCast's options."])
 	end,
 	timeout = 0,
 	whileDead = true,
 	hideOnEscape = true,
-}
+})
 
 function Stats.OfferAutoLoot(autoLooted)
 	if autoLootOffered or autoLooted or not (ns.db and ns.db.autoLootHint) or ns.db.autoLootFishing then
@@ -1172,8 +1173,8 @@ function Stats.OnCast()
 	-- The lure just ran out: with Luremaster, say once what that costs.
 	local luremaster = not lured and wasLured and ns.Lure.Luremaster and ns.Lure.Luremaster()
 	if luremaster and ns.Lure.Choice() ~= ns.Lure.NONE then
-		ns.Print(string.format("your lure is off, so Luremaster's %d%% chance of an extra fish is too. "
-			.. "The tackle box puts another on.", luremaster))
+		ns.Print(string.format(L["your lure is off, so Luremaster's %d%% chance of an extra fish is too. "]
+			.. L["The tackle box puts another on."], luremaster))
 	end
 	local rates = charDB.lureRates
 	if s.lastCast and now - s.lastCast <= ACTIVE_GAP then
@@ -1481,8 +1482,8 @@ function Stats.Summary()
 		return nil
 	end
 	local rate = PerHour(s)
-	return string.format("%d of %d caught%s", s.catches, s.casts,
-		rate and string.format("  ·  %.0f/hr", rate) or "")
+	return string.format(L["%d of %d caught%s"], s.catches, s.casts,
+		rate and string.format(L["  ·  %.0f/hr"], rate) or "")
 end
 
 -- Most caught first, or by `sort`: "value" (what the stack is worth), "latest" (the last you
@@ -1535,17 +1536,17 @@ local function ShortDuration(seconds)
 	if minutes < 60 then
 		return minutes .. "m"
 	end
-	return string.format("%dh %02dm", math.floor(minutes / 60), minutes % 60)
+	return string.format(L["%dh %02dm"], math.floor(minutes / 60), minutes % 60)
 end
 
 local function Ago(time)
 	local seconds = math.max(0, GetServerTime() - time)
 	if seconds < 3600 then
-		return math.max(1, math.floor(seconds / 60)) .. "m ago"
+		return math.max(1, math.floor(seconds / 60)) .. L["m ago"]
 	elseif seconds < 86400 then
-		return math.floor(seconds / 3600) .. "h ago"
+		return math.floor(seconds / 3600) .. L["h ago"]
 	end
-	return math.floor(seconds / 86400) .. "d ago"
+	return math.floor(seconds / 86400) .. L["d ago"]
 end
 
 -- The latest catch this session: { id, name, icon, quality, quantity, time }, or nil.
@@ -1561,7 +1562,7 @@ end
 -- "just now" for the first minute, then as Ago.
 function Stats.Since(time)
 	if GetServerTime() - time < 60 then
-		return "just now"
+		return L["just now"]
 	end
 	return Ago(time)
 end
@@ -1597,13 +1598,13 @@ end
 -- Gold for a big number: "4.1g", "35s", "80c", in the coins' own colours.
 local function ShortGold(copper)
 	if copper >= 1000000 then
-		return string.format("|cffffd100%.0fg|r", copper / 10000)
+		return string.format(L["|cffffd100%.0fg|r"], copper / 10000)
 	elseif copper >= 10000 then
-		return string.format("|cffffd100%.1fg|r", copper / 10000)
+		return string.format(L["|cffffd100%.1fg|r"], copper / 10000)
 	elseif copper >= 100 then
-		return string.format("|cffc7c7cf%ds|r", math.floor(copper / 100))
+		return string.format(L["|cffc7c7cf%ds|r"], math.floor(copper / 100))
 	end
-	return string.format("|cffeda55f%dc|r", math.floor(copper))
+	return string.format(L["|cffeda55f%dc|r"], math.floor(copper))
 end
 
 local function PriceSources(sources)
@@ -1620,48 +1621,48 @@ end
 WhatCaught = function(s)
 	local opened = Containers.OpenedCount(s)
 	if opened == 0 then
-		return "this session's catch"
+		return L["this session's catch"]
 	end
-	return string.format("this session's catch (with what was inside the %d trunk%s, clam%s or bloated fish you opened)",
-		opened, opened == 1 and "" or "s", opened == 1 and "" or "s")
+	return string.format(opened == 1 and L["this session's catch (with what was inside the trunk, clam or bloated fish you opened)"]
+		or L["this session's catch (with what was inside the %d trunks, clams or bloated fish you opened)"], opened)
 end
 
 -- What it sells for at auction, said once for the tiles: grey junk and bound items count at the
 -- vendor's price, and so does anything worth more there or with no auction price yet.
-local AUCTION_NOTE = "\n\nJunk, bound items and anything with no auction price (or worth more to a vendor) count at the vendor's price."
+local AUCTION_NOTE = L["\n\nJunk, bound items and anything with no auction price (or worth more to a vendor) count at the vendor's price."]
 
 -- Gold per hour of fishing: at auction prices where an addon has them, else the vendor's.
 local function GoldTile(value, seconds, what)
 	local auction = value.priced
 	local copper = auction and value.auction or value.vendor
 	local shown = copper > 0 and seconds and seconds >= 60 and ShortGold(copper / seconds * 3600)
-	return Tile(shown, auction and "gold/hr (AH)" or "gold/hr (vendor)",
-		"What " .. what .. " is worth per hour of fishing, at " .. (auction and "auction" or "vendor") .. " prices."
-		.. (auction and ("\n\nAuction prices from: " .. PriceSources(value.sources) .. AUCTION_NOTE)
-			or " Auctionator, TSM or Naowh Forever add auction prices."))
+	return Tile(shown, auction and L["gold/hr (AH)"] or L["gold/hr (vendor)"],
+		"What " .. what .. L[" is worth per hour of fishing, at "] .. (auction and "auction" or "vendor") .. " prices."
+		.. (auction and (L["\n\nAuction prices from: "] .. PriceSources(value.sources) .. AUCTION_NOTE)
+			or L[" Auctionator, TSM or Naowh Forever add auction prices."]))
 end
 
 -- Vendor and auction gold per hour of fishing, as two tiles.
 local function VendorTile(value, seconds, what)
 	local copper = value.vendor
 	return Tile(copper > 0 and seconds and seconds >= 60 and ShortGold(copper / seconds * 3600), "vendor/hr",
-		"What " .. what .. " sells to a vendor for, per hour of fishing.")
+		"What " .. what .. L[" sells to a vendor for, per hour of fishing."])
 end
 
 
 local function AuctionTile(value, seconds, what)
 	local copper, priced = value.auction, value.priced
-	local tip = "Needs Auctionator, TradeSkillMaster or Naowh Forever, with prices scanned at the auction house."
+	local tip = L["Needs Auctionator, TradeSkillMaster or Naowh Forever, with prices scanned at the auction house."]
 	if priced then
-		tip = "What " .. what .. " is worth at auction, per hour of fishing.\n\nPrices from: " .. PriceSources(value.sources)
-			.. AUCTION_NOTE .. (value.unpriced and "\nScan at the auction house to price the rest." or "")
+		tip = L["What "] .. what .. L[" is worth at auction, per hour of fishing.\n\nPrices from: "] .. PriceSources(value.sources)
+			.. AUCTION_NOTE .. (value.unpriced and L["\nScan at the auction house to price the rest."] or "")
 	elseif #Stats.PriceSources() > 0 then
 		local names = {}
 		for _, source in ipairs(Stats.PriceSources()) do
 			names[#names + 1] = source.name
 		end
-		tip = "No auction prices yet for " .. what .. ". Price addon: " .. table.concat(names, ", ")
-			.. ". Scan at the auction house to fill them in."
+		tip = L["No auction prices yet for "] .. what .. L[". Price addon: "] .. table.concat(names, ", ")
+			.. L[". Scan at the auction house to fill them in."]
 	end
 	return Tile(priced and copper > 0 and seconds and seconds >= 60 and ShortGold(copper / seconds * 3600),
 		"auction/hr", tip)
@@ -1669,23 +1670,33 @@ end
 
 -- What items are worth, to a vendor and at auction: "1g 73s vendor  ·  9g 75s AH".
 local function WorthText(value, items)
-	local text = ShortGold(value.vendor) .. GREY .. (value.loading and " vendor (loading)|r" or " vendor|r")
+	local text = ShortGold(value.vendor) .. GREY .. (value.loading and L[" vendor (loading)|r"] or " vendor|r")
 	if value.priced then
 		text = text .. SEP .. ShortGold(value.auction) .. GREY .. " AH|r"
 	elseif next(items) and ns.Prices and ns.Prices.CanScan() then
-		text = text .. SEP .. GREY .. "scan at the AH|r"
+		text = text .. SEP .. GREY .. L["scan at the AH|r"]
 	end
 	return text
 end
 
 -- The Worth row: short gold on the row, every coin on hover.
 local function WorthRow(value, items)
-	return { "Worth", WorthText(value, items), {
+	return { L["Worth"], WorthText(value, items), {
 		tip = function(tooltip)
-			tooltip:SetText("What it's worth")
-			tooltip:AddDoubleLine("To a vendor", Coins(value.vendor), 1, 0.82, 0, 1, 1, 1)
+			tooltip:SetText(L["What it's worth"])
+			tooltip:AddDoubleLine(L["To a vendor"], Coins(value.vendor), 1, 0.82, 0, 1, 1, 1)
 			if value.priced then
-				tooltip:AddDoubleLine("At auction", Coins(value.auction), 1, 0.82, 0, 1, 1, 1)
+				tooltip:AddDoubleLine(L["At auction"], Coins(value.auction), 1, 0.82, 0, 1, 1, 1)
+			end
+			-- Catch to cook to sell: the fish worth more cooked, with recipes you know.
+			local gain, fish = 0, 0
+			if ns.Cooking then
+				gain, fish = ns.Cooking.Gain(items)
+			end
+			if gain > 0 then
+				tooltip:AddDoubleLine(L["Cooked where it pays"], "+" .. Coins(gain), 1, 0.82, 0, 0.12, 1, 0)
+				tooltip:AddLine(string.format(L["Cook %d of these fish with recipes you know, rather than sell them raw. "]
+					.. L["Each fish's tooltip says how."], fish), 0.8, 0.8, 0.8, true)
 			end
 		end,
 	} }
@@ -1693,7 +1704,7 @@ end
 
 -- About how long `catches` more will take, at this session's pace (or your usual one).
 local function CatchesAndTime(catches)
-	local text = string.format("about %d catch%s", catches, catches == 1 and "" or "es")
+	local text = string.format(catches == 1 and L["about %d catch"] or L["about %d catches"], catches)
 	local rate = PerHour(Session()) or PerHour(charDB.lifetime)
 	if rate and rate > 0 then
 		text = text .. GREY .. "  (" .. ShortDuration(catches / rate * 3600) .. ")|r"
@@ -1713,6 +1724,8 @@ end
 -- What a catch is worth, in copper (nil if nothing): for a trunk or clam you've opened, what came
 -- out of it, and its own price for any not opened yet; for anything else, its own price.
 -- One item's price: its auction price, else the vendor's; nil if it has neither.
+Stats.ShortGold = ShortGold
+
 function Stats.ItemPrice(itemID)
 	local price = AuctionPrice(itemID) or VendorPrice(itemID)
 	return price and price > 0 and price or nil
@@ -1780,7 +1793,7 @@ local function ContentRows(totals)
 	local list = SortedItems(totals.contents or {})
 	for _, r in ipairs(list) do
 		r.icon = r.icon or C_Item.GetItemIconByID(r.id)
-		r.right = string.format("x%d" .. GREY .. "  inside|r", r.count) .. StackWorth(r.id, r.count)
+		r.right = string.format("x%d" .. GREY .. L["  inside|r"], r.count) .. StackWorth(r.id, r.count)
 	end
 	return list
 end
@@ -1799,7 +1812,7 @@ local function SpotRows(z, zone)
 			local rate = PerHour(t)
 			rows[#rows + 1] = { name = name, spot = t, zone = zone, rate = rate,
 				icon = topID and C_Item.GetItemIconByID(topID) or "Interface\\Icons\\INV_Misc_Fish_68",
-				right = string.format("%d caught%s", t.catches, rate and string.format("  %.0f/hr", rate) or "") }
+				right = string.format(L["%d caught%s"], t.catches, rate and string.format(L["  %.0f/hr"], rate) or "") }
 		end
 	end
 	table.sort(rows, function(a, b)
@@ -1842,7 +1855,7 @@ local function PlaceText(place)
 	if not place then
 		return GREY .. "-|r"
 	end
-	return place.name .. GREY .. "  " .. (place.rate and string.format("%.0f/hr", place.rate) or ("x" .. place.count)) .. "|r"
+	return place.name .. GREY .. "  " .. (place.rate and string.format(L["%.0f/hr"], place.rate) or ("x" .. place.count)) .. "|r"
 end
 
 -- Returns a view's section title, summary pairs, item rows, list title and empty-list text.
@@ -1864,13 +1877,13 @@ local function NowView(zone)
 	local value = Value(worth) -- priced once, for the tiles and the Worth row
 	-- The fish an hour, against your best.
 	local best = charDB.bests and charDB.bests.rate
-	local rateTip = "Catches per hour of fishing this session. Breaks of over 2 minutes don't count."
+	local rateTip = L["Catches per hour of fishing this session. Breaks of over 2 minutes don't count."]
 	if best then
-		rateTip = rateTip .. string.format("\n\nYour best: %.0f an hour, %s%s.", best.value, date("%d %b %Y", best.time) or "?",
-			best.zone and (" in " .. best.zone) or "")
+		rateTip = rateTip .. string.format(L["\n\nYour best: %.0f an hour, %s%s."], best.value, date("%d %b %Y", best.time) or "?",
+			best.zone and string.format(L[" in %s"], best.zone) or "")
 		if rate and s.activeTime >= BEST_MIN_TIME then
-			rateTip = rateTip .. (rate >= best.value and "\nThis session is your best yet."
-				or string.format("\nThis session: %.0f%% of it.", rate / best.value * 100))
+			rateTip = rateTip .. (rate >= best.value and L["\nThis session is your best yet."]
+				or string.format(L["\nThis session: %.0f%% of it."], rate / best.value * 100))
 		end
 	end
 	local tiles = {
@@ -1880,27 +1893,27 @@ local function NowView(zone)
 	}
 
 	-- Caught, and how many got away: the share of bites lost says if the zone's too much for you.
-	local caught = string.format("%d of %d casts", s.catches, s.casts)
+	local caught = string.format(L["%d of %d casts"], s.catches, s.casts)
 	local escapes = s.escapes or 0
 	if escapes > 0 then
-		caught = caught .. SEP .. RED .. string.format("%d got away (%d%%)", escapes,
+		caught = caught .. SEP .. RED .. string.format(L["%d got away (%d%%)"], escapes,
 			math.floor(escapes / math.max(escapes + s.catches, 1) * 100 + 0.5)) .. "|r"
 	end
-	local stats = { { "Caught", caught } }
+	local stats = { { L["Caught"], caught } }
 	-- Luremaster's extra fish, once a lured catch has been counted.
 	local lm = s.luremaster
 	if lm and lm.lured > 0 then
-		stats[#stats + 1] = { "Luremaster", string.format("%s+%d extra fish|r", lm.extra > 0 and GREEN or "", lm.extra), {
+		stats[#stats + 1] = { L["Luremaster"], string.format(L["%s+%d extra fish|r"], lm.extra > 0 and GREEN or "", lm.extra), {
 			tip = function(tooltip)
-				tooltip:SetText("Luremaster")
-				tooltip:AddLine("Your Legacy tree talent: while a lure is on, a chance of an extra fish. "
-					.. "These are the extra fish it's given you this session, out of your catches with a lure on.", 1, 1, 1, true)
+				tooltip:SetText(L["Luremaster"])
+				tooltip:AddLine(L["Your Legacy tree talent: while a lure is on, a chance of an extra fish. "]
+					.. L["These are the extra fish it's given you this session, out of your catches with a lure on."], 1, 1, 1, true)
 				tooltip:AddLine(" ")
-				tooltip:AddDoubleLine("This session", string.format("+%d from %d lured catches", lm.extra, lm.lured),
+				tooltip:AddDoubleLine(L["This session"], string.format(L["+%d from %d lured catches"], lm.extra, lm.lured),
 					1, 0.82, 0, 1, 1, 1)
 				local life = charDB.lifetime.luremaster
 				if life then
-					tooltip:AddDoubleLine("All time", string.format("+%d from %d lured catches", life.extra, life.lured),
+					tooltip:AddDoubleLine(L["All time"], string.format(L["+%d from %d lured catches"], life.extra, life.lured),
 						1, 0.82, 0, 1, 1, 1)
 				end
 			end,
@@ -1909,16 +1922,16 @@ local function NowView(zone)
 	-- What's new for the collection this session, each fish on hover.
 	local news = Stats.SessionNew(s)
 	if #news > 0 then
-		stats[#stats + 1] = { "New for you", GREEN .. #news .. " new|r", {
+		stats[#stats + 1] = { L["New for you"], GREEN .. string.format(L["%d new|r"], #news), {
 			tip = function(tooltip)
-				tooltip:SetText("New for your collection")
+				tooltip:SetText(L["New for your collection"])
 				for _, n in ipairs(news) do
 					local color = Stats.QualityColor(n.quality)
 					tooltip:AddLine((n.icon and ("|T" .. n.icon .. ":14:14|t ") or "") .. (color and color.hex or "|cffffffff")
 						.. (n.name or "?") .. "|r", 1, 1, 1)
 				end
 				tooltip:AddLine(" ")
-				tooltip:AddLine("Click: open the collection", 0.6, 0.8, 1)
+				tooltip:AddLine(L["Click: open the collection"], 0.6, 0.8, 1)
 			end,
 			click = function()
 				if ns.Book then
@@ -1936,13 +1949,13 @@ local function NowView(zone)
 		-- is enough for these waters, and what's still to catch in them.
 		Append(stats, Stats.CappedRows(zone))
 	elseif rank then
-		stats[#stats + 1] = { "Skill gained", (gained > 0 and (GREEN .. "+" .. gained .. "|r") or "+0")
-			.. (skillRate and (SEP .. string.format("%.0f/hr", skillRate)) or "") }
+		stats[#stats + 1] = { L["Skill gained"], (gained > 0 and (GREEN .. "+" .. gained .. "|r") or "+0")
+			.. (skillRate and (SEP .. string.format(L["%.0f/hr"], skillRate)) or "") }
 		if rank >= maxRank then
-			stats[#stats + 1] = { "Skill cap", GREY .. "at " .. maxRank .. ": train to go higher|r" }
+			stats[#stats + 1] = { L["Skill cap"], GREY .. string.format(L["at %d"], maxRank) .. L[": train to go higher|r"] }
 		else
-			stats[#stats + 1] = { "Next point", CatchesAndTime(CatchesToGo(rank, 1)) }
-			stats[#stats + 1] = { "To " .. maxRank, CatchesAndTime(CatchesToGo(rank, maxRank - rank)) }
+			stats[#stats + 1] = { L["Next point"], CatchesAndTime(CatchesToGo(rank, 1)) }
+			stats[#stats + 1] = { string.format(L["To %d"], maxRank), CatchesAndTime(CatchesToGo(rank, maxRank - rank)) }
 		end
 	end
 	-- What it's worth, vendor and auction in one row.
@@ -1952,12 +1965,12 @@ local function NowView(zone)
 	end
 	local camp = ns.Camp and ns.Camp.StatusText()
 	if camp then
-		stats[#stats + 1] = { "Camp", GREEN .. camp .. "|r" }
+		stats[#stats + 1] = { L["Camp"], GREEN .. camp .. "|r" }
 	end
 
 	local rows, listTitle
 	if s.catches > 0 then
-		rows, listTitle = ShareRows(s.items, charDB.catchSort, s), "Caught this session"
+		rows, listTitle = ShareRows(s.items, charDB.catchSort, s), L["Caught this session"]
 		-- What was inside the trunks, crates and clams you opened: under each, as a tree.
 		if s.inside then
 			rows = WithContents(rows, s)
@@ -1967,9 +1980,9 @@ local function NowView(zone)
 
 	else
 		local z = charDB.zoneStats[zone]
-		rows, listTitle = z and ShareRows(z.items, charDB.catchSort) or {}, "Caught here before"
+		rows, listTitle = z and ShareRows(z.items, charDB.catchSort) or {}, L["Caught here before"]
 	end
-	return SessionTitle(s), tiles, stats, rows, listTitle, "Nothing caught here yet. Cast to start."
+	return SessionTitle(s), tiles, stats, rows, listTitle, L["Nothing caught here yet. Cast to start."]
 end
 
 -- Farm, for one fish: where it comes up most, and how it's going here.
@@ -1985,11 +1998,11 @@ local function FarmTargetView(itemID, zone)
 	local share = z and hereCount > 0 and math.floor(hereCount / math.max(ItemTotal(z.items), 1) * 100 + 0.5)
 	local best = zones[1]
 	local tiles = {
-		Tile(hereRate and string.format("%.0f", hereRate), "per hour here",
-			"How many you catch per hour of fishing in " .. zone .. ". Shows after 5 minutes of fishing here."),
-		Tile(share and (share .. "%"), "of catches here", "Its share of everything you've caught in " .. zone .. "."),
-		Tile(best and best.rate and string.format("%.0f", best.rate), "per hour at best",
-			best and ("Your best zone for it: " .. best.name .. ".") or "Where you've caught it most often, per hour."),
+		Tile(hereRate and string.format("%.0f", hereRate), L["per hour here"],
+			L["How many you catch per hour of fishing in "] .. zone .. L[". Shows after 5 minutes of fishing here."]),
+		Tile(share and (share .. "%"), L["of catches here"], L["Its share of everything you've caught in "] .. zone .. "."),
+		Tile(best and best.rate and string.format("%.0f", best.rate), L["per hour at best"],
+			best and (L["Your best zone for it: "] .. best.name .. ".") or L["Where you've caught it most often, per hour."]),
 	}
 
 	local s = Session()
@@ -1999,12 +2012,12 @@ local function FarmTargetView(itemID, zone)
 	local price = VendorPrice(itemID)
 	local ah = AuctionPrice(itemID)
 	local stats = {
-		{ "This session", "x" .. sessionCount .. (sessionRate and (SEP .. string.format("%.0f/hr", sessionRate)) or "") },
-		{ "Best zone", PlaceText(zones[1]) },
-		{ "Best spot", PlaceText(spots[1]) },
-		{ "Caught", tostring(life and life.count or 0)
-			.. (last and (SEP .. "last " .. Ago(last.time) .. GREY .. ", " .. (last.zone or "?") .. "|r") or "") },
-		{ "Price each", (price and Coins(price) or "-") .. (ah and (SEP .. Coins(ah) .. GREY .. " AH|r") or "") },
+		{ L["This session"], "x" .. sessionCount .. (sessionRate and (SEP .. string.format(L["%.0f/hr"], sessionRate)) or "") },
+		{ L["Best zone"], PlaceText(zones[1]) },
+		{ L["Best spot"], PlaceText(spots[1]) },
+		{ L["Caught"], tostring(life and life.count or 0)
+			.. (last and (SEP .. string.format(L["last %s"], Ago(last.time)) .. GREY .. ", " .. (last.zone or "?") .. "|r") or "") },
+		{ L["Price each"], (price and Coins(price) or "-") .. (ah and (SEP .. Coins(ah) .. GREY .. L[" AH|r"]) or "") },
 	}
 
 	local icon = life and life.icon or C_Item.GetItemIconByID(itemID)
@@ -2012,10 +2025,10 @@ local function FarmTargetView(itemID, zone)
 	for _, place in ipairs(spots) do
 		rows[#rows + 1] = { name = place.name, spot = place.spot, zone = place.zone, icon = icon,
 			label = place.name ~= place.zone and (place.name .. GREY .. "  " .. place.zone .. "|r") or place.name,
-			right = (place.rate and string.format("%.0f/hr  ", place.rate) or "") .. "x" .. place.count }
+			right = (place.rate and string.format(L["%.0f/hr  "], place.rate) or "") .. "x" .. place.count }
 	end
 	local title = (color and color.hex or "|cffffffff") .. name .. "|r"
-	return title, tiles, stats, rows, "Where it bites, best first", "Not caught at a spot yet."
+	return title, tiles, stats, rows, L["Where it bites, best first"], L["Not caught at a spot yet."]
 end
 
 -- Farm: is this zone worth it, its spots, or a fish to farm.
@@ -2030,20 +2043,20 @@ local function FarmView(zone)
 	local spots = SpotRows(z, zone)
 	local bestSpot = spots[1]
 	local tiles = {
-		Tile(rate and string.format("%.0f", rate), "fish/hr here",
-			"Catches per hour of all your fishing in " .. zone .. "."),
-		GoldTile(value, z.activeTime, "your catch here"),
-		Tile(bestSpot and bestSpot.rate and string.format("%.0f", bestSpot.rate), "best spot/hr",
-			bestSpot and ("Your best spot here: " .. bestSpot.name .. ".") or "Your best spot here, per hour."),
+		Tile(rate and string.format("%.0f", rate), L["fish/hr here"],
+			L["Catches per hour of all your fishing in "] .. zone .. "."),
+		GoldTile(value, z.activeTime, L["your catch here"]),
+		Tile(bestSpot and bestSpot.rate and string.format("%.0f", bestSpot.rate), L["best spot/hr"],
+			bestSpot and (L["Your best spot here: "] .. bestSpot.name .. ".") or L["Your best spot here, per hour."]),
 	}
 	local caught = tostring(z.catches)
 	if (z.escapes or 0) > 0 then
-		caught = caught .. SEP .. RED .. z.escapes .. " got away|r"
+		caught = caught .. SEP .. RED .. z.escapes .. L[" got away|r"]
 	end
 	local stats = {
-		{ "Caught here", caught },
-		{ "Fishing time", Stats.FormatDuration(z.activeTime) },
-		{ "Best spot", bestSpot and bestSpot.name or (GREY .. "-|r") },
+		{ L["Caught here"], caught },
+		{ L["Fishing time"], Stats.FormatDuration(z.activeTime) },
+		{ L["Best spot"], bestSpot and bestSpot.name or (GREY .. "-|r") },
 		WorthRow(value, zoneWorth),
 	}
 
@@ -2052,45 +2065,45 @@ local function FarmView(zone)
 		for _, r in ipairs(rows) do
 			local best = PlacesFor(r.id)[1]
 			r.pick = true
-			r.right = best and (best.name .. GREY .. "  " .. (best.rate and string.format("%.0f/hr", best.rate) or ("x" .. best.count)) .. "|r")
+			r.right = best and (best.name .. GREY .. "  " .. (best.rate and string.format(L["%.0f/hr"], best.rate) or ("x" .. best.count)) .. "|r")
 				or ("x" .. r.count)
 		end
-		return zone, tiles, stats, rows, "Pick a fish to farm", "Nothing caught yet."
+		return zone, tiles, stats, rows, L["Pick a fish to farm"], L["Nothing caught yet."]
 	end
-	return zone, tiles, stats, spots, "Spots here, best first", "No spots here yet. Cast to start."
+	return zone, tiles, stats, spots, L["Spots here, best first"], L["No spots here yet. Cast to start."]
 end
 
 -- Records: personal bests, the notable catches, and lifetime totals.
 local function BestTip(text, best)
 	if not best then
-		return text .. " Set once a session has 15 minutes of fishing."
+		return text .. L[" Set once a session has 15 minutes of fishing."]
 	end
-	return text .. string.format(" Set %s%s.", date("%d %b %Y", best.time), best.zone and (" in " .. best.zone) or "")
+	return text .. string.format(L[" Set %s%s."], date("%d %b %Y", best.time), best.zone and string.format(L[" in %s"], best.zone) or "")
 end
 
 local function RecordsView()
 	local life = charDB.lifetime
 	local bests = charDB.bests or {}
 	local tiles = {
-		Tile(bests.rate and string.format("%.0f", bests.rate.value), "best fish/hr",
-			BestTip("Your most fish per hour in a session.", bests.rate)),
-		Tile(bests.vendor and ShortGold(bests.vendor.value), "best gold/hr",
-			BestTip("Your most vendor gold per hour in a session.", bests.vendor)),
-		Tile(bests.skill and (GREEN .. "+" .. bests.skill.value .. "|r"), "best skill gain",
-			BestTip("Your most Fishing skill gained in one session.", bests.skill)),
+		Tile(bests.rate and string.format("%.0f", bests.rate.value), L["best fish/hr"],
+			BestTip(L["Your most fish per hour in a session."], bests.rate)),
+		Tile(bests.vendor and ShortGold(bests.vendor.value), L["best gold/hr"],
+			BestTip(L["Your most vendor gold per hour in a session."], bests.vendor)),
+		Tile(bests.skill and (GREEN .. "+" .. bests.skill.value .. "|r"), L["best skill gain"],
+			BestTip(L["Your most Fishing skill gained in one session."], bests.skill)),
 	}
 	local rate = PerHour(life)
 	local stats = {
-		{ "Fish caught", tostring(life.catches) .. (rate and (SEP .. string.format("%.0f/hr", rate)) or "") },
-		{ "Fishing time", Stats.FormatDuration(life.activeTime) },
-		{ "Longest session", bests.time and (Stats.FormatDuration(bests.time.value) .. GREY .. "  " .. date("%d %b", bests.time.time) .. "|r")
+		{ L["Fish caught"], tostring(life.catches) .. (rate and (SEP .. string.format(L["%.0f/hr"], rate)) or "") },
+		{ L["Fishing time"], Stats.FormatDuration(life.activeTime) },
+		{ L["Longest session"], bests.time and (Stats.FormatDuration(bests.time.value) .. GREY .. "  " .. date("%d %b", bests.time.time) .. "|r")
 			or (GREY .. "-|r") },
 	}
 	if ns.Collection then
 		local caught, total = ns.Collection.Progress()
-		stats[#stats + 1] = { "Collection", string.format("%d of %d caught", caught, total) }
+		stats[#stats + 1] = { L["Collection"], string.format(L["%d of %d caught"], caught, total) }
 	end
-	stats[#stats + 1] = { "Zones fished", tostring(CountKeys(life.zones)) }
+	stats[#stats + 1] = { L["Zones fished"], tostring(CountKeys(life.zones)) }
 	local rows = {}
 	if charDB.recordsList == "sessions" then
 		-- Recent sessions: when and where, catches and fish per hour; the rest in the tooltip.
@@ -2098,19 +2111,19 @@ local function RecordsView()
 			local rate = h.time and h.time >= 60 and h.catches / h.time * 3600
 			rows[i] = { icon = h.top and C_Item.GetItemIconByID(h.top) or 133888, session = h,
 				name = (h.start and date("%a %d %b", h.start) or "?") .. GREY .. "  " .. (h.zone or "?") .. "|r",
-				right = tostring(h.catches) .. (rate and (SEP .. string.format("%.0f/hr", rate)) or "") }
+				right = tostring(h.catches) .. (rate and (SEP .. string.format(L["%.0f/hr"], rate)) or "") }
 		end
-		return "All-time records", tiles, stats, rows, "Recent sessions",
-			"No finished sessions yet. A session ends when you reset it (the Reset session button, or /onecast reset)."
+		return L["All-time records"], tiles, stats, rows, L["Recent sessions"],
+			L["No finished sessions yet. A session ends when you reset it (the Reset session button, or /onecast reset)."]
 	end
 	for i, e in ipairs(charDB.notable or {}) do
 		rows[i] = { id = e.id, icon = e.icon, quality = e.quality, right = date("%d %b", e.time),
 			name = (e.name or "?") .. (e.quantity and e.quantity > 1 and (" x" .. e.quantity) or ""),
-			note = (e.why == "new" and "New for your collection. " or e.why == "wanted" and "Wanted. " or "")
-				.. "Caught in " .. (e.zone or "?") .. ", " .. date("%d %b %H:%M", e.time) .. "." }
+			note = (e.why == "new" and L["New for your collection. "] or e.why == "wanted" and L["Wanted. "] or "")
+				.. string.format(L["Caught in %s, %s."], e.zone or "?", date("%d %b %H:%M", e.time)) }
 	end
-	return "All-time records", tiles, stats, rows, "Notable catches",
-		"Nothing yet. Rare catches, wanted fish and new fish for your collection show here."
+	return L["All-time records"], tiles, stats, rows, L["Notable catches"],
+		L["Nothing yet. Rare catches, wanted fish and new fish for your collection show here."]
 end
 
 -- The tabs' names in /onecast commands.
@@ -2202,19 +2215,19 @@ function Stats.CappedRows(zone)
 	local status = Stats.ZoneStatus(zone, GetSubZoneText and GetSubZoneText() or nil)
 	local verdict
 	if status.needed and effective >= status.needed then
-		verdict = GREEN .. "enough here|r"
+		verdict = GREEN .. L["enough here|r"]
 	elseif status.needed then
-		verdict = RED .. (status.needed - effective) .. " short of " .. status.needed .. "|r"
+		verdict = RED .. (status.needed - effective) .. L[" short of "] .. status.needed .. "|r"
 	end
-	rows[#rows + 1] = { "With gear", tostring(effective) .. (verdict and (SEP .. verdict) or ""), {
+	rows[#rows + 1] = { L["With gear"], tostring(effective) .. (verdict and (SEP .. verdict) or ""), {
 		tip = function(tooltip)
 			-- The same breakdown as the Fishing bar's: each piece of gear, the lure and food.
 			Stats.SkillTooltip(tooltip)
 			if status.needed then
 				tooltip:AddLine(" ")
-				tooltip:AddLine(string.format("%s needs %d for no fish to get away.", status.place, status.needed), 1, 1, 1, true)
+				tooltip:AddLine(string.format(L["%s needs %d for no fish to get away."], status.place, status.needed), 1, 1, 1, true)
 			end
-			tooltip:AddLine("Past 300, only fishing gear, a lure and fishing food add more: the wardrobe's Gear guide has the best gear.", 0.7, 0.7, 0.7, true)
+			tooltip:AddLine(L["Past 300, only fishing gear, a lure and fishing food add more: the wardrobe's Gear guide has the best gear."], 0.7, 0.7, 0.7, true)
 		end,
 		click = function()
 			if ns.Wardrobe and ns.Wardrobe.ShowGear then
@@ -2239,17 +2252,17 @@ function Stats.CappedRows(zone)
 		end
 	end
 	if #missing == 0 then
-		rows[#rows + 1] = { "Still to catch", GREEN .. "all caught here|r" }
+		rows[#rows + 1] = { L["Still to catch"], GREEN .. L["all caught here|r"] }
 	else
-		rows[#rows + 1] = { "Still to catch", #missing .. GREY .. " here|r", {
+		rows[#rows + 1] = { L["Still to catch"], #missing .. GREY .. " here|r", {
 			tip = function(tooltip)
-				tooltip:SetText("Still to catch in " .. zone)
+				tooltip:SetText(L["Still to catch in "] .. zone)
 				for _, fish in ipairs(missing) do
 					local icon = C_Item.GetItemIconByID(fish.id)
 					tooltip:AddLine((icon and ("|T" .. icon .. ":14:14|t ") or "") .. (C_Item.GetItemNameByID(fish.id) or fish.name), 1, 1, 1)
 				end
 				tooltip:AddLine(" ")
-				tooltip:AddLine("Click: this zone in the collection", 0.6, 0.8, 1)
+				tooltip:AddLine(L["Click: this zone in the collection"], 0.6, 0.8, 1)
 			end,
 			click = function()
 				if ns.Book and ns.Book.ShowZoneFish then
@@ -2267,47 +2280,47 @@ end
 local function Verdict(zone, spot)
 	local rank, maxRank = FishingSkill()
 	if not rank then
-		return GREY .. "Fishing skill not found.|r"
+		return GREY .. L["Fishing skill not found.|r"]
 	end
 	local status = Stats.ZoneStatus(zone, spot)
 	zone = status.place
 	if status.kind == "note" then
-		return string.format("|cff20ff20%s: %s.|r", zone, status.note)
+		return string.format(L["|cff20ff20%s: %s.|r"], zone, status.note)
 	elseif status.kind == "getaways" and status.needed then
-		return string.format("|cffff2020%s is listed at %d, but fish got away here at %d skill: it may need more.|r",
+		return string.format(L["|cffff2020%s is listed at %d, but fish got away here at %d skill: it may need more.|r"],
 			zone, status.needed, status.escapeSkill)
 	elseif status.kind == "getaways" then
-		return string.format("|cffff2020%s: level unknown, but %d fish got away here: skill too low.|r",
+		return string.format(L["|cffff2020%s: level unknown, but %d fish got away here: skill too low.|r"],
 			zone, status.escapes)
 	elseif status.kind == "outgrown" then
-		return string.format("%s%s: level unknown. Fish got away at %d skill, and you're above that now.|r",
+		return string.format(L["%s%s: level unknown. Fish got away at %d skill, and you're above that now.|r"],
 			GREY, zone, status.escapeSkill)
 	elseif status.kind == "clear" then
-		return string.format("|cff20ff20%s: level unknown, but no fish got away in %d catches.|r",
+		return string.format(L["|cff20ff20%s: level unknown, but no fish got away in %d catches.|r"],
 			zone, status.catches)
 	elseif status.kind == "unknown" then
-		return GREY .. zone .. ": fishing level unknown. Getaways here will show if your skill is too low.|r"
+		return GREY .. zone .. L[": fishing level unknown. Getaways here will show if your skill is too low.|r"]
 	elseif status.kind == "ok" then
-		return string.format("|cff20ff20%s needs %d: no fish should get away.|r", zone, status.needed)
+		return string.format(L["|cff20ff20%s needs %d: no fish should get away.|r"], zone, status.needed)
 	end
 	-- A lure in the bags that would close the gap is the more useful thing to say.
 	local hint = ns.Lure and ns.Lure.CoverHint(status.short) or ns.Food and ns.Food.CoverHint(status.short)
 	if hint then
-		return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r |cffffd100%s|r",
+		return string.format(L["|cffff2020%s needs %d: %d short, fish will get away.|r |cffffd100%s|r"],
 			zone, status.needed, status.short, hint)
 	end
 	-- Past the highest rank's cap, no skill gets there: only lures and fishing gear can.
 	local top = Stats.TopSkill()
 	if rank >= top then
-		return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r %sA lure or fishing gear makes up the rest.|r",
+		return string.format(L["|cffff2020%s needs %d: %d short, fish will get away.|r %sA lure or fishing gear makes up the rest.|r"],
 			zone, status.needed, status.short, GREY)
 	elseif rank + status.short > top then
-		return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r %sabout %d catches to go (train first), then a lure or fishing gear for the last %d.|r",
+		return string.format(L["|cffff2020%s needs %d: %d short, fish will get away.|r %sabout %d catches to go (train first), then a lure or fishing gear for the last %d.|r"],
 			zone, status.needed, status.short, GREY, CatchesToGo(rank, top - rank), rank + status.short - top)
 	end
-	return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r %sabout %d catches to go%s.|r",
+	return string.format(L["|cffff2020%s needs %d: %d short, fish will get away.|r %sabout %d catches to go%s.|r"],
 		zone, status.needed, status.short, GREY, CatchesToGo(rank, status.short),
-		rank + status.short > maxRank and " (train first)" or "")
+		rank + status.short > maxRank and L[" (train first)"] or "")
 end
 
 -- The verdict, and under it what Forever's players have seen there (Atlas.lua), for tooltips.
@@ -2327,30 +2340,30 @@ function Stats.ZoneBadge(zone, spot)
 	if status.needed and kind ~= "getaways" then
 		badge.need = "needs " .. status.needed
 	elseif status.needed then
-		badge.need = "listed at " .. status.needed
+		badge.need = L["listed at "] .. status.needed
 	elseif kind ~= "note" then
-		badge.need = "level unknown"
+		badge.need = L["level unknown"]
 	end
 	if kind == "ok" then
-		badge.mood, badge.status = "good", "No fish get away"
+		badge.mood, badge.status = "good", L["No fish get away"]
 	elseif kind == "short" then
 		if (ns.Lure and ns.Lure.CoverHint(status.short)) or (ns.Food and ns.Food.CoverHint(status.short)) then
-			badge.mood, badge.status = "warn", status.short .. " skill short" -- yellow: a lure in your bags covers it
+			badge.mood, badge.status = "warn", status.short .. L[" skill short"] -- yellow: a lure in your bags covers it
 		else
-			badge.mood, badge.status = "bad", status.short .. " skill short"
+			badge.mood, badge.status = "bad", status.short .. L[" skill short"]
 		end
 	elseif kind == "getaways" then
-		badge.mood, badge.status = "bad", "Fish get away"
+		badge.mood, badge.status = "bad", L["Fish get away"]
 	elseif kind == "clear" then
-		badge.mood, badge.status = "good", "None got away yet"
+		badge.mood, badge.status = "good", L["None got away yet"]
 	elseif kind == "note" then
-		badge.mood, badge.status = "good", "No minimum skill"
+		badge.mood, badge.status = "good", L["No minimum skill"]
 	elseif kind == "outgrown" then
-		badge.mood, badge.status = "unknown", "Past the last getaway"
+		badge.mood, badge.status = "unknown", L["Past the last getaway"]
 	elseif kind == "level" then
-		badge.mood, badge.status = "unknown", "Skill not found"
+		badge.mood, badge.status = "unknown", L["Skill not found"]
 	else
-		badge.mood, badge.status = "unknown", "Watching for getaways"
+		badge.mood, badge.status = "unknown", L["Watching for getaways"]
 	end
 	return badge
 end
@@ -2365,7 +2378,7 @@ local function SkillStatus()
 	if not rank then
 		return 0, "?"
 	end
-	local value = modifier > 0 and string.format("%d|cff20ff20+%d|r/%d", rank, modifier, maxRank)
+	local value = modifier > 0 and string.format(L["%d|cff20ff20+%d|r/%d"], rank, modifier, maxRank)
 		or string.format("%d/%d", rank, maxRank)
 	return rank / math.max(maxRank, 1), value
 end
@@ -3049,7 +3062,7 @@ local function ZoneStrip(parent)
 		end
 		self.place:SetText(badge.place)
 		-- "No fish get away  ·  needs 225": how it's going in the mood's colour, then the level.
-		local status = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, badge.status)
+		local status = string.format(L["|cff%02x%02x%02x%s|r"], r * 255, g * 255, b * 255, badge.status)
 		self.status:SetText(badge.need and (status .. GREY .. "  ·  " .. badge.need .. "|r") or status)
 		self.badge = badge
 		self.tip = Stats.ZoneVerdict(zone, spot)
@@ -3060,10 +3073,10 @@ local function ZoneStrip(parent)
 		GameTooltip:SetText(self.badge and self.badge.place or "")
 		local rank, _, modifier = FishingSkill()
 		if self.badge and self.badge.needed then
-			GameTooltip:AddDoubleLine("Fishing needed", tostring(self.badge.needed), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Fishing needed"], tostring(self.badge.needed), 1, 0.82, 0, 1, 1, 1)
 		end
 		if rank then
-			GameTooltip:AddDoubleLine("Your skill", modifier > 0 and string.format("%d + %d", rank, modifier) or tostring(rank),
+			GameTooltip:AddDoubleLine(L["Your skill"], modifier > 0 and string.format("%d + %d", rank, modifier) or tostring(rank),
 				1, 0.82, 0, 1, 1, 1)
 		end
 		GameTooltip:AddLine(" ")
@@ -3143,7 +3156,7 @@ local function ShowOnMap(mapID, x, y, label)
 		return false
 	end
 	if InCombatLockdown() then
-		ns.Print("the map can't be opened from here in combat.")
+		ns.Print(L["the map can't be opened from here in combat."])
 		return false
 	end
 	if x and y and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates
@@ -3154,7 +3167,7 @@ local function ShowOnMap(mapID, x, y, label)
 				pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
 			end
 			if label then
-				ns.Print(string.format("waypoint set: %s (%.0f, %.0f).", label, x * 100, y * 100))
+				ns.Print(string.format(L["waypoint set: %s (%.0f, %.0f)."], label, x * 100, y * 100))
 			end
 		end
 	end
@@ -3170,8 +3183,8 @@ end
 -- Addons can't open a browser, so show the Wowhead address selected in a popup to copy.
 local WOWHEAD_URL = "https://www.wowhead.com/forever/%s=%d" -- kind: "item", "spell", "npc" or "quest"
 
-StaticPopupDialogs["ONECAST_WOWHEAD"] = {
-	text = "%s on Wowhead\nPress Ctrl+C to copy, then paste it into your browser.",
+StaticPopupDialogs["ONECAST_WOWHEAD"] = ns.Retranslate({
+	text = L["%s on Wowhead\nPress Ctrl+C to copy, then paste it into your browser."],
 	button1 = CLOSE or "Close",
 	hasEditBox = true,
 	editBoxWidth = 280,
@@ -3197,7 +3210,7 @@ StaticPopupDialogs["ONECAST_WOWHEAD"] = {
 	EditBoxOnEscapePressed = function(box)
 		box:GetParent():Hide()
 	end,
-}
+})
 
 -- Wowhead's WoW Forever page for an item, spell, NPC or quest, in a popup to copy.
 local function ShowWowhead(kind, id, name)
@@ -3324,28 +3337,28 @@ local function ShowItemMenu(itemID, name)
 	name = name or C_Item.GetItemNameByID(itemID) or ("item " .. itemID)
 	local entries = {}
 	if InCollection(itemID) then
-		entries[#entries + 1] = { "Open in the collection", function()
+		entries[#entries + 1] = { L["Open in the collection"], function()
 			ns.Book.Show()
 			ns.Book.ShowFish(itemID)
 		end }
 	end
 	if charDB and charDB.lifetime.items[itemID] then
-		entries[#entries + 1] = { "Where it bites best", function()
+		entries[#entries + 1] = { L["Where it bites best"], function()
 			Stats.Farm(itemID)
 		end }
 	end
 	local wanted = Wanted(itemID)
-	entries[#entries + 1] = { wanted and "Take off your wanted list" or "Add to your wanted list", function()
+	entries[#entries + 1] = { wanted and L["Take off your wanted list"] or L["Add to your wanted list"], function()
 		Stats.ToggleWanted(itemID, name)
 	end }
-	entries[#entries + 1] = { wanted and wanted.target and string.format("Want a different number (%d/%d)...", wanted.got, wanted.target)
-		or "Want a number of them...", function()
+	entries[#entries + 1] = { wanted and wanted.target and string.format(L["Want a different number (%d/%d)..."], wanted.got, wanted.target)
+		or L["Want a number of them..."], function()
 		StaticPopup_Show("ONECAST_GOAL", name, nil, { itemID = itemID, name = name, default = wanted and wanted.target or 20 })
 	end }
-	entries[#entries + 1] = { "Wowhead link", function()
+	entries[#entries + 1] = { L["Wowhead link"], function()
 		ShowWowhead("item", itemID, name)
 	end }
-	entries[#entries + 1] = { "Link in chat", function()
+	entries[#entries + 1] = { L["Link in chat"], function()
 		ns.InsertChatLink(ns.ItemLink(itemID))
 	end }
 	return ShowMenu(name, entries)
@@ -3462,21 +3475,21 @@ local function ItemRow(parent, index, y)
 		if h then
 			-- A past session: everything it was.
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText((h.start and date("%A %d %B, %H:%M", h.start) or "Session") .. "  ·  " .. (h.zone or "?"))
-			GameTooltip:AddDoubleLine("Caught", string.format("%d of %d", h.catches, h.casts or h.catches), 1, 0.82, 0, 1, 1, 1)
-			GameTooltip:AddDoubleLine("Fishing time", Stats.FormatDuration(h.time), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:SetText((h.start and date("%A %d %B, %H:%M", h.start) or L["Session"]) .. "  ·  " .. (h.zone or "?"))
+			GameTooltip:AddDoubleLine(L["Caught"], string.format(L["%d of %d"], h.catches, h.casts or h.catches), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Fishing time"], Stats.FormatDuration(h.time), 1, 0.82, 0, 1, 1, 1)
 			local rate = h.time and h.time >= 60 and h.catches / h.time * 3600
-			GameTooltip:AddDoubleLine("Fish per hour", rate and string.format("%.0f", rate) or "-", 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Fish per hour"], rate and string.format("%.0f", rate) or "-", 1, 0.82, 0, 1, 1, 1)
 			if (h.vendor or 0) > 0 then
-				GameTooltip:AddDoubleLine("Vendor value", Coins(h.vendor), 1, 0.82, 0, 1, 1, 1)
+				GameTooltip:AddDoubleLine(L["Vendor value"], Coins(h.vendor), 1, 0.82, 0, 1, 1, 1)
 			end
 			if (h.skill or 0) > 0 then
-				GameTooltip:AddDoubleLine("Skill gained", "+" .. h.skill, 1, 0.82, 0, 0.12, 1, 0)
+				GameTooltip:AddDoubleLine(L["Skill gained"], "+" .. h.skill, 1, 0.82, 0, 0.12, 1, 0)
 			end
 			if h.best then
 				local name = C_Item.GetItemNameByID(h.best) or ("item " .. h.best)
 				local color = Stats.QualityColor(C_Item.GetItemQualityByID(h.best))
-				GameTooltip:AddDoubleLine("Best catch", name, 1, 0.82, 0, color and color.r or 1, color and color.g or 1,
+				GameTooltip:AddDoubleLine(L["Best catch"], name, 1, 0.82, 0, color and color.r or 1, color and color.g or 1,
 					color and color.b or 1)
 			end
 			if h.items and #h.items > 0 then
@@ -3493,11 +3506,11 @@ local function ItemRow(parent, index, y)
 			-- A spot on the Farm tab: its numbers and what bites there.
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(self.itemName)
-			GameTooltip:AddDoubleLine("Caught", string.format("%d of %d", t.catches, t.casts), 1, 0.82, 0, 1, 1, 1)
-			GameTooltip:AddDoubleLine("Fishing time", Stats.FormatDuration(t.activeTime), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Caught"], string.format(L["%d of %d"], t.catches, t.casts), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Fishing time"], Stats.FormatDuration(t.activeTime), 1, 0.82, 0, 1, 1, 1)
 			local rate = PerHour(t)
-			GameTooltip:AddDoubleLine("Fish per hour", rate and string.format("%.0f", rate) or "-", 1, 0.82, 0, 1, 1, 1)
-			GameTooltip:AddDoubleLine("Vendor value", Coins(TotalValue(t.items, VendorPrice)), 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Fish per hour"], rate and string.format("%.0f", rate) or "-", 1, 0.82, 0, 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["Vendor value"], Coins(TotalValue(t.items, VendorPrice)), 1, 0.82, 0, 1, 1, 1)
 			local list = {}
 			for id, item in pairs(t.items) do
 				list[#list + 1] = { id = id, count = item.count }
@@ -3516,19 +3529,19 @@ local function ItemRow(parent, index, y)
 			end
 			GameTooltip:AddLine(" ")
 			if t.x or Stats.AreaPlace(self.itemName) then
-				GameTooltip:AddLine("Click: show on the map, with a waypoint", 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Click: show on the map, with a waypoint"], 0.6, 0.8, 1)
 			else
-				GameTooltip:AddLine("Click: show the zone on the map", 0.6, 0.8, 1)
-				GameTooltip:AddLine("Fish here again to add a waypoint.", 0.6, 0.6, 0.6, true)
+				GameTooltip:AddLine(L["Click: show the zone on the map"], 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Fish here again to add a waypoint."], 0.6, 0.6, 0.6, true)
 			end
 			GameTooltip:Show()
 		elseif self.missing then
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetItemByID(self.itemID)
 			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine("Not in your collection yet, and found in this zone.", 1, 1, 1, true)
-			GameTooltip:AddLine("Click: see it in the collection", 0.6, 0.8, 1)
-			GameTooltip:AddLine("Right-click: more", 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Not in your collection yet, and found in this zone."], 1, 1, 1, true)
+			GameTooltip:AddLine(L["Click: see it in the collection"], 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Right-click: more"], 0.6, 0.8, 1)
 			GameTooltip:Show()
 		elseif self.itemID then
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -3536,16 +3549,24 @@ local function ItemRow(parent, index, y)
 			if self.note then
 				GameTooltip:AddLine(self.note, 1, 1, 1, true)
 			end
+			-- Catch to cook to sell: its best use cooked, against raw.
+			local cook, better
+			if ns.Cooking then
+				cook, better = ns.Cooking.TipLine(self.itemID)
+			end
+			if cook then
+				GameTooltip:AddLine(cook, better and 0.12 or 0.7, better and 1 or 0.7, better and 0 or 0.7, true)
+			end
 			GameTooltip:AddLine(" ")
 			if self.pick then
-				GameTooltip:AddLine("Click: where it bites best", 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Click: where it bites best"], 0.6, 0.8, 1)
 			elseif InCollection(self.itemID) then
-				GameTooltip:AddLine("Click: open it in the collection", 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Click: open it in the collection"], 0.6, 0.8, 1)
 			else
-				GameTooltip:AddLine("Click: Wowhead link", 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Click: Wowhead link"], 0.6, 0.8, 1)
 			end
-			GameTooltip:AddLine("Right-click: more (wanted, where it bites, Wowhead)", 0.6, 0.8, 1)
-			GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Right-click: more (wanted, where it bites, Wowhead)"], 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Shift-click: link in chat"], 0.6, 0.8, 1)
 			GameTooltip:Show()
 		end
 	end)
@@ -4000,27 +4021,27 @@ local function CreateWindow()
 	f.listToggle:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		if CurrentView() == "records" then
-			GameTooltip:SetText(charDB.recordsList == "sessions" and "Show your notable catches"
-				or "Show your recent sessions")
+			GameTooltip:SetText(charDB.recordsList == "sessions" and L["Show your notable catches"]
+				or L["Show your recent sessions"])
 		elseif charDB.farmTarget then
-			GameTooltip:SetText("Back to all your fish")
+			GameTooltip:SetText(L["Back to all your fish"])
 		elseif charDB.farmList == "fish" then
-			GameTooltip:SetText("Show each spot in this zone, best fish per hour first")
+			GameTooltip:SetText(L["Show each spot in this zone, best fish per hour first"])
 		else
-			GameTooltip:SetText("Pick a fish, to see where it bites best")
+			GameTooltip:SetText(L["Pick a fish, to see where it bites best"])
 		end
 		GameTooltip:Show()
 	end)
 	f.listToggle:SetScript("OnLeave", GameTooltip_Hide)
 	-- Session tab: how the catch is sorted, picked from a menu.
-	local SORTS = { { nil, "Most caught", "Count" }, { "value", "Most valuable", "Value" },
-		{ "latest", "Latest caught", "Latest" }, { "name", "Name", "Name" } }
+	local SORTS = { { nil, L["Most caught"], "Count" }, { "value", L["Most valuable"], "Value" },
+		{ "latest", L["Latest caught"], "Latest" }, { "name", L["Name"], "Name" } }
 	f.listSort = ns.UI.HeaderButton(f.listHeader, true)
 	f.listSort:SetPoint("RIGHT", -2, 0)
 	f.listSort.Paint = function(self)
 		for _, choice in ipairs(SORTS) do
 			if choice[1] == charDB.catchSort then
-				self:SetLabel("Sort:", choice[3])
+				self:SetLabel(L["Sort:"], choice[3])
 			end
 		end
 	end
@@ -4036,14 +4057,14 @@ local function CreateWindow()
 				end
 			end }
 		end
-		ShowMenu("Sort by", entries)
+		ShowMenu(L["Sort by"], entries)
 	end)
 	f.listSort:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Sort the catch")
+		GameTooltip:SetText(L["Sort the catch"])
 		for _, choice in ipairs(SORTS) do
 			if choice[1] == charDB.catchSort then
-				GameTooltip:AddLine("By " .. choice[2]:lower() .. ". Click to change.", 1, 1, 1, true)
+				GameTooltip:AddLine(string.format(L["Sorted: %s. Click to change."], choice[2]), 1, 1, 1, true)
 			end
 		end
 		GameTooltip:Show()
@@ -4076,16 +4097,16 @@ local function CreateWindow()
 	end)
 	expand:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText(self.open and "Show the summary again" or "Show more of the list")
-		GameTooltip:AddLine(self.open and "Bring back the numbers above the list."
-			or "Fold the numbers above away, so the list fills the window.", 1, 1, 1, true)
+		GameTooltip:SetText(self.open and L["Show the summary again"] or L["Show more of the list"])
+		GameTooltip:AddLine(self.open and L["Bring back the numbers above the list."]
+			or L["Fold the numbers above away, so the list fills the window."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	expand:SetScript("OnLeave", GameTooltip_Hide)
 	f.listExpand = expand
 	-- Pop out: the catch in a small window of its own, to keep beside you while you fish.
 	f.listPopout = ns.UI.HeaderButton(f.listHeader)
-	f.listPopout:SetLabel(nil, "Pop out")
+	f.listPopout:SetLabel(nil, L["Pop out"])
 	f.listPopout:SetScript("OnClick", function()
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		if ns.CatchWindow then
@@ -4094,9 +4115,9 @@ local function CreateWindow()
 	end)
 	f.listPopout:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Pop out")
-		GameTooltip:AddLine("This session's catch in a small window of its own, to keep beside you while you fish. "
-			.. "The Catch window setting keeps it open.", 1, 1, 1, true)
+		GameTooltip:SetText(L["Pop out"])
+		GameTooltip:AddLine(L["This session's catch in a small window of its own, to keep beside you while you fish. "]
+			.. L["The Catch window setting keeps it open."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	f.listPopout:SetScript("OnLeave", GameTooltip_Hide)
@@ -4140,20 +4161,20 @@ local function CreateWindow()
 	end)
 
 	-- Bottom bar: square icon buttons, like the Character frame's model controls.
-	local options = IconButton(f, "Options", "Options", function()
+	local options = IconButton(f, "Options", L["Options"], function()
 		ns.Hub.ShowOptions()
 	end)
 	options:SetPoint("BOTTOMRIGHT", -22, 3)
-	f.gear = IconButton(f, "Weapons", "Done fishing: your weapons and gear back on. The session carries on until you reset it.", function()
+	f.gear = IconButton(f, "Weapons", L["Done fishing: your weapons and gear back on. The session carries on until you reset it."], function()
 		OneCast_DoneFishing()
 	end)
-	f.scan = IconButton(f, "Scan", "Scan prices with Auctionator", function()
+	f.scan = IconButton(f, "Scan", L["Scan prices with Auctionator"], function()
 		ns.Prices.Scan()
 	end)
-	f.reset = IconButton(f, "Reset", "Reset session", function()
+	f.reset = IconButton(f, "Reset", L["Reset session"], function()
 		StaticPopup_Show("ONECAST_RESET_SESSION")
 	end)
-	local book = IconButton(f, "Book", "Fishing collection", function()
+	local book = IconButton(f, "Book", L["Fishing collection"], function()
 		ns.Book.Toggle()
 	end)
 	f.bottomButtons = { options, book, f.gear, f.scan, f.reset }
@@ -4336,7 +4357,7 @@ function Stats.Refresh()
 		card.name:SetText(last.name or ("item:" .. last.id))
 		card.name:SetTextColor(color and color.r or 1, color and color.g or 1, color and color.b or 1)
 		card.border:SetVertexColor(color and color.r or 1, color and color.g or 1, color and color.b or 1)
-		card.sub:SetText("Latest catch  ·  " .. Stats.Since(last.time) .. ((last.quantity or 1) > 1 and ("  ·  x" .. last.quantity) or ""))
+		card.sub:SetText(L["Latest catch  ·  "] .. Stats.Since(last.time) .. ((last.quantity or 1) > 1 and ("  ·  x" .. last.quantity) or ""))
 		card.right:SetText("")
 		card:Show()
 		rowsTop = rowsTop - LATEST_HEIGHT - 4
@@ -4373,10 +4394,10 @@ function Stats.Refresh()
 		frame.listSort:Paint()
 	end
 	if view == "records" then
-		frame.listToggle:SetLabel("Show:", charDB.recordsList == "sessions" and "Notable" or "Sessions")
+		frame.listToggle:SetLabel(L["Show:"], charDB.recordsList == "sessions" and L["Notable"] or L["Sessions"])
 	else
-		frame.listToggle:SetLabel(not charDB.farmTarget and "Show:" or nil,
-			charDB.farmTarget and "Back" or charDB.farmList == "fish" and "Spots" or "Fish")
+		frame.listToggle:SetLabel(not charDB.farmTarget and L["Show:"] or nil,
+			charDB.farmTarget and L["Back"] or charDB.farmList == "fish" and L["Spots"] or L["Fish"])
 	end
 	for i, row in ipairs(frame.rows) do
 		local r = i <= capacity and rows[offset + i]
@@ -4422,8 +4443,8 @@ function Stats.Refresh()
 		frame.more:SetPoint("RIGHT", frame.inset, "RIGHT", -(EDGE + PAD), 0)
 		frame.more:SetJustifyH("LEFT")
 		local below = #rows - capacity - offset
-		frame.more:SetText(below > 0 and string.format("%d more below: scroll, or click here", below)
-			or "Back to the top: click here")
+		frame.more:SetText(below > 0 and string.format(L["%d more below: scroll, or click here"], below)
+			or L["Back to the top: click here"])
 	else
 		frame.more:SetText("")
 	end

@@ -96,6 +96,7 @@ And around it:
 
 ### 💰 What your catch is worth
 - Vendor value of everything caught, and per hour of fishing, counting what was inside the trunks and crates you opened.
+- **Cook or sell?** Hover a catch to see what it's worth cooked against raw, with the other ingredients' cost taken off. A fish's page names its best use, and the session's worth says how much more your catch makes cooked with the recipes you know.
 - **Sell your fishing junk** at a vendor in one click, or automatically: only the grey items you fished up.
 - Auction value with **Auctionator**, **TradeSkillMaster** or **Naowh Forever**, and with more than one installed, choose whose prices to use. Open the auction house and scan your whole catch with Auctionator in one click.
 
@@ -126,7 +127,7 @@ And around it:
 
 - A **Camp page** for Forever's fishing crafts: the **Fish Bowl**, **Fishing Rack** and **Fishing Hut**, with what each does, whether you've learned it, and your reagents against what it takes.
 - **Where the blueprints drop**, with a click for a waypoint to the dungeon's entrance.
-- The Fishing Rack's **Camper's Lure** (+60 Fishing for 5 minutes) is one of the tackle box's lures, so the cast key can put it on.
+- The Fishing Rack's **Camper's Lure** (+60 Fishing for 5 minutes) is one of the tackle box's lures, so the cast key can put it on. Turn on **Use conjured lures first** and your conjured lures (Camper's Lure, "Secret" Bait) go on before your chosen lure while you have them, so the lures you bought last longer.
 - The **campfires**, how many features each holds, and where the Journeyman and Expert blueprints come from.
 - The **Uncommon or Rare Fishing** buff from a Rack or Hut shows with its time left, and chat tells you when it wears off. What you catch while it's on is kept, to show what its extra rewards really are: Rare Fishing brings up ore, metal bars, herbs, hides and Dream Dust beside the fish, and more trunks.
 
@@ -221,7 +222,7 @@ And around it:
 - **Zone fishing levels start from Classic data**, and players' data reports are confirming or correcting them for Forever zone by zone. Forever's new zones without a level yet are judged from your own catches and getaways.
 - Forever leaves equipped fishing gear out of the Fishing number it reports (lures, food and enchants like the fishing line are in it), so OneCast adds your gear's own bonus, never twice.
 - Lures work with a pole in your main hand, and take 5 seconds to apply. WoW only lets addons use items on your own press, so a lure can't go on by itself.
-- OneCast's own text is in English. Zone levels, pool tooltips and the fishing outfit work in German, French, Spanish, Russian, Korean and Chinese clients too.
+- **OneCast is in German, French, Spanish, Brazilian Portuguese, Russian, Simplified Chinese and Korean**, following your game's language, or the one you pick under **Language** in the options. The translations are machine-made, so a phrase may read oddly: corrections are welcome in a CurseForge comment or a GitHub issue. Taiwanese Chinese and Italian clients see English.
 - Pools move, so a mark shows where one has been, not where one is now.
 - Auction values need Auctionator, TradeSkillMaster or Naowh Forever installed.
 

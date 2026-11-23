@@ -8,6 +8,7 @@
 -- allow it in combat). The game's Settings panel is never touched.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Onboarding = {}
 ns.Onboarding = Onboarding
@@ -58,7 +59,7 @@ end
 -- anything else), or false and why not.
 function Onboarding.Bind(key)
 	if InCombatLockdown() then
-		return false, "not in combat"
+		return false, L["not in combat"]
 	end
 	local command = Command()
 	local before = GetBindingAction(key)
@@ -68,7 +69,7 @@ function Onboarding.Bind(key)
 		end
 	end
 	if not SetBinding(key, command) then
-		return false, "the game wouldn't take that key"
+		return false, L["the game wouldn't take that key"]
 	end
 	SaveBindings(GetCurrentBindingSet())
 	if before and before ~= "" and before ~= command then
@@ -99,14 +100,14 @@ local function Finish(button, key)
 	local ok, detail = Onboarding.Bind(key)
 	local text = GetBindingText and GetBindingText(key) or key
 	if not ok then
-		ns.Print("couldn't set the cast key: " .. detail .. ".")
+		ns.Print(L["couldn't set the cast key: "] .. detail .. ".")
 		return
 	end
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if detail then
-		ns.Print(string.format("your cast key is %s now (it was %s before).", WHITE .. text .. "|r", detail))
+		ns.Print(string.format(L["your cast key is %s now (it was %s before)."], WHITE .. text .. "|r", detail))
 	else
-		ns.Print(string.format("your cast key is %s now.", WHITE .. text .. "|r"))
+		ns.Print(string.format(L["your cast key is %s now."], WHITE .. text .. "|r"))
 	end
 	button:Refresh()
 	if button.onChange then
@@ -116,14 +117,14 @@ end
 
 local function StartCapture(button)
 	if InCombatLockdown() then
-		ns.Print("the cast key can't be changed in combat.")
+		ns.Print(L["the cast key can't be changed in combat."])
 		return
 	end
 	if capturing and capturing ~= button then
 		StopCapture(capturing)
 	end
 	capturing = button
-	button:SetText("|cffffd100Press a key...|r  " .. GREY .. "(Esc cancels)|r")
+	button:SetText(L["|cffffd100Press a key...|r  "] .. GREY .. L["(Esc cancels)|r"])
 	button:EnableKeyboard(true)
 	button:SetPropagateKeyboardInput(false)
 	button:SetScript("OnKeyDown", function(self, key)
@@ -134,7 +135,7 @@ local function StartCapture(button)
 		elseif key:match("^PAD") then
 			-- A controller's button: those are chosen in Options > Controller.
 			StopCapture(self)
-			ns.Print("controller buttons are set in Options > Controller: the cast key is a keyboard key or mouse button.")
+			ns.Print(L["controller buttons are set in Options > Controller: the cast key is a keyboard key or mouse button."])
 		elseif not REFUSED[key] then
 			Finish(self, Chord(key))
 		end
@@ -160,7 +161,7 @@ function Onboarding.CaptureButton(parent, width, height, onChange, labels)
 		if text then
 			self:SetText(labels.bound and labels.bound(text) or text)
 		else
-			self:SetText(labels.unbound or (RED .. "Not bound|r"))
+			self:SetText(labels.unbound or (RED .. L["Not bound|r"]))
 		end
 	end
 	b:SetScript("OnClick", function(self)
@@ -229,8 +230,8 @@ local function PaintWays(f)
 			p.picture:SetSize(36, 36)
 		end
 		p.glyph:SetText("")
-		height = height + SetWay(p, "Mouse", "With your fishing pole on, double right-click the water to cast. "
-			.. "Double right-click again to reel in.")
+		height = height + SetWay(p, "Mouse", L["With your fishing pole on, double right-click the water to cast. "]
+			.. L["Double right-click again to reel in."])
 		ways[#ways + 1] = p
 	end
 	local C = ns.Controller
@@ -240,11 +241,11 @@ local function PaintWays(f)
 		p.picture:SetTexture(nil)
 		p.glyph:SetText(C.Glyph(button, 40))
 		local start = C.StartLabel and C.StartLabel(ns.db.padStart)
-		local lines = { "With your fishing pole on, " .. C.Glyph(button, 28) .. " casts and reels. No key needed." }
-		if start and start ~= "Off" then
-			lines[#lines + 1] = "No pole on? " .. start .. " puts it on."
+		local lines = { L["With your fishing pole on, "] .. C.Glyph(button, 28) .. L[" casts and reels. No key needed."] }
+		if start and start ~= L["Off"] then
+			lines[#lines + 1] = L["No pole on? "] .. start .. L[" puts it on."]
 		end
-		lines[#lines + 1] = "|cffffd100Change these in Options > Controller.|r"
+		lines[#lines + 1] = L["|cffffd100Change these in Options > Controller.|r"]
 		height = height + SetWay(p, "Controller", table.concat(lines, "\n"))
 		ways[#ways + 1] = p
 	end
@@ -281,7 +282,7 @@ local function CreateWelcome()
 	local heading = inset:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
 	f.heading = heading
 	heading:SetPoint("TOP", 0, -EDGE)
-	heading:SetText("One key to fish")
+	heading:SetText(L["One key to fish"])
 
 	local intro = inset:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	f.intro = intro
@@ -289,18 +290,18 @@ local function CreateWelcome()
 	intro:SetWidth(WIDTH - 4 * EDGE)
 	intro:SetJustifyH("CENTER")
 	intro:SetSpacing(3)
-	intro:SetText("Press it to cast. When the bobber splashes, press it again to reel in. "
-		.. "That's all there is to it.")
+	intro:SetText(L["Press it to cast. When the bobber splashes, press it again to reel in. "]
+		.. L["That's all there is to it."])
 
 	f.result = inset:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	f.capture = Onboarding.CaptureButton(inset, 320, 44, function(text, replaced)
-		f.result:SetText("|cff20ff20Done!|r Press " .. WHITE .. text .. "|r with your fishing pole on."
-			.. (replaced and ("\n" .. GREY .. "It was " .. replaced .. " before.|r") or ""))
-		f.done:SetText("Done")
+		f.result:SetText(L["|cff20ff20Done!|r Press "] .. WHITE .. text .. L["|r with your fishing pole on."]
+			.. (replaced and ("\n" .. GREY .. L["It was "] .. replaced .. " before.|r") or ""))
+		f.done:SetText(L["Done"])
 		PaintWays(f)
 	end, {
-		unbound = "Click, then press a key",
-		bound = function(text) return "Your key: " .. WHITE .. text .. "|r  " .. GREY .. "(change)|r" end,
+		unbound = L["Click, then press a key"],
+		bound = function(text) return L["Your key: "] .. WHITE .. text .. "|r  " .. GREY .. "(change)|r" end,
 	})
 	f.capture:SetPoint("TOP", intro, "BOTTOM", 0, -16)
 	f.capture:SetNormalFontObject("GameFontNormalLarge")
@@ -310,8 +311,8 @@ local function CreateWelcome()
 	f.result:SetWidth(WIDTH - 4 * EDGE)
 	f.result:SetJustifyH("CENTER")
 	f.result:SetSpacing(3)
-	f.result:SetText(GREY .. "A Shift, Ctrl or Alt combination or a side mouse button works too.\n"
-		.. "Change it any time in Options > Fishing.|r")
+	f.result:SetText(GREY .. L["A Shift, Ctrl or Alt combination or a side mouse button works too.\n"]
+		.. L["Change it any time in Options > Fishing.|r"])
 
 	-- The other ways, under a rule.
 	f.rule = inset:CreateTexture(nil, "ARTWORK")
@@ -321,13 +322,13 @@ local function CreateWelcome()
 	f.rule:SetWidth(WIDTH - 2 * EDGE)
 	f.waysHeader = inset:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	f.waysHeader:SetPoint("TOP", f.rule, "BOTTOM", 0, -8)
-	f.waysHeader:SetText("Other ways to fish")
+	f.waysHeader:SetText(L["Other ways to fish"])
 	f.mouseWay = WayPanel(inset)
 	f.padWay = WayPanel(inset)
 
 	local later = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	later:SetSize(110, 24)
-	later:SetText("Later")
+	later:SetText(L["Later"])
 	later:SetPoint("BOTTOMLEFT", 8, 3)
 	later:SetScript("OnClick", function()
 		f:Hide()
@@ -346,7 +347,7 @@ local function CreateWelcome()
 	f:SetScript("OnShow", function(self)
 		self.capture:Refresh()
 		PaintWays(self)
-		self.done:SetText(Onboarding.Bound() and "Done" or "Skip")
+		self.done:SetText(Onboarding.Bound() and L["Done"] or L["Skip"])
 	end)
 	f:SetScript("OnHide", function(self)
 		StopCapture(self.capture)
@@ -360,7 +361,7 @@ end
 
 function Onboarding.Show()
 	if InCombatLockdown() then
-		ns.Print("the welcome window opens out of combat: /onecast setup.")
+		ns.Print(L["the welcome window opens out of combat: /onecast setup."])
 		return
 	end
 	welcome = welcome or CreateWelcome()
@@ -385,7 +386,7 @@ function Onboarding.OnLogin()
 			db.welcomeShown = shown + 1
 			Onboarding.Show()
 		else
-			ns.Print("no cast key yet: /onecast setup to choose one, or double right-click with a pole.")
+			ns.Print(L["no cast key yet: /onecast setup to choose one, or double right-click with a pole."])
 		end
 	end)
 end

@@ -6,6 +6,7 @@
 -- the start, nothing here ever touches a texture.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Theme = {}
 ns.Theme = Theme
@@ -21,10 +22,10 @@ Theme.ORDER = { "forever", "dark", "tidal", "abyss", "golden", "marsh", "moonlit
 -- ink is text on the pages, inkSoft quieter text, and lead, soft, good and bad are text colours.
 -- A theme with no tints leaves the game's own art alone. grain lays a tiled texture behind a
 -- window, and fromClass takes the tints from the character being played.
-Theme.LIST = {
+Theme.LIST = ns.Retranslate({
 	forever = {
 		id = "forever",
-		label = "Forever",
+		label = L["Forever"],
 		ink = { 0.18, 0.10, 0.02 },
 		inkSoft = { 0.36, 0.25, 0.14 },
 		lead = "|cff7a2a00",
@@ -34,7 +35,7 @@ Theme.LIST = {
 	},
 	dark = {
 		id = "dark",
-		label = "Dark",
+		label = L["Dark"],
 		frame = { 0.42, 0.43, 0.47 },
 		inset = { 0.55, 0.56, 0.60 },
 		header = { 0.55, 0.56, 0.62 },
@@ -49,7 +50,7 @@ Theme.LIST = {
 	},
 	tidal = {
 		id = "tidal",
-		label = "Tidal",
+		label = L["Tidal"],
 		frame = { 0.34, 0.58, 0.74 },
 		inset = { 0.42, 0.62, 0.76 },
 		header = { 0.40, 0.68, 0.86 },
@@ -64,7 +65,7 @@ Theme.LIST = {
 	},
 	abyss = {
 		id = "abyss",
-		label = "Abyss",
+		label = L["Abyss"],
 		frame = { 0.20, 0.30, 0.40 },
 		inset = { 0.30, 0.42, 0.50 },
 		header = { 0.26, 0.48, 0.56 },
@@ -79,7 +80,7 @@ Theme.LIST = {
 	},
 	golden = {
 		id = "golden",
-		label = "Golden Hour",
+		label = L["Golden Hour"],
 		frame = { 0.85, 0.55, 0.25 },
 		inset = { 0.88, 0.64, 0.36 },
 		header = { 0.95, 0.62, 0.25 },
@@ -94,7 +95,7 @@ Theme.LIST = {
 	},
 	marsh = {
 		id = "marsh",
-		label = "Marsh",
+		label = L["Marsh"],
 		frame = { 0.36, 0.50, 0.28 },
 		inset = { 0.44, 0.56, 0.34 },
 		header = { 0.46, 0.62, 0.34 },
@@ -109,7 +110,7 @@ Theme.LIST = {
 	},
 	moonlit = {
 		id = "moonlit",
-		label = "Moonlit",
+		label = L["Moonlit"],
 		frame = { 0.46, 0.44, 0.66 },
 		inset = { 0.54, 0.52, 0.72 },
 		header = { 0.58, 0.54, 0.78 },
@@ -124,7 +125,7 @@ Theme.LIST = {
 	},
 	lodge = {
 		id = "lodge",
-		label = "Fisherman's Lodge",
+		label = L["Fisherman's Lodge"],
 		frame = { 0.62, 0.42, 0.24 },
 		inset = { 0.60, 0.44, 0.28 },
 		header = { 0.70, 0.46, 0.22 },
@@ -143,7 +144,7 @@ Theme.LIST = {
 	-- sun-bleached sand, with coral-red highlights.
 	bootybay = {
 		id = "bootybay",
-		label = "Booty Bay",
+		label = L["Booty Bay"],
 		frame = { 0.32, 0.56, 0.50 },
 		inset = { 0.40, 0.60, 0.54 },
 		header = { 0.36, 0.64, 0.56 },
@@ -159,7 +160,7 @@ Theme.LIST = {
 	-- Azeroth's most famous fishermen. Mrglglgl! Bright aqua-green, sea foam and an orange fin.
 	murloc = {
 		id = "murloc",
-		label = "Murloc",
+		label = L["Murloc"],
 		frame = { 0.22, 0.66, 0.56 },
 		inset = { 0.30, 0.70, 0.60 },
 		header = { 0.26, 0.76, 0.62 },
@@ -175,7 +176,7 @@ Theme.LIST = {
 	-- The frozen lakes of Winterspring: frosted silver-blue and icy white, in deep navy ink.
 	winterspring = {
 		id = "winterspring",
-		label = "Winterspring",
+		label = L["Winterspring"],
 		frame = { 0.70, 0.80, 0.92 },
 		inset = { 0.76, 0.84, 0.94 },
 		header = { 0.72, 0.84, 0.98 },
@@ -191,7 +192,7 @@ Theme.LIST = {
 	-- The Wailing Caverns' Deviate Fish: purple scales and a toxic green glow.
 	deviate = {
 		id = "deviate",
-		label = "Deviate",
+		label = L["Deviate"],
 		frame = { 0.52, 0.34, 0.62 },
 		inset = { 0.58, 0.42, 0.66 },
 		header = { 0.60, 0.38, 0.72 },
@@ -208,7 +209,7 @@ Theme.LIST = {
 	-- pages, in light ink.
 	ember = {
 		id = "ember",
-		label = "Ember",
+		label = L["Ember"],
 		frame = { 0.40, 0.30, 0.27 },
 		inset = { 0.46, 0.34, 0.30 },
 		header = { 0.88, 0.42, 0.18 },
@@ -224,7 +225,7 @@ Theme.LIST = {
 	-- Ashenvale's night forest: deep teal under the canopy, with fireflies.
 	ashenvale = {
 		id = "ashenvale",
-		label = "Ashenvale",
+		label = L["Ashenvale"],
 		frame = { 0.30, 0.42, 0.40 },
 		inset = { 0.36, 0.48, 0.46 },
 		header = { 0.34, 0.56, 0.52 },
@@ -240,7 +241,7 @@ Theme.LIST = {
 	-- Darkshore's misty coast: moon-silver blues, with bubbles rising.
 	darkshore = {
 		id = "darkshore",
-		label = "Darkshore",
+		label = L["Darkshore"],
 		frame = { 0.42, 0.46, 0.56 },
 		inset = { 0.48, 0.52, 0.62 },
 		header = { 0.50, 0.58, 0.72 },
@@ -256,7 +257,7 @@ Theme.LIST = {
 	-- Azshara's endless autumn: crimson and orange, with leaves falling.
 	azshara = {
 		id = "azshara",
-		label = "Azshara",
+		label = L["Azshara"],
 		frame = { 0.70, 0.36, 0.30 },
 		inset = { 0.74, 0.44, 0.36 },
 		header = { 0.86, 0.42, 0.30 },
@@ -272,7 +273,7 @@ Theme.LIST = {
 	-- Durotar's red rock and dust, by the shore of Razor Hill.
 	durotar = {
 		id = "durotar",
-		label = "Durotar",
+		label = L["Durotar"],
 		frame = { 0.62, 0.36, 0.24 },
 		inset = { 0.66, 0.42, 0.30 },
 		header = { 0.78, 0.38, 0.20 },
@@ -288,7 +289,7 @@ Theme.LIST = {
 	-- Silverpine Forest: grey-green gloom and steady rain.
 	silverpine = {
 		id = "silverpine",
-		label = "Silverpine",
+		label = L["Silverpine"],
 		frame = { 0.38, 0.42, 0.38 },
 		inset = { 0.44, 0.48, 0.44 },
 		header = { 0.46, 0.54, 0.46 },
@@ -304,7 +305,7 @@ Theme.LIST = {
 	-- Hillsbrad's meadows: soft greens and gold, with pollen drifting.
 	hillsbrad = {
 		id = "hillsbrad",
-		label = "Hillsbrad",
+		label = L["Hillsbrad"],
 		frame = { 0.52, 0.58, 0.32 },
 		inset = { 0.58, 0.62, 0.38 },
 		header = { 0.64, 0.70, 0.34 },
@@ -320,7 +321,7 @@ Theme.LIST = {
 	-- Stormsong Valley: sea-green and slate, under a passing storm.
 	stormsong = {
 		id = "stormsong",
-		label = "Stormsong",
+		label = L["Stormsong"],
 		frame = { 0.30, 0.44, 0.44 },
 		inset = { 0.36, 0.50, 0.50 },
 		header = { 0.34, 0.56, 0.58 },
@@ -336,7 +337,7 @@ Theme.LIST = {
 	-- Zuldazar's jungle temples: teal stone and gold, glinting.
 	zuldazar = {
 		id = "zuldazar",
-		label = "Zuldazar",
+		label = L["Zuldazar"],
 		frame = { 0.30, 0.54, 0.46 },
 		inset = { 0.36, 0.58, 0.50 },
 		header = { 0.90, 0.70, 0.26 },
@@ -352,7 +353,7 @@ Theme.LIST = {
 	-- Vol'dun's dunes: sun-baked sand, with grains on the wind.
 	voldun = {
 		id = "voldun",
-		label = "Vol'dun",
+		label = L["Vol'dun"],
 		frame = { 0.78, 0.64, 0.42 },
 		inset = { 0.82, 0.70, 0.48 },
 		header = { 0.88, 0.70, 0.40 },
@@ -368,7 +369,7 @@ Theme.LIST = {
 	-- Drustvar's witch-wood at dusk: bruised purples and wisps.
 	drustvar = {
 		id = "drustvar",
-		label = "Drustvar",
+		label = L["Drustvar"],
 		frame = { 0.40, 0.32, 0.36 },
 		inset = { 0.46, 0.38, 0.40 },
 		header = { 0.56, 0.36, 0.46 },
@@ -384,7 +385,7 @@ Theme.LIST = {
 	-- Suramar's nightborne city: violet and magenta, with arcane motes.
 	suramar = {
 		id = "suramar",
-		label = "Suramar",
+		label = L["Suramar"],
 		frame = { 0.40, 0.32, 0.58 },
 		inset = { 0.46, 0.38, 0.64 },
 		header = { 0.62, 0.40, 0.80 },
@@ -400,7 +401,7 @@ Theme.LIST = {
 	-- Shadowmoon Valley: deep violet night, full of stars.
 	shadowmoon = {
 		id = "shadowmoon",
-		label = "Shadowmoon",
+		label = L["Shadowmoon"],
 		frame = { 0.26, 0.24, 0.42 },
 		inset = { 0.32, 0.30, 0.48 },
 		header = { 0.40, 0.36, 0.62 },
@@ -416,7 +417,7 @@ Theme.LIST = {
 	-- Tanaan's fel-soaked jungle: sickly green fire, embers rising.
 	fel = {
 		id = "fel",
-		label = "Fel",
+		label = L["Fel"],
 		frame = { 0.28, 0.40, 0.20 },
 		inset = { 0.32, 0.44, 0.24 },
 		header = { 0.50, 0.80, 0.20 },
@@ -432,7 +433,7 @@ Theme.LIST = {
 	-- Mechagon: brushed steel and copper, with sparks.
 	mechagon = {
 		id = "mechagon",
-		label = "Mechagon",
+		label = L["Mechagon"],
 		frame = { 0.46, 0.48, 0.50 },
 		inset = { 0.52, 0.54, 0.56 },
 		header = { 0.78, 0.52, 0.30 },
@@ -448,7 +449,7 @@ Theme.LIST = {
 	-- Bastion's bright heavens: white marble and gold.
 	bastion = {
 		id = "bastion",
-		label = "Bastion",
+		label = L["Bastion"],
 		frame = { 0.82, 0.80, 0.74 },
 		inset = { 0.88, 0.86, 0.80 },
 		header = { 0.92, 0.80, 0.50 },
@@ -464,7 +465,7 @@ Theme.LIST = {
 	-- Revendreth's gothic halls: crimson and shadow.
 	revendreth = {
 		id = "revendreth",
-		label = "Revendreth",
+		label = L["Revendreth"],
 		frame = { 0.42, 0.22, 0.24 },
 		inset = { 0.48, 0.26, 0.28 },
 		header = { 0.72, 0.20, 0.24 },
@@ -480,7 +481,7 @@ Theme.LIST = {
 	-- Ardenweald's twilight grove: dusk blue, with faerie lights.
 	ardenweald = {
 		id = "ardenweald",
-		label = "Ardenweald",
+		label = L["Ardenweald"],
 		frame = { 0.24, 0.30, 0.50 },
 		inset = { 0.30, 0.36, 0.56 },
 		header = { 0.36, 0.50, 0.80 },
@@ -496,7 +497,7 @@ Theme.LIST = {
 	-- The Alliance: Stormwind blue and gold.
 	alliance = {
 		id = "alliance",
-		label = "Alliance",
+		label = L["Alliance"],
 		frame = { 0.32, 0.40, 0.66 },
 		inset = { 0.38, 0.46, 0.70 },
 		header = { 0.90, 0.74, 0.30 },
@@ -512,7 +513,7 @@ Theme.LIST = {
 	-- The Horde: Orgrimmar's iron, red and black.
 	horde = {
 		id = "horde",
-		label = "Horde",
+		label = L["Horde"],
 		frame = { 0.40, 0.22, 0.18 },
 		inset = { 0.46, 0.28, 0.22 },
 		header = { 0.78, 0.22, 0.14 },
@@ -527,7 +528,7 @@ Theme.LIST = {
 	},
 	class = {
 		id = "class",
-		label = "Class Colours",
+		label = L["Class Colours"],
 		fromClass = true,
 		parchment = { 0.24, 0.25, 0.29 },
 		ink = { 0.93, 0.92, 0.88 },
@@ -537,7 +538,7 @@ Theme.LIST = {
 		good = "|cff62d862",
 		bad = "|cffff7466",
 	},
-}
+})
 
 local entries = {}   -- what's been registered: { object, role, skip }
 local listeners = {}

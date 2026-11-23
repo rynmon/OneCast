@@ -8,6 +8,7 @@
 -- setting, built from the same description as the game's options panel.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Hub = {}
 ns.Hub = Hub
@@ -163,28 +164,28 @@ local RAIL_TOP = 48 -- below the window's title bar
 local RAIL_TOP_LEFT = 72 -- below the portrait, on the left
 
 -- The tabs, top to bottom. `open` shows that panel; the panel registers itself with Attach.
-local TABS = {
-	{ key = "session", hint = "/onecast stats", label = "Session stats", icon = "Interface\\Icons\\INV_Misc_Fish_68",
+local TABS = ns.Retranslate({
+	{ key = "session", hint = "/onecast stats", label = L["Session stats"], icon = "Interface\\Icons\\INV_Misc_Fish_68",
 		open = function() ns.Stats.Show() end },
-	{ key = "tackle", hint = "/onecast tackle", label = "Tackle box", icon = 466035,
+	{ key = "tackle", hint = "/onecast tackle", label = L["Tackle box"], icon = 466035,
 		open = function() ns.TackleBox.ShowWindow() end },
-	{ key = "wardrobe", hint = "/onecast wardrobe", label = "Fishing wardrobe", item = 19972, icon = "Interface\\Icons\\INV_Helmet_31",
+	{ key = "wardrobe", hint = "/onecast wardrobe", label = L["Fishing wardrobe"], item = 19972, icon = "Interface\\Icons\\INV_Helmet_31",
 		open = function() ns.Wardrobe.Show() end },
-	{ key = "collection", hint = "/onecast book", label = "Fishing collection", icon = "Interface\\Icons\\INV_Misc_Book_09",
+	{ key = "collection", hint = "/onecast book", label = L["Fishing collection"], icon = "Interface\\Icons\\INV_Misc_Book_09",
 		open = function() ns.Book.ShowCollection() end },
-	{ key = "journey", hint = "/onecast journey", label = "Fisherman's journey", item = 16083, icon = "Interface\\Icons\\Trade_Fishing",
+	{ key = "journey", hint = "/onecast journey", label = L["Fisherman's journey"], item = 16083, icon = "Interface\\Icons\\Trade_Fishing",
 		open = function() ns.Journey.Show() end },
-	{ key = "camp", hint = "/onecast camp", label = "Camp", item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
+	{ key = "camp", hint = "/onecast camp", label = L["Camp"], item = 279966, icon = "Interface\\Icons\\INV_Misc_Bag_EnchantedRunecloth",
 		open = function() ns.Camp.ShowPage() end },
-	{ key = "contest", hint = "/onecast contest", label = "Fishing Extravaganza", item = 19807, icon = "Interface\\Icons\\INV_Misc_Fish_18",
+	{ key = "contest", hint = "/onecast contest", label = L["Fishing Extravaganza"], item = 19807, icon = "Interface\\Icons\\INV_Misc_Fish_18",
 		open = function() ns.Extravaganza.ShowPage() end },
-	{ key = "feedback", hint = "/onecast feedback", label = "Feedback and data report", icon = "Interface\\Icons\\INV_Letter_15",
+	{ key = "feedback", hint = "/onecast feedback", label = L["Feedback and data report"], icon = "Interface\\Icons\\INV_Letter_15",
 		open = function() ns.Feedback.Show() end },
-	{ key = "news", hint = "/onecast new", label = "What's new", icon = "Interface\\Icons\\INV_Misc_Note_01",
+	{ key = "news", hint = "/onecast new", label = L["What's new"], icon = "Interface\\Icons\\INV_Misc_Note_01",
 		open = function() ns.WhatsNew.Show() end },
-	{ key = "options", hint = "/onecast", label = "Options", icon = "Interface\\Icons\\INV_Misc_Gear_01",
+	{ key = "options", hint = "/onecast", label = L["Options"], icon = "Interface\\Icons\\INV_Misc_Gear_01",
 		open = function() Hub.ShowOptions() end },
-}
+})
 
 local panels = {}    -- frame -> function returning its tab key
 local tabsByKey = {} -- key -> TABS entry
@@ -325,16 +326,16 @@ end
 local function TabMenu(tab)
 	local entries = {}
 	if tab.key ~= "options" then
-		entries[#entries + 1] = { "Hide this tab", function()
+		entries[#entries + 1] = { L["Hide this tab"], function()
 			ns.db.hiddenTabs = ns.db.hiddenTabs or {}
 			ns.db.hiddenTabs[tab.key] = true
-			ns.Print(tab.label .. " tab hidden. Right-click any tab to bring it back.")
+			ns.Print(tab.label .. L[" tab hidden. Right-click any tab to bring it back."])
 			Hub.LayoutTabs()
 		end }
 	end
 	local hidden = HiddenCount()
 	if hidden > 0 then
-		entries[#entries + 1] = { string.format("Show hidden tabs (%d)", hidden), function()
+		entries[#entries + 1] = { string.format(L["Show hidden tabs (%d)"], hidden), function()
 			ns.db.hiddenTabs = nil
 			Hub.LayoutTabs()
 		end }
@@ -353,7 +354,7 @@ local function CreateRail()
 		-- After the spellbook's side tabs: an icon on a tab-shaped backing, lit when chosen.
 		local tab = CreateFrame("CheckButton", nil, r)
 		tab:SetSize(TAB_SIZE, TAB_SIZE)
-		tab.padMore = "Hide tab" -- with a controller, X opens its menu
+		tab.padMore = L["Hide tab"] -- with a controller, X opens its menu
 		tab:SetPoint("TOPLEFT", 0, -(i - 1) * (TAB_SIZE + TAB_GAP))
 		local back = tab:CreateTexture(nil, "BACKGROUND")
 		back:SetTexture("Interface\\SpellBook\\SpellBook-SkillLineTab")
@@ -403,14 +404,14 @@ local function CreateRail()
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(def.label)
 			if def.hint then
-				GameTooltip:AddLine("Also " .. def.hint, 0.6, 0.8, 1)
+				GameTooltip:AddLine(L["Also "] .. def.hint, 0.6, 0.8, 1)
 			end
 			local key = GetBindingKey and GetBindingKey("ONECAST_WINDOW")
 			if key then
-				GameTooltip:AddLine(key .. " opens the page you last used", 0.6, 0.8, 1)
+				GameTooltip:AddLine(key .. L[" opens the page you last used"], 0.6, 0.8, 1)
 			end
-			GameTooltip:AddLine(def.key == "options" and "Right-click: show hidden tabs"
-				or "Right-click: hide this tab", 0.6, 0.6, 0.6)
+			GameTooltip:AddLine(def.key == "options" and L["Right-click: show hidden tabs"]
+				or L["Right-click: hide this tab"], 0.6, 0.6, 0.6)
 			GameTooltip:Show()
 		end)
 		tab:SetScript("OnLeave", GameTooltip_Hide)
@@ -454,8 +455,8 @@ local function AddGrip(frame)
 	end)
 	grip:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText("Drag to resize")
-		GameTooltip:AddLine("Resizes every page of the window. Also Ctrl + mouse wheel over the stats page.", 0.8, 0.8, 0.8, true)
+		GameTooltip:SetText(L["Drag to resize"])
+		GameTooltip:AddLine(L["Resizes every page of the window. Also Ctrl + mouse wheel over the stats page."], 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	grip:SetScript("OnLeave", GameTooltip_Hide)
@@ -597,16 +598,16 @@ function Hub.ShowTour()
 		tour:SetBackdropBorderColor(1, 0.82, 0)
 		tour.title = tour:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		tour.title:SetPoint("TOPLEFT", 12, -10)
-		tour.title:SetText("One window for OneCast")
+		tour.title:SetText(L["One window for OneCast"])
 		tour.text = tour:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 		tour.text:SetPoint("TOPLEFT", tour.title, "BOTTOMLEFT", 0, -4)
 		tour.text:SetWidth(196)
 		tour.text:SetJustifyH("LEFT")
-		tour.text:SetText("These tabs switch pages: stats, tackle box, collection, Camp, the Extravaganza, feedback, What's new and options. Hover one to see which.")
+		tour.text:SetText(L["These tabs switch pages: stats, tackle box, collection, Camp, the Extravaganza, feedback, What's new and options. Hover one to see which."])
 		local ok = CreateFrame("Button", nil, tour, "UIPanelButtonTemplate")
 		ok:SetSize(70, 20)
 		ok:SetPoint("BOTTOMRIGHT", -8, 8)
-		ok:SetText("Got it")
+		ok:SetText(L["Got it"])
 		ok:SetScript("OnClick", function()
 			Hub.TourSeen()
 		end)
@@ -757,14 +758,14 @@ local NAV_WIDTH, DETAIL_WIDTH, PANE_GAP = 168, 250, 12
 local LIST_WIDTH = OPTIONS_WIDTH - 10 - 2 * EDGE - NAV_WIDTH - DETAIL_WIDTH - 2 * PANE_GAP
 local NAV_ROW = 34
 local CATEGORY = {
-	General = { icon = "Interface\\Icons\\INV_Misc_Gear_01", blurb = "How OneCast looks, and what it shows where." },
-	Fishing = { icon = "Interface\\Icons\\Trade_Fishing", blurb = "How you cast and reel, your pole and fishing gear, and what happens to what you catch." },
-	Lures = { item = 6533, icon = "Interface\\Icons\\INV_Misc_Orb_03", blurb = "Which lure OneCast uses on this character, and the tackle box button." },
-	["While fishing"] = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = "What you see and hear with your line out: your bobber marked, and the splash over everything else." },
-	Controller = { icon = "Interface\\Icons\\INV_Misc_EngGizmos_17", blurb = "Fish with a controller: the button that casts and reels, the one that opens OneCast, prompts and rumble." },
-	Accessibility = { icon = "Interface\\Icons\\INV_Misc_Spyglass_03", blurb = "Bigger text and controller buttons, ticks on what you have, and calmer windows with less moving." },
-	["Stats and sessions"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = "The stats window and mini bar, and when a fishing session starts and ends." },
-	["Alerts"] = { icon = "Interface\\Icons\\INV_Misc_Bell_01", blurb = "Rare catch alerts, wanted catches, skill-ups and reminders." },
+	General = { icon = "Interface\\Icons\\INV_Misc_Gear_01", blurb = L["How OneCast looks, and what it shows where."] },
+	Fishing = { icon = "Interface\\Icons\\Trade_Fishing", blurb = L["How you cast and reel, your pole and fishing gear, and what happens to what you catch."] },
+	Lures = { item = 6533, icon = "Interface\\Icons\\INV_Misc_Orb_03", blurb = L["Which lure OneCast uses on this character, and the tackle box button."] },
+	["While fishing"] = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = L["What you see and hear with your line out: your bobber marked, and the splash over everything else."] },
+	Controller = { icon = "Interface\\Icons\\INV_Misc_EngGizmos_17", blurb = L["Fish with a controller: the button that casts and reels, the one that opens OneCast, prompts and rumble."] },
+	Accessibility = { icon = "Interface\\Icons\\INV_Misc_Spyglass_03", blurb = L["Bigger text and controller buttons, ticks on what you have, and calmer windows with less moving."] },
+	["Stats and sessions"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = L["The stats window and mini bar, and when a fishing session starts and ends."] },
+	["Alerts"] = { icon = "Interface\\Icons\\INV_Misc_Bell_01", blurb = L["Rare catch alerts, wanted catches, skill-ups and reminders."] },
 }
 
 local function ArrowButton(parent, which)
@@ -819,12 +820,12 @@ local function PadHint(tooltip)
 	if not (C and C.Native and C.Native()) then
 		return tooltip
 	end
-	return (tooltip or "") .. "\n\n" .. C.Glyph("PADDLEFT") .. " " .. C.Glyph("PADDRIGHT") .. "  change it"
+	return (tooltip or "") .. "\n\n" .. C.Glyph("PADDLEFT") .. " " .. C.Glyph("PADDRIGHT") .. L["  change it"]
 end
 
 local function CreateOptions()
 	local UI = ns.UI
-	local f, inset = UI.CreateShell("OneCastOptionsWindow", "Options", "Interface\\Icons\\INV_Misc_Gear_01")
+	local f, inset = UI.CreateShell("OneCastOptionsWindow", L["Options"], "Interface\\Icons\\INV_Misc_Gear_01")
 	f:SetSize(OPTIONS_WIDTH, ns.UI.PAGE_HEIGHT)
 	f:SetFrameStrata("DIALOG")
 	f:SetToplevel(true)
@@ -840,7 +841,7 @@ local function CreateOptions()
 	f.status:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", 62, 6)
 	f.status:SetPoint("RIGHT", inset, "RIGHT", -6, 0)
 	f.status:SetJustifyH("LEFT")
-	f.status:SetText("Every OneCast setting. Changes apply straight away.")
+	f.status:SetText(L["Every OneCast setting. Changes apply straight away."])
 
 	local content = inset
 	f.content = content
@@ -862,7 +863,7 @@ local function CreateOptions()
 	detailHeader:ClearAllPoints()
 	detailHeader:SetPoint("TOPLEFT")
 	detailHeader:SetPoint("TOPRIGHT")
-	detailHeader.text:SetText("Details")
+	detailHeader.text:SetText(L["Details"])
 	local card = UI.Card(detail)
 	card:SetColor(1, 0.82, 0, 0.12)
 	card:SetPoint("TOPLEFT", 0, -HEADER - 2)
@@ -901,7 +902,7 @@ local function CreateOptions()
 		detail.title:SetText(title or "")
 		detail.text:SetText(text or "")
 		detail.now:SetText(now and ("|cffffd100Now:|r " .. now) or "")
-		detail.cmd:SetText(cmd and ("|cffffd100Chat command:|r /onecast " .. cmd) or "")
+		detail.cmd:SetText(cmd and (L["|cffffd100Chat command:|r /onecast "] .. cmd) or "")
 		local h = 10 + (detail.title:GetStringHeight() or 14) + 6 + (detail.text:GetStringHeight() or 12) + 12
 		card:SetHeight(h)
 		local y = HEADER + 2 + h + 4
@@ -933,7 +934,7 @@ local function CreateOptions()
 	navHeader:ClearAllPoints()
 	navHeader:SetPoint("TOPLEFT")
 	navHeader:SetPoint("TOPRIGHT")
-	navHeader.text:SetText("Categories")
+	navHeader.text:SetText(L["Categories"])
 	local divider = content:CreateTexture(nil, "BORDER")
 	divider:SetColorTexture(0.62, 0.48, 0.24, 0.5)
 	divider:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP / 2, 0)
@@ -1030,10 +1031,10 @@ local function CreateOptions()
 
 	-- The cast key, set right here: click its button, then press the key. It's the game's own
 	-- binding, the one under Key Bindings > OneCast.
-	local KEY_TIP = "The key that does all of OneCast's fishing: press it to cast, and again when "
-		.. "the bobber splashes to reel in.\n\nClick the button, then press the key you want. "
-		.. "Shift, Ctrl and Alt combinations and side mouse buttons work too; Escape cancels. "
-		.. "It's the same key as Key Bindings > OneCast > Cast / reel."
+	local KEY_TIP = L["The key that does all of OneCast's fishing: press it to cast, and again when "]
+		.. L["the bobber splashes to reel in.\n\nClick the button, then press the key you want. "]
+		.. L["Shift, Ctrl and Alt combinations and side mouse buttons work too; Escape cancels. "]
+		.. L["It's the same key as Key Bindings > OneCast > Cast / reel."]
 	local function KeyRow()
 		local line = Line("castKey")
 		line:EnableMouse(true)
@@ -1042,17 +1043,17 @@ local function CreateOptions()
 		text:SetPoint("RIGHT", -(CONTROL_WIDTH + 8), 0)
 		text:SetJustifyH("LEFT")
 		text:SetWordWrap(false)
-		text:SetText("Cast and reel key")
+		text:SetText(L["Cast and reel key"])
 		local O = ns.Onboarding
 		local button = O.CaptureButton(line, CONTROL_WIDTH, ROW - 2, function()
 			f:Refresh()
 		end)
 		button:SetPoint("RIGHT", -2, 0)
 		local function Now()
-			return O.KeyText() or "not bound"
+			return O.KeyText() or L["not bound"]
 		end
 		local function Enter()
-			Hover(line, "Cast and reel key", KEY_TIP, Now(), "setup")
+			Hover(line, L["Cast and reel key"], KEY_TIP, Now(), "setup")
 		end
 		line:SetScript("OnEnter", Enter)
 		line:SetScript("OnLeave", Unhover)
@@ -1278,7 +1279,7 @@ local function CreateOptions()
 		header:ClearAllPoints()
 		header:SetPoint("TOPLEFT", 0, y)
 		header:SetWidth(LIST_WIDTH)
-		header.text:SetText(section[1])
+		header.text:SetText(L[section[1]]) -- the names are English keys (OPTION_PAGES), shown translated
 		y = y - HEADER - 2
 		index = 0
 		for i = 2, #section do
@@ -1299,7 +1300,9 @@ local function CreateOptions()
 	end
 
 	-- The categories: General (the main page's sections), then each page of the options panel.
+-- l10n: keys
 	local categories = { { name = "General", sections = ns.OPTION_MAIN or {} } }
+-- l10n: end
 	for _, p in ipairs(ns.OPTION_PAGES or {}) do
 		local sections = {}
 		for _, section in ipairs(p) do
@@ -1320,7 +1323,7 @@ local function CreateOptions()
 			ns.db.optionsPage = name
 		end
 		local info = CATEGORY[name] or {}
-		ShowDetail(name, info.blurb or "", nil, nil)
+		ShowDetail(L[name], info.blurb or "", nil, nil)
 	end
 	f.Select = Select
 
@@ -1364,7 +1367,7 @@ local function CreateOptions()
 		b.label:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
 		b.label:SetPoint("RIGHT", -4, 0)
 		b.label:SetJustifyH("LEFT")
-		b.label:SetText(cat.name)
+		b.label:SetText(L[cat.name])
 		b:SetScript("OnClick", function()
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			Select(cat.name)
@@ -1385,12 +1388,12 @@ local function CreateOptions()
 		return f.navList, 1
 	end
 	f.gamepadTabsVertical = true
-	f.gamepadTabsLabel = "Category"
+	f.gamepadTabsLabel = L["Category"]
 
 	-- The one thing that stays in the game's options: your cast key.
 	local keys = ns.UI.GoldButton(f, 140, 22)
 	keys:SetPoint("BOTTOMLEFT", 10, 4)
-	keys:SetText("Key bindings")
+	keys:SetText(L["Key bindings"])
 	keys:SetScript("OnClick", function()
 		if ns.OpenSettings then
 			ns.OpenSettings()
@@ -1398,8 +1401,8 @@ local function CreateOptions()
 	end)
 	keys:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Key bindings")
-		GameTooltip:AddLine("Set your cast key. It's in the game's options, where key bindings are set.", 1, 1, 1, true)
+		GameTooltip:SetText(L["Key bindings"])
+		GameTooltip:AddLine(L["Set your cast key. It's in the game's options, where key bindings are set."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	keys:SetScript("OnLeave", GameTooltip_Hide)

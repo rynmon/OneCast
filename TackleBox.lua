@@ -7,6 +7,7 @@
 -- ordinary frame.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local TackleBox = {}
 ns.TackleBox = TackleBox
@@ -42,19 +43,19 @@ end
 
 local function ShowTooltip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-	GameTooltip:SetText("Tackle box")
+	GameTooltip:SetText(L["Tackle box"])
 	local left = Lure.Left()
 	local casting = Lure.IsCasting()
 	if casting then
-		GameTooltip:AddLine("Applying " .. Lure.Name(casting) .. "...", 1, 1, 1)
+		GameTooltip:AddLine(L["Applying "] .. Lure.Name(casting) .. "...", 1, 1, 1)
 	elseif left > 0 then
 		local shown = Lure.Shown()
-		GameTooltip:AddLine(string.format("%s on your pole, %s left.", shown and Lure.Name(shown) or "A lure",
+		GameTooltip:AddLine(string.format(L["%s on your pole, %s left."], shown and Lure.Name(shown) or L["A lure"],
 			Lure.Clock(left)), 1, 1, 1)
 	else
 		local lure, reason, about = Lure.Selected()
 		if lure then
-			GameTooltip:AddLine(string.format("%s ready: +%d Fishing for %d minutes.", Lure.Name(lure), lure.bonus,
+			GameTooltip:AddLine(string.format(L["%s ready: +%d Fishing for %d minutes."], Lure.Name(lure), lure.bonus,
 				lure.minutes), 1, 1, 1)
 		else
 			GameTooltip:AddLine(Lure.ReasonText(reason, about), 1, 0.3, 0.3)
@@ -62,14 +63,14 @@ local function ShowTooltip(self)
 	end
 	GameTooltip:AddLine(" ")
 	if Lure.Choice() == Lure.NONE then
-		GameTooltip:AddLine("Left-click: choose a lure", 0.6, 0.8, 1)
+		GameTooltip:AddLine(L["Left-click: choose a lure"], 0.6, 0.8, 1)
 	elseif left > 0 then
-		GameTooltip:AddLine("Ctrl-click: replace it", 0.6, 0.8, 1)
+		GameTooltip:AddLine(L["Ctrl-click: replace it"], 0.6, 0.8, 1)
 	else
-		GameTooltip:AddLine("Left-click: apply it", 0.6, 0.8, 1)
+		GameTooltip:AddLine(L["Left-click: apply it"], 0.6, 0.8, 1)
 	end
-	GameTooltip:AddLine("Right-click: tackle box settings", 0.6, 0.8, 1)
-	GameTooltip:AddLine("Shift-drag: move", 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Right-click: tackle box settings"], 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Shift-drag: move"], 0.6, 0.8, 1)
 	GameTooltip:Show()
 end
 
@@ -182,7 +183,7 @@ local function RowTooltip(self)
 	if self.lure then
 		GameTooltip:SetItemByID(self.lure.id)
 		if not Lure.SkillOK(self.lure) then
-			GameTooltip:AddLine(string.format("Needs %d Fishing.", self.lure.req), 1, 0.3, 0.3)
+			GameTooltip:AddLine(string.format(L["Needs %d Fishing."], self.lure.req), 1, 0.3, 0.3)
 		end
 	else
 		GameTooltip:SetText(self.title)
@@ -274,19 +275,19 @@ end
 local function StatusText()
 	local casting = Lure.IsCasting()
 	if casting then
-		return "|cffffd100Applying " .. Lure.Name(casting) .. "...|r"
+		return string.format(L["|cffffd100Applying %s...|r"], Lure.Name(casting))
 	end
 	local left = Lure.Left()
 	if left > 0 then
 		local shown = Lure.Shown()
-		return string.format("|cff20ff20%s on your pole|r  |cffffffff%s left|r", shown and Lure.Name(shown) or "A lure",
+		return string.format(L["|cff20ff20%s on your pole|r  |cffffffff%s left|r"], shown and Lure.Name(shown) or L["A lure"],
 			Lure.Clock(left))
 	end
 	local lure, reason, about = Lure.Selected()
 	if lure then
-		return "|cffffd100" .. Lure.Name(lure) .. " ready to apply|r"
+		return "|cffffd100" .. Lure.Name(lure) .. L[" ready to apply|r"]
 	elseif reason == "none" then
-		return "|cff9d9d9dNo lure on your pole.|r"
+		return L["|cff9d9d9dNo lure on your pole.|r"]
 	end
 	return "|cffff2020" .. Lure.ReasonText(reason, about) .. "|r"
 end
@@ -302,14 +303,14 @@ function TackleBox.RefreshFood()
 	local best = F.Best()
 	if bonus then
 		food.icon:SetTexture(C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(F.WELL_FED) or "Interface\\Icons\\INV_Misc_Fish_14")
-		food.text:SetText(string.format("Well Fed: |cff20ff20+%d|r Fishing%s", bonus,
-			left and ("|cff9d9d9d  ·  " .. Lure.Clock(left) .. " left|r") or ""))
+		food.text:SetText(string.format(L["Well Fed: |cff20ff20+%d|r Fishing%s"], bonus,
+			left and (L["|cff9d9d9d  ·  "] .. Lure.Clock(left) .. " left|r") or ""))
 	elseif best then
 		food.icon:SetTexture(C_Item.GetItemIconByID(best[1]))
-		food.text:SetText(string.format("%s  |cff20ff20+%d|r|cff9d9d9d  x%d|r", F.Name(best), best[2], F.Count(best)))
+		food.text:SetText(string.format(L["%s  |cff20ff20+%d|r|cff9d9d9d  x%d|r"], F.Name(best), best[2], F.Count(best)))
 	else
 		food.icon:SetTexture("Interface\\Icons\\INV_Misc_Fish_14")
-		food.text:SetText("|cff9d9d9dNo fishing food in your bags.|r")
+		food.text:SetText(L["|cff9d9d9dNo fishing food in your bags.|r"])
 	end
 	food.icon:SetDesaturated(not (bonus or best))
 	if not InCombatLockdown() then
@@ -327,11 +328,11 @@ local function RedrawWindow()
 	local chance = Lure.Luremaster and Lure.Luremaster()
 	if chance then
 		local life = OneCastCharDB and OneCastCharDB.lifetime and OneCastCharDB.lifetime.luremaster
-		window.luremaster:SetText(string.format("|cffffd100Luremaster|r  %d%% chance of an extra fish while a lure is on%s",
-			chance, life and string.format("|cff9d9d9d  ·  +%d so far|r", life.extra) or ""))
+		window.luremaster:SetText(string.format(L["|cffffd100Luremaster|r  %d%% chance of an extra fish while a lure is on%s"],
+			chance, life and string.format(L["|cff9d9d9d  ·  +%d so far|r"], life.extra) or ""))
 	else
-		window.luremaster:SetText(string.format("|cff9d9d9dLuremaster, in the Legacy tree, gives up to a %d%% chance "
-			.. "of an extra fish while a lure is on.|r", Lure.LUREMASTER_MAX))
+		window.luremaster:SetText(string.format(L["|cff9d9d9dLuremaster, in the Legacy tree, gives up to a %d%% chance "]
+			.. L["of an extra fish while a lure is on.|r"], Lure.LUREMASTER_MAX))
 	end
 	local choice = Lure.Choice()
 	for _, row in ipairs(window.rows) do
@@ -358,6 +359,9 @@ local function RedrawWindow()
 	end
 	TackleBox.RefreshFood()
 	window.autoLure:SetChecked(CharDB().autoLure)
+	window.conjuredFirst:SetChecked(CharDB().conjuredFirst)
+	window.hint:SetText(CharDB().conjuredFirst and L["Conjured lures go on first, then your choice."]
+		or L["Your choice is never swapped for another lure."])
 	window.tackleBox:SetChecked(ns.db.tackleBox)
 
 	local rates = ns.Stats and ns.Stats.LureRates and ns.Stats.LureRates() or {}
@@ -373,7 +377,7 @@ end
 
 local function CreateWindow()
 	local UI = ns.UI
-	local f, inset = UI.CreateShell("OneCastTackleWindow", "Tackle box", TACKLE_ICON)
+	local f, inset = UI.CreateShell("OneCastTackleWindow", L["Tackle box"], TACKLE_ICON)
 	f:SetFrameStrata("DIALOG")
 	f:SetToplevel(true)
 	f:SetClampedToScreen(true)
@@ -395,14 +399,14 @@ local function CreateWindow()
 	f.status:SetWordWrap(false)
 
 	local y = -SECTION_GAP
-	UI.SectionHeader(inset, y).text:SetText("Lure to use")
+	UI.SectionHeader(inset, y).text:SetText(L["Lure to use"])
 	y = y - HEADER_HEIGHT
 
 	local entries = {
-		{ value = Lure.NONE, title = "No lure", icon = TACKLE_ICON,
-			tip = "Nothing is spent. Fish with your own skill." },
-		{ value = Lure.BEST, title = "Best I can use", icon = "Interface\\Icons\\INV_Misc_Fish_68",
-			tip = "The highest bonus your skill allows, from what's in your bags. This can spend your rarest lures." },
+		{ value = Lure.NONE, title = L["No lure"], icon = TACKLE_ICON,
+			tip = L["Nothing is spent. Fish with your own skill."] },
+		{ value = Lure.BEST, title = L["Best I can use"], icon = "Interface\\Icons\\INV_Misc_Fish_68",
+			tip = L["The highest bonus your skill allows, from what's in your bags. This can spend your rarest lures."] },
 	}
 	for _, lure in ipairs(Lure.LIST) do
 		entries[#entries + 1] = { value = lure.id, lure = lure }
@@ -426,30 +430,34 @@ local function CreateWindow()
 	end
 
 	y = y - SECTION_GAP
-	UI.SectionHeader(inset, y).text:SetText("Options")
+	UI.SectionHeader(inset, y).text:SetText(L["Options"])
 	y = y - HEADER_HEIGHT
-	f.autoLure = CreateCheck(inset, 1, y, "Apply with the cast key",
-		"With no lure on your pole, the cast key applies your chosen lure first, then casts on the next press. It uses up the lure, so it's off until you turn it on.",
+	f.conjuredFirst = CreateCheck(inset, 1, y, L["Use conjured lures first"],
+		L["While you have a conjured lure (Camper's Lure, \"Secret\" Bait), the best of them goes on before your chosen lure, so the lures you bought last longer. When they run out, your choice takes over. Never with No lure."],
+		"conjuredFirst")
+	y = y - ROW_HEIGHT
+	f.autoLure = CreateCheck(inset, 2, y, L["Apply with the cast key"],
+		L["With no lure on your pole, the cast key applies your chosen lure first, then casts on the next press. It uses up the lure, so it's off until you turn it on."],
 		"autoLure")
 	y = y - ROW_HEIGHT
-	f.tackleBox = CreateCheck(inset, 2, y, "Show the tackle box button",
-		"Show the button while a fishing pole is in your main hand. With it hidden, /onecast tackle opens this window.",
+	f.tackleBox = CreateCheck(inset, 3, y, L["Show the tackle box button"],
+		L["Show the button while a fishing pole is in your main hand. With it hidden, /onecast tackle opens this window."],
 		"tackleBox")
 	y = y - ROW_HEIGHT
 
 	y = y - SECTION_GAP
-	UI.SectionHeader(inset, y).text:SetText("Fish per hour")
+	UI.SectionHeader(inset, y).text:SetText(L["Fish per hour"])
 	y = y - HEADER_HEIGHT
 	-- Headline tiles, as on the stats window: with a lure, without, and what the lure adds.
 	f.rateWith = UI.StatTile(inset, 1, y)
-	f.rateWith.caption:SetText("with a lure")
-	f.rateWith.tooltip = "Your fish per hour while a lure is on, on this character. Shows after 5 minutes of fishing with one."
+	f.rateWith.caption:SetText(L["with a lure"])
+	f.rateWith.tooltip = L["Your fish per hour while a lure is on, on this character. Shows after 5 minutes of fishing with one."]
 	f.rateWithout = UI.StatTile(inset, 2, y)
-	f.rateWithout.caption:SetText("without")
-	f.rateWithout.tooltip = "Your fish per hour with no lure on, on this character. Shows after 5 minutes of fishing without one."
+	f.rateWithout.caption:SetText(L["without a lure"])
+	f.rateWithout.tooltip = L["Your fish per hour with no lure on, on this character. Shows after 5 minutes of fishing without one."]
 	f.rateGain = UI.StatTile(inset, 3, y)
-	f.rateGain.caption:SetText("a lure adds")
-	f.rateGain.tooltip = "How many more fish per hour a lure brings you, as a share of your rate without one."
+	f.rateGain.caption:SetText(L["a lure adds"])
+	f.rateGain.tooltip = L["How many more fish per hour a lure brings you, as a share of your rate without one."]
 	y = y - 44
 	-- Luremaster: what it gives you, or where to get it.
 	f.luremaster = inset:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
@@ -462,7 +470,7 @@ local function CreateWindow()
 	-- Fishing food: the Well Fed buff's bonus and time left, or the best fishing food in your bags,
 	-- with a button that eats it (the game's secure item button: set out of combat only).
 	y = y - SECTION_GAP
-	UI.SectionHeader(inset, y).text:SetText("Fishing food")
+	UI.SectionHeader(inset, y).text:SetText(L["Fishing food"])
 	y = y - HEADER_HEIGHT
 	local food = CreateFrame("Frame", nil, inset)
 	food:SetPoint("TOPLEFT", 10, y)
@@ -478,7 +486,7 @@ local function CreateWindow()
 	food.eat = CreateFrame("Button", "OneCastEatFoodButton", UIParent, "SecureActionButtonTemplate,UIPanelButtonTemplate")
 	food.eat:Hide()
 	food.eat:SetSize(64, 22)
-	food.eat:SetText("Eat")
+	food.eat:SetText(L["Eat"])
 	food.eat:SetAttribute("type", "item")
 	-- As the lure buttons: the press and the release, since the game uses the item on whichever
 	-- "Cast on key down" (ActionButtonUseKeyDown) says. Only the release, it does nothing with that on.
@@ -488,8 +496,8 @@ local function CreateWindow()
 		if self.itemID then
 			GameTooltip:SetItemByID(self.itemID)
 		else
-			GameTooltip:SetText("Eat")
-			GameTooltip:AddLine("No fishing food in your bags.", 1, 1, 1, true)
+			GameTooltip:SetText(L["Eat"])
+			GameTooltip:AddLine(L["No fishing food in your bags."], 1, 1, 1, true)
 		end
 		GameTooltip:Show()
 	end)
@@ -504,7 +512,7 @@ local function CreateWindow()
 	y = y - 32
 
 	-- The bottom bar's Options button, as on the stats window.
-	local options = UI.IconButton(f, "Options", "Options", function()
+	local options = UI.IconButton(f, "Options", L["Options"], function()
 		ns.Hub.ShowOptions()
 	end)
 	options:SetPoint("BOTTOMRIGHT", -22, 3)
@@ -513,7 +521,7 @@ local function CreateWindow()
 	hint:SetPoint("RIGHT", options, "LEFT", -6, 0)
 	hint:SetJustifyH("LEFT")
 	hint:SetWordWrap(false)
-	hint:SetText("Your choice is never swapped for another lure.")
+	f.hint = hint
 
 	f:SetSize(WINDOW_WIDTH, math.max(ns.UI.PAGE_HEIGHT, INSET_TOP - y + 8 + INSET_BOTTOM))
 	local p = CharDB().tackleWindowPoint

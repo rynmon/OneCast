@@ -14,6 +14,7 @@
 -- Classic's spots for Heming and Nat.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Journey = {}
 ns.Journey = Journey
@@ -28,22 +29,22 @@ local GearCard, PaintGearCard, GearBest, PaintGearBest -- the Gear view's cards,
 -- Nat Pagle's four fish, for Artisan.
 local NAT_FISH = { 16970, 16968, 16967, 16969 }
 
-Journey.RANKS = {
+Journey.RANKS = ns.Retranslate({
 	{ key = "apprentice", name = "Apprentice", cap = 75, from = 1, icon = "Interface\\Icons\\Trade_Fishing",
-		how = "Any Fishing trainer teaches it, for 1 silver: in every capital city and many towns. They teach Bait and Tackle too.",
+		how = L["Any Fishing trainer teaches it, for 1 silver: in every capital city and many towns. They teach Bait and Tackle too."],
 		needs = { level = 5 }, fishFrom = 1, fishTo = 74 },
 	{ key = "journeyman", name = "Journeyman", cap = 150, from = 75, icon = "Interface\\Icons\\Trade_Fishing",
-		how = "Any Fishing trainer teaches it, for 5 silver, once you've reached Fishing 50.",
+		how = L["Any Fishing trainer teaches it, for 5 silver, once you've reached Fishing 50."],
 		needs = { skill = 50 }, fishFrom = 75, fishTo = 149 },
 	{ key = "expert", name = "Expert", cap = 225, from = 150, item = 16083, icon = "Interface\\Icons\\INV_Misc_Book_09",
-		how = "Read Expert Fishing - The Bass and You: 1 gold from Old Man Heming <Fisherman> in Booty Bay, Stranglethorn Vale.",
+		how = L["Read Expert Fishing - The Bass and You: 1 gold from Old Man Heming <Fisherman> in Booty Bay, Stranglethorn Vale."],
 		needs = { level = 20, skill = 125 }, fishFrom = 150, fishTo = 224,
-		where = { zone = "Stranglethorn Vale", x = 0.276, y = 0.774, label = "Old Man Heming, Booty Bay" } },
+		where = { zone = "Stranglethorn Vale", x = 0.276, y = 0.774, label = L["Old Man Heming, Booty Bay"] } },
 	{ key = "artisan", name = "Artisan", cap = 300, from = 225, icon = "Interface\\Icons\\INV_Misc_Fish_14",
-		how = "Nat Pagle's quest, Nat Pagle, Angler Extreme, on his island off Dustwallow Marsh: bring him one of each fish below.",
+		how = L["Nat Pagle's quest, Nat Pagle, Angler Extreme, on his island off Dustwallow Marsh: bring him one of each fish below."],
 		needs = { level = 35, skill = 225 }, fishFrom = 225, fishTo = 425, natFish = true,
-		where = { zone = "Dustwallow Marsh", x = 0.586, y = 0.602, label = "Nat Pagle, Dustwallow Marsh" } },
-}
+		where = { zone = "Dustwallow Marsh", x = 0.586, y = 0.602, label = L["Nat Pagle, Dustwallow Marsh"] } },
+})
 
 -- A zone's name in the client's language.
 local function LocalZone(english)
@@ -92,19 +93,19 @@ local function ZoneText(r, most)
 	local names = {}
 	for i, z in ipairs(list) do
 		if i > (most or 4) then
-			names[#names + 1] = string.format("and %d more", #list - (most or 4))
+			names[#names + 1] = string.format(L["and %d more"], #list - (most or 4))
 			break
 		end
 		names[#names + 1] = z.zone .. " " .. GREY .. z.needed .. "|r"
 	end
-	return #names > 0 and table.concat(names, ", ") or (GREY .. "none listed|r")
+	return #names > 0 and table.concat(names, ", ") or (GREY .. L["none listed|r"])
 end
 
 -- The zones on one line: as many as fit it (four at most), then "and N more". Long names
 -- (Stranglethorn Vale, Dustwallow Marsh) would otherwise run off the end of the card.
 local function SetZones(fs, r)
 	for most = 4, 1, -1 do
-		fs:SetText(GOLD .. "Fish in:|r " .. ZoneText(r, most))
+		fs:SetText(GOLD .. L["Fish in:|r "] .. ZoneText(r, most))
 		local room = fs:GetWidth() or 0
 		local wide = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or 0
 		if room <= 0 or wide <= room then
@@ -118,23 +119,23 @@ local function Missing(r, rank)
 	local parts = {}
 	local level = UnitLevel("player") or 0
 	if r.needs.level and level < r.needs.level then
-		parts[#parts + 1] = string.format("level %d (you're %d)", r.needs.level, level)
+		parts[#parts + 1] = string.format(L["level %d (you're %d)"], r.needs.level, level)
 	end
 	if r.needs.skill and (rank or 0) < r.needs.skill then
-		parts[#parts + 1] = string.format("Fishing %d (you have %d)", r.needs.skill, rank or 0)
+		parts[#parts + 1] = string.format(L["Fishing %d (you have %d)"], r.needs.skill, rank or 0)
 	end
-	return #parts > 0 and table.concat(parts, " and ") or nil
+	return #parts > 0 and table.concat(parts, L[" and "]) or nil
 end
 
 local function NeedsText(r)
 	local parts = {}
 	if r.needs.level then
-		parts[#parts + 1] = "level " .. r.needs.level
+		parts[#parts + 1] = string.format(L["level %d"], r.needs.level)
 	end
 	if r.needs.skill then
-		parts[#parts + 1] = "Fishing " .. r.needs.skill
+		parts[#parts + 1] = string.format(L["Fishing %d"], r.needs.skill)
 	end
-	return #parts > 0 and table.concat(parts, ", ") or "nothing"
+	return #parts > 0 and table.concat(parts, ", ") or L["nothing"]
 end
 
 local function Card(parent, r, y)
@@ -179,7 +180,7 @@ local function Card(parent, r, y)
 	if r.where then
 		c.map = ns.UI.GoldButton(c, 112, 22)
 		c.map:SetPoint("TOPRIGHT", c.status, "BOTTOMRIGHT", 2, -6)
-		c.map:SetText("Show on map")
+		c.map:SetText(L["Show on map"])
 		c.map:SetScript("OnClick", function()
 			local zone = LocalZone(r.where.zone)
 			local mapID = ns.Book and ns.Book.ZoneMapID and ns.Book.ZoneMapID(zone)
@@ -188,7 +189,7 @@ local function Card(parent, r, y)
 		c.map:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_TOP")
 			GameTooltip:SetText(r.where.label)
-			GameTooltip:AddLine("Opens the map there with a waypoint. Classic's spot: Forever may differ a little.", 1, 1, 1, true)
+			GameTooltip:AddLine(L["Opens the map there with a waypoint. Classic's spot: Forever may differ a little."], 1, 1, 1, true)
 			GameTooltip:Show()
 		end)
 		c.map:SetScript("OnLeave", GameTooltip_Hide)
@@ -201,10 +202,10 @@ local function Card(parent, r, y)
 			GameTooltip:SetItemByID(r.item)
 			GameTooltip:AddLine(" ")
 		else
-			GameTooltip:SetText(r.name .. " Fishing")
+			GameTooltip:SetText(r.name .. L[" Fishing"])
 		end
 		-- Every zone to fish at this rank, with the Fishing each needs.
-		GameTooltip:AddLine("Fish in", 1, 0.82, 0)
+		GameTooltip:AddLine(L["Fish in"], 1, 0.82, 0)
 		for _, z in ipairs(ZonesFor(r)) do
 			GameTooltip:AddDoubleLine(z.zone, tostring(z.needed), 1, 1, 1, 0.7, 0.7, 0.7)
 		end
@@ -219,19 +220,19 @@ local function Paint(c, index, current, rank)
 	local r = c.rank
 	local learned = index <= current
 	local nextUp = index == current + 1
-	c.title:SetText(r.name .. "  " .. GREY .. "Fishing up to " .. r.cap .. "|r")
+	c.title:SetText(r.name .. "  " .. GREY .. L["Fishing up to "] .. r.cap .. "|r")
 	c.check:SetShown(learned)
 	c.icon:SetDesaturated(not learned and not nextUp)
 	local color
 	if learned then
-		c.status:SetText(GOOD .. "Learned|r")
+		c.status:SetText(GOOD .. L["Learned|r"])
 		color = { 0.12, 1, 0 }
 	elseif nextUp then
 		local missing = Missing(r, rank)
-		c.status:SetText(missing and (GOLD .. "Next: needs " .. missing .. "|r") or (GOOD .. "Next: ready to learn!|r"))
+		c.status:SetText(missing and (GOLD .. L["Next: needs "] .. missing .. "|r") or (GOOD .. L["Next: ready to learn!|r"]))
 		color = { 1, 0.82, 0 }
 	else
-		c.status:SetText(GREY .. "Later|r")
+		c.status:SetText(GREY .. L["Later|r"])
 		color = { 0.5, 0.5, 0.5 }
 	end
 	c:SetColor(color[1], color[2], color[3], nextUp and 0.22 or learned and 0.1 or 0)
@@ -246,9 +247,9 @@ local function Paint(c, index, current, rank)
 			parts[#parts + 1] = (icon and ("|T" .. icon .. ":14:14:0:0:64:64:5:59:5:59|t ") or "")
 				.. (caught and GOOD or GREY) .. (C_Item.GetItemNameByID(id) or (fish and fish.name) or "?") .. "|r"
 		end
-		c.extra:SetText(GOLD .. "Nat's fish:|r " .. table.concat(parts, "  "))
+		c.extra:SetText(GOLD .. L["Nat's fish:|r "] .. table.concat(parts, "  "))
 	else
-		c.extra:SetText(GOLD .. "Needs:|r " .. NeedsText(r))
+		c.extra:SetText(GOLD .. L["Needs:|r "] .. NeedsText(r))
 	end
 	-- As tall as its lines need, and never less than its icon.
 	local text = 8 + (c.title:GetStringHeight() or 14) + 6 + (c.how:GetStringHeight() or 12) + 4
@@ -260,33 +261,33 @@ end
 -- where Wowhead's Forever data has it (marked forever), else Classic's from CMaNGOS's world
 -- database (vendors, quest rewards and loot). The bonus is read from the game's own tooltip, so
 -- it's Forever's.
-Journey.GEAR = {
-	{ id = 6256, name = "Fishing Pole", short = "Fishing vendors everywhere", kind = "Pole", from = "Sold by fishing vendors all over Azeroth.", forever = true },
-	{ id = 6365, name = "Strong Fishing Pole", short = "Fishing vendors, Booty Bay", kind = "Pole", from = "Sold by some fishing vendors, among them Old Man Heming in Booty Bay.", forever = true },
-	{ id = 12225, name = "Blump Family Fishing Pole", short = "Alliance quest, Darkshore", faction = "Alliance", kind = "Pole", from = "Reward from The Family and the Fishing Pole, an Alliance quest in Darkshore (level 10).",
-		where = { map = 1439, x = 0.360, y = 0.448, label = "Gubber Blump, Auberdine" }, source = { "quest", 1141, "The Family and the Fishing Pole" } },
-	{ id = 6367, name = "Big Iron Fishing Pole", short = "Shellfish Traps", kind = "Pole", from = "Found in Shellfish Traps under the water, now and then." },
-	{ id = 19022, name = "Nat Pagle's Extreme Angler FC-5000", short = "Horde quest, The Hinterlands", faction = "Horde", kind = "Pole", from = "Reward from Snapjaws, Mon!, a Horde quest in The Hinterlands (level 44).",
-		where = { map = 1425, x = 0.802, y = 0.814, label = "Katoom the Angler, Revantusk Village" }, source = { "quest", 7815, "Snapjaws, Mon!" } },
-	{ id = 19970, name = "Arcanite Fishing Pole", short = "Extravaganza: first 250 winners", kind = "Pole", from = "The Fishing Extravaganza's prize: the first 250 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week.",
-		where = { map = 1434, x = 0.274, y = 0.768, label = "Riggle Bassbait, Booty Bay" }, source = { "quest", 8193, "Master Angler" } },
-	{ id = 285094, name = "Ravaged Fishing Pole", short = "Lord Angler, Dustwallow Marsh", kind = "Pole", from = "New in Forever: dropped by Lord Angler, a rare level 44 by the shipwreck in Dustwallow Marsh's bay (about 1 kill in 4).", forever = true,
-		where = { map = 1445, x = 0.560, y = 0.618, label = "Lord Angler (rare), Dustwallow Marsh" }, source = { "npc", 14236, "Lord Angler" } },
-	{ id = 276203, name = "Primitive Fishing Pole", short = "Vendor, Riverglades", kind = "Pole", from = "New in Forever: sold in Riverglades.", forever = true, ifBonus = true },
-	{ id = 276272, name = "Master Angler's Fishing Hat", short = "Extravaganza coin, from Jang", kind = "Head", from = "New in Forever: Jang in Booty Bay trades it for an Extravagant Extravaganza Coin, the Fishing Extravaganza winners' prize.", forever = true,
-		where = { map = 1434, x = 0.274, y = 0.768, label = "Jang, Booty Bay" }, source = { "npc", 15078, "Jang" } },
+Journey.GEAR = ns.Retranslate({
+	{ id = 6256, name = "Fishing Pole", short = L["Fishing vendors everywhere"], kind = "Pole", from = L["Sold by fishing vendors all over Azeroth."], forever = true },
+	{ id = 6365, name = "Strong Fishing Pole", short = L["Fishing vendors, Booty Bay"], kind = "Pole", from = L["Sold by some fishing vendors, among them Old Man Heming in Booty Bay."], forever = true },
+	{ id = 12225, name = "Blump Family Fishing Pole", short = L["Alliance quest, Darkshore"], faction = "Alliance", kind = "Pole", from = L["Reward from The Family and the Fishing Pole, an Alliance quest in Darkshore (level 10)."],
+		where = { map = 1439, x = 0.360, y = 0.448, label = L["Gubber Blump, Auberdine"] }, source = { "quest", 1141, L["The Family and the Fishing Pole"] } },
+	{ id = 6367, name = "Big Iron Fishing Pole", short = L["Shellfish Traps"], kind = "Pole", from = L["Found in Shellfish Traps under the water, now and then."] },
+	{ id = 19022, name = "Nat Pagle's Extreme Angler FC-5000", short = L["Horde quest, The Hinterlands"], faction = "Horde", kind = "Pole", from = L["Reward from Snapjaws, Mon!, a Horde quest in The Hinterlands (level 44)."],
+		where = { map = 1425, x = 0.802, y = 0.814, label = L["Katoom the Angler, Revantusk Village"] }, source = { "quest", 7815, "Snapjaws, Mon!" } },
+	{ id = 19970, name = "Arcanite Fishing Pole", short = L["Extravaganza: first 250 winners"], kind = "Pole", from = L["The Fishing Extravaganza's prize: the first 250 on your ruleset to bring Riggle Bassbait 40 Speckled Tastyfish each get it, with an Extravagant Extravaganza Coin and the Master Angler! title for a week."],
+		where = { map = 1434, x = 0.274, y = 0.768, label = L["Riggle Bassbait, Booty Bay"] }, source = { "quest", 8193, "Master Angler" } },
+	{ id = 285094, name = "Ravaged Fishing Pole", short = L["Lord Angler, Dustwallow Marsh"], kind = "Pole", from = L["New in Forever: dropped by Lord Angler, a rare level 44 by the shipwreck in Dustwallow Marsh's bay (about 1 kill in 4)."], forever = true,
+		where = { map = 1445, x = 0.560, y = 0.618, label = L["Lord Angler (rare), Dustwallow Marsh"] }, source = { "npc", 14236, "Lord Angler" } },
+	{ id = 276203, name = "Primitive Fishing Pole", short = L["Vendor, Riverglades"], kind = "Pole", from = L["New in Forever: sold in Riverglades."], forever = true, ifBonus = true },
+	{ id = 276272, name = "Master Angler's Fishing Hat", short = L["Extravaganza coin, from Jang"], kind = "Head", from = L["New in Forever: Jang in Booty Bay trades it for an Extravagant Extravaganza Coin, the Fishing Extravaganza winners' prize."], forever = true,
+		where = { map = 1434, x = 0.274, y = 0.768, label = L["Jang, Booty Bay"] }, source = { "npc", 15078, "Jang" } },
 	-- No Fishing of its own, but its Use puts a +25 lure on your pole as often as you like (Lure.lua).
-	{ id = 259846, name = "Wide-Brimmed Fishing Hat", short = "Source not known yet", kind = "Head", from = "New in Forever: while you wear it, its Use puts a +25 lure on your pole as often as you like, and the tackle box can apply it. Where it comes from isn't known yet.", forever = true },
-	{ id = 244229, name = "Angler's Mantle", short = "Source not known yet", kind = "Shoulder", from = "New in Forever: where it comes from isn't known yet.", forever = true, ifBonus = true },
-	{ id = 19972, name = "Lucky Fishing Hat", short = "Extravaganza: Keefer's Angelfish", kind = "Head", from = "Fishing Extravaganza: hand a Keefer's Angelfish to Fishbot 5000 in Booty Bay.",
-		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8221, "Rare Fish - Keefer's Angelfish" } },
-	{ id = 19969, name = "Nat Pagle's Extreme Anglin' Boots", short = "Extravaganza: Brownell's Racer", kind = "Feet", from = "Fishing Extravaganza: hand a Brownell's Blue Striped Racer to Fishbot 5000 in Booty Bay.",
-		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8225, "Rare Fish - Brownell's Blue Striped Racer" } },
-	{ id = 19971, name = "High Test Eternium Fishing Line", short = "Extravaganza: Dezian Queenfish", kind = "Line", bonus = 5, from = "Fishing Extravaganza: hand a Dezian Queenfish to Fishbot 5000 in Booty Bay. Used on your pole, it gives the pole +5 Fishing for good.",
-		where = { map = 1434, x = 0.274, y = 0.768, label = "Fishbot 5000, Booty Bay" }, source = { "quest", 8224, "Rare Fish - Dezian Queenfish" } },
-	{ id = 273495, name = "Enchant Gloves - Fishing", short = "Enchanters (Enchanting 145)", kind = "Hands", from = "The +2 Fishing enchant for your gloves: an enchanter with Formula: Enchant Gloves - Fishing (Enchanting 145) can put it on. Forever's enchant as an item is only on the test realm so far.", forever = true,
+	{ id = 259846, name = "Wide-Brimmed Fishing Hat", short = L["Source not known yet"], kind = "Head", from = L["New in Forever: while you wear it, its Use puts a +25 lure on your pole as often as you like, and the tackle box can apply it. Where it comes from isn't known yet."], forever = true },
+	{ id = 244229, name = "Angler's Mantle", short = L["Source not known yet"], kind = "Shoulder", from = L["New in Forever: where it comes from isn't known yet."], forever = true, ifBonus = true },
+	{ id = 19972, name = "Lucky Fishing Hat", short = L["Extravaganza: Keefer's Angelfish"], kind = "Head", from = L["Fishing Extravaganza: hand a Keefer's Angelfish to Fishbot 5000 in Booty Bay."],
+		where = { map = 1434, x = 0.274, y = 0.768, label = L["Fishbot 5000, Booty Bay"] }, source = { "quest", 8221, "Rare Fish - Keefer's Angelfish" } },
+	{ id = 19969, name = "Nat Pagle's Extreme Anglin' Boots", short = L["Extravaganza: Brownell's Racer"], kind = "Feet", from = L["Fishing Extravaganza: hand a Brownell's Blue Striped Racer to Fishbot 5000 in Booty Bay."],
+		where = { map = 1434, x = 0.274, y = 0.768, label = L["Fishbot 5000, Booty Bay"] }, source = { "quest", 8225, "Rare Fish - Brownell's Blue Striped Racer" } },
+	{ id = 19971, name = "High Test Eternium Fishing Line", short = L["Extravaganza: Dezian Queenfish"], kind = "Line", bonus = 5, from = L["Fishing Extravaganza: hand a Dezian Queenfish to Fishbot 5000 in Booty Bay. Used on your pole, it gives the pole +5 Fishing for good."],
+		where = { map = 1434, x = 0.274, y = 0.768, label = L["Fishbot 5000, Booty Bay"] }, source = { "quest", 8224, "Rare Fish - Dezian Queenfish" } },
+	{ id = 273495, name = "Enchant Gloves - Fishing", short = L["Enchanters (Enchanting 145)"], kind = "Hands", from = L["The +2 Fishing enchant for your gloves: an enchanter with Formula: Enchant Gloves - Fishing (Enchanting 145) can put it on. Forever's enchant as an item is only on the test realm so far."], forever = true,
 		source = { "item", 11152, "Formula: Enchant Gloves - Fishing" } },
-}
+})
 -- where: { map = uiMapID, x, y, label }, the spot to go to for it; source: { "quest", "npc" or
 -- "item", ID, name }, the Wowhead page for where it comes from.
 -- ifBonus: Forever's new items whose Fishing bonus its data doesn't say. They show once the
@@ -355,7 +356,7 @@ Journey.VENDORS = {
 		{ 12957, "Blimo Gadgetspring", "B", 1447, 0.452, 0.908 },
 		{ 12958, "Gigget Zipcoil", "B", 1425, 0.344, 0.384 },
 		{ 12962, "Wik'Tar", "H", 1440, 0.118, 0.340 },
-		{ 14740, "Katoom the Angler", "H", 1425, 0.802, 0.814 },
+		{ 14740, L["Katoom the Angler"], "H", 1425, 0.802, 0.814 },
 		{ 15179, "Mishta", "B", 1451, 0.498, 0.364 },
 	},
 	[6365] = {
@@ -380,7 +381,7 @@ Journey.VENDORS = {
 		{ 10118, "Nessa Shadowsong", "A", 1438, 0.562, 0.924 },
 		{ 12031, "Mai'Lahii", "H", 1443, 0.226, 0.720 },
 		{ 12962, "Wik'Tar", "H", 1440, 0.118, 0.340 },
-		{ 14740, "Katoom the Angler", "H", 1425, 0.802, 0.814 },
+		{ 14740, L["Katoom the Angler"], "H", 1425, 0.802, 0.814 },
 	},
 }
 
@@ -451,7 +452,7 @@ local function GearMenu(g)
 	local entries = {}
 	local spot = Journey.GearSpot(g)
 	if spot then
-		entries[#entries + 1] = { "Show on map: " .. spot.label, function() ShowGearSpot(spot) end }
+		entries[#entries + 1] = { L["Show on map: "] .. spot.label, function() ShowGearSpot(spot) end }
 	end
 	entries[#entries + 1] = { "Wowhead: " .. name, function() ns.UI.ShowWowhead("item", g.id, name) end }
 	if g.source then
@@ -461,7 +462,7 @@ local function GearMenu(g)
 	end
 	local _, link = C_Item.GetItemInfo(g.id)
 	if link and ns.InsertChatLink then
-		entries[#entries + 1] = { "Link in chat", function() ns.InsertChatLink(link) end }
+		entries[#entries + 1] = { L["Link in chat"], function() ns.InsertChatLink(link) end }
 	end
 	ns.UI.ShowMenu(name, entries)
 end
@@ -529,13 +530,13 @@ GearCard = function(parent, g)
 		GameTooltip:SetItemByID(self.gear.id)
 		GameTooltip:AddLine(" ")
 		GameTooltip:AddLine(self.gear.from, 1, 1, 1, true)
-		GameTooltip:AddLine(self.gear.forever and "From Forever's own data." or "Classic's source: Forever may differ.",
+		GameTooltip:AddLine(self.gear.forever and L["From Forever's own data."] or L["Classic's source: Forever may differ."],
 			0.6, 0.6, 0.6, true)
 		local spot = Journey.GearSpot(self.gear)
 		if spot then
-			GameTooltip:AddLine("Click: waypoint at " .. spot.label .. (spot.nearest and " (the nearest for you)" or ""), 0.6, 0.8, 1, true)
+			GameTooltip:AddLine(L["Click: waypoint at "] .. spot.label .. (spot.nearest and L[" (the nearest for you)"] or ""), 0.6, 0.8, 1, true)
 		end
-		GameTooltip:AddLine("Right-click: Wowhead and more", 0.6, 0.8, 1)
+		GameTooltip:AddLine(L["Right-click: Wowhead and more"], 0.6, 0.8, 1)
 		GameTooltip:Show()
 	end)
 	card:SetScript("OnLeave", function(self)
@@ -587,7 +588,7 @@ PaintGearCard = function(card, bonus, owned, equipped)
 	else
 		card.bonus:SetTextColor(0.45, 0.65, 0.4)
 	end
-	card.status:SetText(equipped and (GOOD .. "Equipped|r") or owned and (GOOD .. "In bags|r") or "")
+	card.status:SetText(equipped and (GOOD .. "Equipped|r") or owned and (GOOD .. L["In bags|r"]) or "")
 	card.check:SetShown(owned and ns.db.collectionTicks ~= false)
 end
 
@@ -597,7 +598,7 @@ GearBest = function(parent)
 	-- and the total as the last row.
 	local p = CreateFrame("Frame", nil, parent)
 	local header = ns.UI.SectionHeader(p, 0)
-	header.text:SetText("The best you have")
+	header.text:SetText(L["The best you have"])
 	p.lines = {}
 	local function Line(i, label)
 		local row = CreateFrame("Frame", nil, p)
@@ -618,7 +619,7 @@ GearBest = function(parent)
 	for i, slot in ipairs(SLOT_ORDER) do
 		p.lines[slot] = Line(i, slot .. ":")
 	end
-	p.total = Line(#SLOT_ORDER + 1, "All together:")
+	p.total = Line(#SLOT_ORDER + 1, L["All together:"])
 	p.height = 28 + (#SLOT_ORDER + 1) * 20
 	p:SetHeight(p.height)
 	return p
@@ -633,15 +634,15 @@ PaintGearBest = function(p, best)
 			p.lines[slot]:SetText((C_Item.GetItemNameByID and C_Item.GetItemNameByID(b.gear.id) or "?") .. "  " .. GOOD
 				.. "+" .. b.bonus .. "|r")
 		else
-			p.lines[slot]:SetText(GREY .. "none yet|r")
+			p.lines[slot]:SetText(GREY .. L["none yet|r"])
 		end
 	end
-	p.total:SetText(string.format("%s+%d Fishing|r", GOOD, total))
+	p.total:SetText(string.format(L["%s+%d Fishing|r"], GOOD, total))
 end
 
 local function CreateWindow()
 	local UI = ns.UI
-	local f, inset = UI.CreateShell("OneCastJourneyFrame", "Fisherman's journey",
+	local f, inset = UI.CreateShell("OneCastJourneyFrame", L["Fisherman's journey"],
 		C_Item.GetItemIconByID(16083) or "Interface\\Icons\\INV_Misc_Book_09")
 	f:SetSize(WIDTH, ns.UI.PAGE_HEIGHT)
 	f:SetPoint("CENTER")
@@ -706,23 +707,23 @@ function Journey.Refresh()
 	end
 	local current, rank, maxRank = Journey.Current()
 	if not (rank and maxRank) then
-		frame.headline:SetText("You haven't learned Fishing yet")
+		frame.headline:SetText(L["You haven't learned Fishing yet"])
 		frame.progress:SetRank(0, "0/0")
 		frame.togo:SetText("")
-		frame.togo:SetText(GREY .. "Learn Apprentice Fishing from any Fishing trainer to start.|r")
+		frame.togo:SetText(GREY .. L["Learn Apprentice Fishing from any Fishing trainer to start.|r"])
 	else
 		local r = Journey.RANKS[current]
-		frame.headline:SetText((r and r.name or "") .. " Fishing")
+		frame.headline:SetText((r and r.name or "") .. L[" Fishing"])
 		frame.progress:SetRank(maxRank > 0 and rank / maxRank or 0, string.format("%d/%d", rank, maxRank))
 		local nextRank = Journey.RANKS[current + 1]
 		if rank >= maxRank and nextRank then
-			frame.togo:SetText(GOLD .. "At your cap: learn " .. nextRank.name .. " to keep going.|r")
+			frame.togo:SetText(GOLD .. L["At your cap: learn "] .. nextRank.name .. L[" to keep going.|r"])
 		elseif rank < maxRank then
 			local catches = ns.Stats.CatchesToGo and ns.Stats.CatchesToGo(rank, maxRank - rank)
-			frame.togo:SetText(string.format("%s%d to your cap%s|r", GREY, maxRank - rank,
-				catches and string.format(", about %d catches", catches) or ""))
+			frame.togo:SetText(string.format(L["%s%d to your cap%s|r"], GREY, maxRank - rank,
+				catches and string.format(L[", about %d catches"], catches) or ""))
 		else
-			frame.togo:SetText(GOOD .. "Every rank learned: " .. maxRank .. " is as high as Fishing goes.|r")
+			frame.togo:SetText(GOOD .. L["Every rank learned: "] .. maxRank .. L[" is as high as Fishing goes.|r"])
 		end
 	end
 	-- Each card as tall as it needs, one under the other.
@@ -738,7 +739,7 @@ function Journey.Refresh()
 		y = y - h
 		learned = learned + (i <= current and 1 or 0)
 	end
-	frame.ranksHeader.text:SetText(string.format("Ranks  %s(%d of %d learned)|r", GREY, learned, #frame.cards))
+	frame.ranksHeader.text:SetText(string.format(L["Ranks  %s(%d of %d learned)|r"], GREY, learned, #frame.cards))
 end
 
 -- The gear catalogue -------------------------------------------------------------------------
@@ -800,7 +801,7 @@ local function PaintGearView(v)
 		header:ClearAllPoints()
 		header:SetPoint("TOPLEFT", left, GEAR_TOP)
 		header:SetPoint("TOPRIGHT", right, GEAR_TOP)
-		header.text:SetText(string.format("%s  %s(%d of %d)|r", key == "pole" and "Fishing poles" or "Worn gear",
+		header.text:SetText(string.format(L["%s  %s(%d of %d)|r"], key == "pole" and L["Fishing poles"] or L["Worn gear"],
 			GREY, owned, #list))
 		local y = GEAR_TOP - GEAR_HEADER - 4
 		for n, card in ipairs(list) do
@@ -820,9 +821,9 @@ local function PaintGearView(v)
 	PaintGearBest(v.best, best)
 	-- And the Legacy tree's fishing talent, for anyone without it.
 	local luremaster = ns.Lure and ns.Lure.Luremaster and not ns.Lure.Luremaster()
-		and string.format("  Not gear, but worth it: Luremaster in the Legacy tree, up to a %d%% chance of an extra fish while lured.",
+		and string.format(L["  Not gear, but worth it: Luremaster in the Legacy tree, up to a %d%% chance of an extra fish while lured."],
 			ns.Lure.LUREMASTER_MAX) or ""
-	v.summary:SetText(string.format("%sYou have %d of the %d pieces of fishing gear. Hover one for where it comes from.%s|r",
+	v.summary:SetText(string.format(L["%sYou have %d of the %d pieces of fishing gear. Hover one for where it comes from.%s|r"],
 		GREY, have, shown, luremaster))
 end
 
@@ -892,7 +893,7 @@ end
 -- OneCastCharDB.journeyFinds = { ranks = { [cap] = find }, gear = { [itemID] = find },
 --   spells = { [spellID] = find } }; find = { zone, how, name, npc, quest, bonus }
 
-local TRACKED_SPELLS = { [43308] = "Find Fish", [1278067] = "Bait and Tackle" }
+local TRACKED_SPELLS = { [43308] = "Find Fish", [1278067] = L["Bait and Tackle"] }
 local RECENT = 10        -- seconds a quest hand-in or loot still explains what turns up
 local TRAINER_RECENT = 120
 local context = {}       -- what you were last doing: trainer, vendor, quest, loot
@@ -1089,15 +1090,15 @@ end)
 local function FromText(f)
 	local who = f.name and (f.npc and string.format("%s [%d]", f.name, f.npc) or f.name) or (f.npc and ("creature " .. f.npc))
 	if f.how == "trainer" then
-		return "from the trainer " .. (who or "?")
+		return L["from the trainer "] .. (who or "?")
 	elseif f.how == "vendor" then
-		return "bought from " .. (who or "a vendor")
+		return L["bought from "] .. (who or L["a vendor"])
 	elseif f.how == "quest" then
-		return string.format("from the quest %s[%s]", f.name and (f.name .. " ") or "", tostring(f.quest))
+		return string.format(L["from the quest %s[%s]"], f.name and (f.name .. " ") or "", tostring(f.quest))
 	elseif f.how == "loot" then
-		return who and ("looted from " .. who) or "from loot"
+		return who and (L["looted from "] .. who) or L["from loot"]
 	end
-	return "source not seen"
+	return L["source not seen"]
 end
 
 -- The same, for the player: no ids in brackets.
@@ -1136,9 +1137,9 @@ function Journey.Findings()
 				rankName = r.name .. " Fishing"
 			end
 		end
-		out[#out + 1] = f and { key = "journey:rank:" .. cap, text = string.format("Learned %s (up to %d) %s in %s",
+		out[#out + 1] = f and { key = "journey:rank:" .. cap, text = string.format(L["Learned %s (up to %d) %s in %s"],
 			rankName, cap, FromText(f), f.zone or "?"), title = rankName,
-			detail = string.format("You learned it %s in %s. Where it's taught in Forever isn't known yet.", PlainFrom(f), f.zone or "?") } or nil
+			detail = string.format(L["You learned it %s in %s. Where it's taught in Forever isn't known yet."], PlainFrom(f), f.zone or "?") } or nil
 	end
 	local ids = {}
 	for id in pairs(finds.gear or {}) do
@@ -1147,17 +1148,17 @@ function Journey.Findings()
 	table.sort(ids)
 	for _, id in ipairs(ids) do
 		local f = finds.gear[id]
-		out[#out + 1] = { key = "journey:gear:" .. id, id = id, text = string.format("Fishing gear OneCast doesn't list: %s (%d)%s, %s in %s",
-			f.item or ("item " .. id), id, (f.bonus or 0) > 0 and string.format(", +%d Fishing", f.bonus) or "",
+		out[#out + 1] = { key = "journey:gear:" .. id, id = id, text = string.format(L["Fishing gear OneCast doesn't list: %s (%d)%s, %s in %s"],
+			f.item or ("item " .. id), id, (f.bonus or 0) > 0 and string.format(L[", +%d Fishing"], f.bonus) or "",
 			FromText(f), f.zone or "?"), title = f.item or ("Item " .. id),
-			detail = string.format("%sFishing gear the Gear tab doesn't list: you got it %s in %s.",
-				(f.bonus or 0) > 0 and string.format("+%d Fishing. ", f.bonus) or "", PlainFrom(f), f.zone or "?") }
+			detail = string.format(L["%sFishing gear the Gear tab doesn't list: you got it %s in %s."],
+				(f.bonus or 0) > 0 and string.format(L["+%d Fishing. "], f.bonus) or "", PlainFrom(f), f.zone or "?") }
 	end
 	for spellID, f in pairs(finds.spells or {}) do
-		out[#out + 1] = not (TRAINER_SPELLS[spellID] and f.how == "trainer") and { key = "journey:spell:" .. spellID, text = string.format("Learned %s (%d) %s in %s",
-			TRACKED_SPELLS[spellID] or "a fishing spell", spellID, FromText(f), f.zone or "?"),
-			title = TRACKED_SPELLS[spellID] or "A fishing spell",
-			detail = string.format("You learned it %s in %s. Where it's taught isn't known yet.", PlainFrom(f), f.zone or "?") } or nil
+		out[#out + 1] = not (TRAINER_SPELLS[spellID] and f.how == "trainer") and { key = "journey:spell:" .. spellID, text = string.format(L["Learned %s (%d) %s in %s"],
+			TRACKED_SPELLS[spellID] or L["a fishing spell"], spellID, FromText(f), f.zone or "?"),
+			title = TRACKED_SPELLS[spellID] or L["A fishing spell"],
+			detail = string.format(L["You learned it %s in %s. Where it's taught isn't known yet."], PlainFrom(f), f.zone or "?") } or nil
 	end
 	return out
 end

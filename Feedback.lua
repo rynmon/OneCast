@@ -5,13 +5,14 @@
 -- they've found that OneCast doesn't know. No character name, realm or guild in any of it.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Feedback = {}
 ns.Feedback = Feedback
 
 Feedback.LINKS = {
-	{ label = "CurseForge", url = "https://www.curseforge.com/wow/addons/onecast/comments" },
-	{ label = "GitHub", bug = "https://github.com/rynmon/OneCast/issues/new?template=bug-report.yml",
+	{ label = L["CurseForge"], url = "https://www.curseforge.com/wow/addons/onecast/comments" },
+	{ label = L["GitHub"], bug = "https://github.com/rynmon/OneCast/issues/new?template=bug-report.yml",
 		idea = "https://github.com/rynmon/OneCast/issues/new?template=feature-request.yml",
 		data = "https://github.com/rynmon/OneCast/issues/new?template=data-report.yml" },
 }
@@ -23,14 +24,14 @@ local HEADER = 24
 local GREY, GOOD, GOLD = "|cff9d9d9d", "|cff20ff20", "|cffffd100"
 local page
 
-local KINDS = {
-	bug = { label = "Bug", title = "Bug report", ask = "What went wrong?",
-		hint = "What you did, what you expected, and what happened instead." },
-	idea = { label = "Idea", title = "Feature request", ask = "What would you like?",
-		hint = "What it would do for you, and where in OneCast it would go." },
-	data = { label = "Data report", ask = "What you've found",
-		hint = "Nobody knows Forever's real fishing levels and loot. Your catches can tell: share them. The last line, the code, is all OneCast needs. No names." },
-}
+local KINDS = ns.Retranslate({
+	bug = { label = L["Bug"], title = L["Bug report"], ask = L["What went wrong?"],
+		hint = L["What you did, what you expected, and what happened instead."] },
+	idea = { label = L["Idea"], title = L["Feature request"], ask = L["What would you like?"],
+		hint = L["What it would do for you, and where in OneCast it would go."] },
+	data = { label = L["Data report"], ask = L["What you've found"],
+		hint = L["Nobody knows Forever's real fishing levels and loot. Your catches can tell: share them. The last line, the code, is all OneCast needs. No names."] },
+})
 local KIND_ORDER = { "bug", "idea", "data" }
 local KIND_WIDTH, KIND_STEP = 96, 102 -- three in the column: 10 + 2 * 102 + 96 = 310 of 315
 local FOUND_ROWS = 40 -- findings shown at most; the report itself holds them all
@@ -76,7 +77,7 @@ end
 function Feedback.SetupLines()
 	local lines = {}
 	local version, build = GetBuildInfo()
-	lines[#lines + 1] = string.format("OneCast %s  ·  game %s (%s)  ·  %s", ns.VERSION or "?", tostring(version or "?"),
+	lines[#lines + 1] = string.format(L["OneCast %s  ·  game %s (%s)  ·  %s"], ns.VERSION or "?", tostring(version or "?"),
 		tostring(build or "?"), GetLocale and GetLocale() or "?")
 	-- Called on its own: "a and f()" would keep only f's first value, and the cap showed as 0.
 	local rank, maxRank, modifier
@@ -84,13 +85,13 @@ function Feedback.SetupLines()
 		rank, maxRank, modifier = ns.Stats.FishingSkill()
 	end
 	if rank then
-		lines[#lines + 1] = string.format("Fishing %d/%d%s", rank, maxRank or 0, (modifier or 0) > 0 and (" +" .. modifier) or "")
+		lines[#lines + 1] = string.format(L["Fishing %d/%d%s"], rank, maxRank or 0, (modifier or 0) > 0 and (" +" .. modifier) or "")
 	end
 	lines[#lines + 1] = "Controller: " .. ((ns.Controller and ns.Controller.Active and ns.Controller.Active()) and "yes" or "no")
 	local changed = ChangedSettings()
-	lines[#lines + 1] = "Settings changed: " .. (#changed > 0 and table.concat(changed, ", ") or "none")
+	lines[#lines + 1] = L["Settings changed: "] .. (#changed > 0 and table.concat(changed, ", ") or "none")
 	local addons = OtherAddons()
-	lines[#lines + 1] = "Other addons: " .. (#addons > 0 and table.concat(addons, ", ") or "none")
+	lines[#lines + 1] = L["Other addons: "] .. (#addons > 0 and table.concat(addons, ", ") or "none")
 	return lines
 end
 
@@ -102,7 +103,7 @@ function Feedback.Text()
 	end
 	local kind = KINDS[draft.kind] or KINDS.bug
 	local body = (draft.text or ""):gsub("^%s+", ""):gsub("%s+$", "")
-	local out = { kind.title, "", body ~= "" and body or "(nothing written yet)" }
+	local out = { kind.title, "", body ~= "" and body or L["(nothing written yet)"] }
 	if draft.setup then
 		out[#out + 1] = ""
 		out[#out + 1] = "---"
@@ -186,7 +187,7 @@ local function LinkBox(parent)
 	end)
 	box:SetScript("OnEditFocusGained", function(self)
 		self:HighlightText()
-		page.status:SetText(GOLD .. "Link selected: Ctrl+C to copy, then paste it in your browser.|r")
+		page.status:SetText(GOLD .. L["Link selected: Ctrl+C to copy, then paste it in your browser.|r"])
 	end)
 	box:SetScript("OnEditFocusLost", function(self)
 		self:HighlightText(0, 0)
@@ -267,8 +268,8 @@ local function PaintFound(f)
 	f.foundScroll:SetVerticalScroll(math.min(f.foundScroll:GetVerticalScroll() or 0, most))
 	f.foundEmpty:SetShown(#found == 0)
 	local count = #found == 0 and "" or (#found - #old > 0
-		and string.format("%s%d new|r%s", GOOD, #found - #old, #old > 0 and (GREY .. ", " .. #old .. " shared|r") or "")
-		or string.format("%s%d, all shared|r", GREY, #found))
+		and string.format(L["%s%d new|r%s"], GOOD, #found - #old, #old > 0 and (GREY .. ", " .. #old .. " shared|r") or "")
+		or string.format(L["%s%d, all shared|r"], GREY, #found))
 	f.letters:SetText(count)
 end
 
@@ -310,9 +311,9 @@ local function Paint()
 			f.write.edit:SetText(draft.text or "")
 		end
 		f.setup:SetChecked(draft.setup and true or false)
-		f.letters:SetText(string.format("%s%d of %d|r", GREY, #(draft.text or ""), MAX_LETTERS))
+		f.letters:SetText(string.format(L["%s%d of %d|r"], GREY, #(draft.text or ""), MAX_LETTERS))
 	end
-	f.copyHeader.text:SetText(data and "Your report" or "Your message")
+	f.copyHeader.text:SetText(data and L["Your report"] or L["Your message"])
 	f.copy.edit:SetText(Feedback.Text())
 	f.copy.edit:SetCursorPosition(0)
 	for _, row in ipairs(f.links) do
@@ -341,9 +342,9 @@ local function CreatePage()
 
 	-- Two columns over a band the full width, for the links: each address shown whole.
 	local BAND = GAP + HEADER + 4 + #Feedback.LINKS * LINK_ROW + EDGE
-	local L = CreateFrame("Frame", nil, inset)
-	L:SetPoint("TOPLEFT")
-	L:SetPoint("BOTTOMRIGHT", inset, "BOTTOM", 0, BAND)
+	local Left = CreateFrame("Frame", nil, inset)
+	Left:SetPoint("TOPLEFT")
+	Left:SetPoint("BOTTOMRIGHT", inset, "BOTTOM", 0, BAND)
 	local R = CreateFrame("Frame", nil, inset)
 	R:SetPoint("TOPLEFT", inset, "TOP", 0, 0)
 	R:SetPoint("BOTTOMRIGHT", 0, BAND)
@@ -353,19 +354,19 @@ local function CreatePage()
 	B:SetHeight(BAND)
 
 	-- Left: write it.
-	local header = UI.SectionHeader(L, -GAP)
-	header.text:SetText("Send feedback")
-	local intro = Text(L)
+	local header = UI.SectionHeader(Left, -GAP)
+	header.text:SetText(L["Send feedback"])
+	local intro = Text(Left)
 	intro:SetPoint("TOPLEFT", EDGE + 4, -GAP - HEADER - 8)
 	intro:SetPoint("RIGHT", -EDGE, 0)
 	intro:SetWordWrap(true)
 	intro:SetTextColor(0.78, 0.78, 0.78)
-	intro:SetText("Found a bug, or have an idea? Write it here, or share your data report, then copy it to CurseForge or GitHub.")
+	intro:SetText(L["Found a bug, or have an idea? Write it here, or share your data report, then copy it to CurseForge or GitHub."])
 
 	f.kinds = {}
 	local x = EDGE
 	for _, key in ipairs(KIND_ORDER) do
-		local b = UI.GoldButton(L, KIND_WIDTH, 22)
+		local b = UI.GoldButton(Left, KIND_WIDTH, 22)
 		b:SetPoint("TOPLEFT", x, -GAP - HEADER - 48)
 		b:SetText(KINDS[key].label)
 		b:SetScript("OnClick", function()
@@ -377,25 +378,25 @@ local function CreatePage()
 		x = x + KIND_STEP
 	end
 
-	f.ask = Text(L, "GameFontNormal")
+	f.ask = Text(Left, "GameFontNormal")
 	f.ask:SetPoint("TOPLEFT", EDGE + 4, -GAP - HEADER - 84)
-	f.letters = Text(L)
+	f.letters = Text(Left)
 	f.letters:SetPoint("TOPRIGHT", -EDGE - 4, -GAP - HEADER - 86)
 	f.letters:SetJustifyH("RIGHT")
-	f.hint = Text(L)
+	f.hint = Text(Left)
 	f.hint:SetPoint("TOPLEFT", f.ask, "BOTTOMLEFT", 0, -4)
 	f.hint:SetPoint("RIGHT", -EDGE, 0)
 	f.hint:SetWordWrap(true)
 	f.hint:SetTextColor(0.66, 0.66, 0.66)
 
-	local write = Box(L)
+	local write = Box(Left)
 	write:SetPoint("TOPLEFT", EDGE, -GAP - HEADER - 132)
 	write:SetPoint("BOTTOMRIGHT", -EDGE, 64)
 	write.edit:SetMaxLetters(MAX_LETTERS)
 	write.edit:SetScript("OnTextChanged", function(self, userInput)
 		if userInput then
 			Draft().text = self:GetText()
-			f.letters:SetText(string.format("%s%d of %d|r", GREY, #Draft().text, MAX_LETTERS))
+			f.letters:SetText(string.format(L["%s%d of %d|r"], GREY, #Draft().text, MAX_LETTERS))
 			f.copy.edit:SetText(Feedback.Text())
 			f.copy.edit:SetCursorPosition(0)
 		end
@@ -403,7 +404,7 @@ local function CreatePage()
 	f.write = write
 
 	-- The data report's findings, in place of the writing, scrolled with the wheel.
-	local scroll = CreateFrame("ScrollFrame", nil, L)
+	local scroll = CreateFrame("ScrollFrame", nil, Left)
 	scroll:SetPoint("TOPLEFT", f.hint, "BOTTOMLEFT", -4, -8)
 	scroll:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
 	local list = CreateFrame("Frame", nil, scroll)
@@ -415,16 +416,16 @@ local function CreatePage()
 	scroll:Hide()
 	f.foundScroll, f.foundList, f.found = scroll, list, {}
 	f.foundWidth = PAGE_WIDTH / 2 - 10 - 2 * EDGE
-	f.foundEmpty = Text(L)
+	f.foundEmpty = Text(Left)
 	f.foundEmpty:SetPoint("TOPLEFT", scroll, "TOPLEFT", 4, -4)
 	f.foundEmpty:SetPoint("RIGHT", -EDGE, 0)
 	f.foundEmpty:SetWordWrap(true)
 	f.foundEmpty:SetTextColor(0.66, 0.66, 0.66)
-	f.foundEmpty:SetText("Nothing new yet. Keep fishing: a zone's real level, a fish or treasure OneCast doesn't know, "
-		.. "or what a camp buff brings in shows up here, ready to share. The report on the right still holds your numbers.")
+	f.foundEmpty:SetText(L["Nothing new yet. Keep fishing: a zone's real level, a fish or treasure OneCast doesn't know, "]
+		.. L["or what a camp buff brings in shows up here, ready to share. The report on the right still holds your numbers."])
 	f.foundEmpty:Hide()
 
-	local setup = CreateFrame("CheckButton", nil, L, "UICheckButtonTemplate")
+	local setup = CreateFrame("CheckButton", nil, Left, "UICheckButtonTemplate")
 	setup:SetSize(24, 24)
 	setup:SetPoint("BOTTOMLEFT", EDGE - 2, 34)
 	setup:SetScript("OnClick", function(self)
@@ -432,25 +433,25 @@ local function CreatePage()
 		Paint()
 	end)
 	f.setup = setup
-	local setupLabel = Text(L)
+	local setupLabel = Text(Left)
 	f.writing = { write, setup, setupLabel }
 	setupLabel:SetPoint("LEFT", setup, "RIGHT", 4, 1)
-	setupLabel:SetText("Add your setup")
-	local setupNote = Text(L)
+	setupLabel:SetText(L["Add your setup"])
+	local setupNote = Text(Left)
 	setupNote:SetPoint("TOPLEFT", setup, "BOTTOMLEFT", 4, -2)
 	setupNote:SetPoint("RIGHT", -EDGE, 0)
 	setupNote:SetWordWrap(true)
 	setupNote:SetTextColor(0.66, 0.66, 0.66)
-	setupNote:SetText("Versions, language, Fishing, controller, changed settings and other addons. No names.")
+	setupNote:SetText(L["Versions, language, Fishing, controller, changed settings and other addons. No names."])
 	table.insert(f.writing, setupNote)
 
 	-- Right: the text to copy, and where to paste it.
 	local copyHeader = UI.SectionHeader(R, -GAP)
-	copyHeader.text:SetText("Your message")
+	copyHeader.text:SetText(L["Your message"])
 	f.copyHeader = copyHeader
 	local selectAll = UI.HeaderButton(copyHeader)
 	selectAll:SetPoint("RIGHT", -4, 0)
-	selectAll:SetLabel(nil, "Select all")
+	selectAll:SetLabel(nil, L["Select all"])
 	local copy = Box(R)
 	copy:SetPoint("TOPLEFT", EDGE, -GAP - HEADER - 6)
 	copy:SetPoint("BOTTOMRIGHT", -EDGE, 40)
@@ -462,7 +463,7 @@ local function CreatePage()
 	end)
 	copy.edit:SetScript("OnEditFocusGained", function(self)
 		self:HighlightText()
-		f.status:SetText(GOLD .. "Selected: Ctrl+C to copy, then paste it at one of the links below.|r")
+		f.status:SetText(GOLD .. L["Selected: Ctrl+C to copy, then paste it at one of the links below.|r"])
 		-- Selecting the report to copy counts its findings as shared: the tab's badge goes.
 		if Draft().kind == "data" and ns.Report then
 			ns.Report.MarkShared()
@@ -482,11 +483,11 @@ local function CreatePage()
 	f.status:SetPoint("TOPLEFT", copy, "BOTTOMLEFT", 4, -6)
 	f.status:SetPoint("RIGHT", -EDGE, 0)
 	f.status:SetWordWrap(true)
-	f.status:SetText(GREY .. "Select all, Ctrl+C, then paste it at one of the links below.|r")
+	f.status:SetText(GREY .. L["Select all, Ctrl+C, then paste it at one of the links below.|r"])
 
 	-- Along the bottom: where to paste it, a row each, the address whole on the right.
 	local pasteHeader = UI.SectionHeader(B, -GAP)
-	pasteHeader.text:SetText("Then paste it on")
+	pasteHeader.text:SetText(L["Then paste it on"])
 	f.links = {}
 	local y = GAP + HEADER + 4
 	for i, link in ipairs(Feedback.LINKS) do

@@ -5,6 +5,7 @@
 -- reports with a code have counted enough catches.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Atlas = {}
 ns.Atlas = Atlas
@@ -61,7 +62,7 @@ function Atlas.Zone(zone)
 end
 
 local function Who(n)
-	return n == 1 and "1 player's report" or string.format("%d players' reports", n)
+	return n == 1 and L["1 player's report"] or string.format(L["%d players' reports"], n)
 end
 
 -- One sentence on what Forever's players have seen in a zone, or nil with nothing to say.
@@ -72,16 +73,14 @@ function Atlas.ZoneLine(zone)
 	end
 	local listed = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[zone]
 	local who = Who(z.reports or 1)
-	if z.level and listed == z.level then
-		return string.format("Forever's own level, from %s: fish got away up to %d skill.", who, z.low - 1)
+	if z.level and z.low and listed == z.level then -- the level is the measured low (tools/atlas.py)
+		return string.format(L["Forever's own level, from %s: fish got away up to %d skill."], who, z.low - 1)
 	elseif z.low and listed and z.low == listed then
-		return string.format("Confirmed in Forever by %s.", who)
-	elseif z.low and listed and z.low < listed then
-		return string.format("In Forever, fish got away up to %d skill (%s).", z.low - 1, who)
+		return string.format(L["Confirmed in Forever by %s."], who)
 	elseif z.low then
-		return string.format("In Forever, fish got away up to %d skill (%s).", z.low - 1, who)
+		return string.format(L["In Forever, fish got away up to %d skill (%s)."], z.low - 1, who)
 	elseif (z.catches or 0) > 0 then
-		return string.format("In Forever, none got away in %d catches (%s).", z.catches, who)
+		return string.format(L["In Forever, none got away in %d catches (%s)."], z.catches, who)
 	end
 end
 

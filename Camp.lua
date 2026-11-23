@@ -16,45 +16,46 @@
 -- dropping from Jammal'an the Prophet is one player's report, via a Wowhead comment (13 November 2026).
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Camp = {}
 ns.Camp = Camp
 
-Camp.CRAFTS = {
+Camp.CRAFTS = ns.Retranslate({
 	{ key = "bowl", name = "Fish Bowl", recipe = 1229745, item = 279967, skill = 20,
 		reagents = { { 6291, 1, "Raw Brilliant Smallfish" }, { 3371, 1, "Empty Vial" } },
-		effect = "+8% to all stats for you and anyone sitting nearby, for an hour.",
-		does = "Placed by a campfire, it gives you and everyone sitting nearby +8% to all stats for an hour. It doesn't stack with Blessing of Kings." },
+		effect = L["+8% to all stats for you and anyone sitting nearby, for an hour."],
+		does = L["Placed by a campfire, it gives you and everyone sitting nearby +8% to all stats for an hour. It doesn't stack with Blessing of Kings."] },
 	{ key = "rack", name = "Fishing Rack", recipe = 1262990, item = 279965, skill = 140,
 		blueprint = 273141, blueprintName = "Blueprint: Fishing Rack", buff = 1280341, buffName = "Uncommon Fishing",
-		blueprintFrom = "drops from Gelihast in Blackfathom Deeps, not on every kill. Other players can trade it to you.",
+		blueprintFrom = L["drops from Gelihast in Blackfathom Deeps, not on every kill. Other players can trade it to you."],
 		blueprintKnown = { name = "Gelihast", npc = 6243 }, -- confirmed: a drop from it isn't news
 		blueprintShort = "Gelihast, Blackfathom Deeps",
-		blueprintWhere = { zone = "Ashenvale", x = 0.145, y = 0.142, label = "Blackfathom Deeps, for Gelihast's Blueprint" },
-		effect = "Uncommon Fishing for an hour: extra rewards while you fish, and the Fish Bowl's stats.",
+		blueprintWhere = { zone = "Ashenvale", x = 0.145, y = 0.142, label = L["Blackfathom Deeps, for Gelihast's Blueprint"] },
+		effect = L["Uncommon Fishing for an hour: extra rewards while you fish, and the Fish Bowl's stats."],
 		reagents = { { 4470, 2, "Simple Wood" }, { 8925, 1, "Crystal Vial" }, { 8365, 2, "Raw Mithril Head Trout" } },
-		does = "Placed by a campfire, it gives Uncommon Fishing for an hour: extra rewards while you fish. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
+		does = L["Placed by a campfire, it gives Uncommon Fishing for an hour: extra rewards while you fish. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl."] },
 	{ key = "hut", name = "Fishing Hut", recipe = 1262998, item = 279966, skill = 300,
 		blueprint = 273119, blueprintName = "Blueprint: Fishing Hut", buff = 1280342, buffName = "Rare Fishing",
-		blueprintFrom = "reported to drop from Jammal'an the Prophet in the Sunken Temple (one player's report, not yet confirmed). Other players can trade it to you.",
-		blueprintShort = "Jammal'an the Prophet, Sunken Temple (unconfirmed)",
-		blueprintWhere = { zone = "Swamp of Sorrows", x = 0.695, y = 0.536, label = "The Sunken Temple, for Jammal'an's Blueprint" },
-		effect = "Rare Fishing for an hour: greater extra rewards while you fish, and the Fish Bowl's stats.",
+		blueprintFrom = L["reported to drop from Jammal'an the Prophet in the Sunken Temple (one player's report, not yet confirmed). Other players can trade it to you."],
+		blueprintShort = L["Jammal'an the Prophet, Sunken Temple (unconfirmed)"],
+		blueprintWhere = { zone = "Swamp of Sorrows", x = 0.695, y = 0.536, label = L["The Sunken Temple, for Jammal'an's Blueprint"] },
+		effect = L["Rare Fishing for an hour: greater extra rewards while you fish, and the Fish Bowl's stats."],
 		reagents = { { 4470, 5, "Simple Wood" }, { 14048, 2, "Bolt of Runecloth" }, { 273295, 1, "Seasonal Fish Steaks" } },
 		-- What Rare Fishing brought up in 84 catches in Stranglethorn Vale (23 November 2026): ore,
 		-- bars, herbs, hides, vials and Dream Dust beside the fish, and a trunk about one catch in three.
-		does = "Placed by a campfire, it gives Rare Fishing for an hour: greater extra rewards while you fish, such as ore, metal bars, herbs, hides and Dream Dust, and more trunks. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
-}
+		does = L["Placed by a campfire, it gives Rare Fishing for an hour: greater extra rewards while you fish, such as ore, metal bars, herbs, hides and Dream Dust, and more trunks. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl."] },
+})
 
 -- Cooking recipes: a campfire holds this many features. Basic comes with Cooking; the others are
 -- learned from blueprints that drop (Forever's client data and Wowhead, 16 November 2026).
-Camp.CAMPFIRES = {
-	{ name = "Basic Campfire", recipe = 1229737, holds = 3, from = "Learned with Cooking." },
+Camp.CAMPFIRES = ns.Retranslate({
+	{ name = "Basic Campfire", recipe = 1229737, holds = 3, from = L["Learned with Cooking."] },
 	{ name = "Journeyman Campfire", recipe = 1283400, holds = 5, blueprint = 273087,
-		from = "Learned from Blueprint: Journeyman Campfire (Cooking 90), dropped by Lord Serpentis in Wailing Caverns, about 1 kill in 17. Made with Star Wood." },
+		from = L["Learned from Blueprint: Journeyman Campfire (Cooking 90), dropped by Lord Serpentis in Wailing Caverns, about 1 kill in 17. Made with Star Wood."] },
 	{ name = "Expert Campfire", recipe = 1291341, holds = 10, blueprint = 273101,
-		from = "Learned from Blueprint: Expert Campfire (Cooking 200), dropped by Slavecrusher Grox, about 1 kill in 23. Made with Thick Logs." },
-}
+		from = L["Learned from Blueprint: Expert Campfire (Cooking 200), dropped by Slavecrusher Grox, about 1 kill in 23. Made with Thick Logs."] },
+})
 Camp.FEATURE_MINUTES = 15  -- a placed feature stands this long
 Camp.SIT_SECONDS = 60      -- time by the fire before its benefits arrive
 Camp.COOLDOWN_MINUTES = 60 -- shared by every camp feature
@@ -192,7 +193,7 @@ function Camp.StatusText()
 		return nil
 	end
 	if left then
-		return string.format("%s  ·  %dm", craft.buffName, math.ceil(left / 60))
+		return string.format(L["%s  ·  %dm"], craft.buffName, math.ceil(left / 60))
 	end
 	return craft.buffName
 end
@@ -218,7 +219,7 @@ local function CheckBuff()
 			if gone.key == had then
 				local buff = C_Spell and C_Spell.GetSpellLink and C_Spell.GetSpellLink(gone.buff) or gone.buffName
 				local item = ns.ItemLink(gone.item, gone.name)
-				ns.Print(buff .. " has worn off. Sit by a campfire with a " .. item .. " to get it again.")
+				ns.Print(buff .. L[" has worn off. Sit by a campfire with a "] .. item .. L[" to get it again."])
 			end
 		end
 	end
@@ -316,9 +317,9 @@ local function CraftCard(parent, craft)
 		tip:AddLine(craft.does, 1, 1, 1, true)
 		local known = Camp.Known(craft)
 		if known then
-			tip:AddLine("You've learned to make it.", 0.12, 1, 0)
+			tip:AddLine(L["You've learned to make it."], 0.12, 1, 0)
 		elseif known == false then
-			tip:AddLine("You haven't learned to make it yet.", 1, 0.3, 0.3)
+			tip:AddLine(L["You haven't learned to make it yet."], 1, 0.3, 0.3)
 		end
 	end)
 	-- What it's made from: a shaded row each, have/need at the right.
@@ -336,7 +337,7 @@ local function CraftCard(parent, craft)
 		row.need:SetJustifyH("RIGHT")
 		row.reagent = r
 		ItemHover(row, r[1], function(tip)
-			tip:AddLine(string.format("You have %d, and it takes %d.", Camp.Count(r[1]), r[2]), 1, 1, 1)
+			tip:AddLine(string.format(L["You have %d, and it takes %d."], Camp.Count(r[1]), r[2]), 1, 1, 1)
 		end)
 		c.reagents[j] = row
 	end
@@ -351,9 +352,9 @@ local function CraftCard(parent, craft)
 		local where = craft.blueprintWhere
 		ItemHover(bp, craft.blueprint, function(tip)
 			tip:AddLine(" ")
-			tip:AddLine("It " .. craft.blueprintFrom, 1, 1, 1, true)
+			tip:AddLine(L["It "] .. craft.blueprintFrom, 1, 1, 1, true)
 			if where then
-				tip:AddLine("Click: a waypoint at the dungeon's entrance in " .. where.zone, 0.6, 0.8, 1)
+				tip:AddLine(L["Click: a waypoint at the dungeon's entrance in "] .. where.zone, 0.6, 0.8, 1)
 			end
 		end)
 		bp:SetScript("OnClick", function()
@@ -365,7 +366,7 @@ local function CraftCard(parent, craft)
 				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 				ns.UI.ShowOnMap(mapID, where.x, where.y, where.label)
 			elseif where then
-				ns.Print("the game has no map for " .. where.zone .. ".")
+				ns.Print(L["the game has no map for "] .. where.zone .. ".")
 			end
 		end)
 		c.blueprint = bp
@@ -383,11 +384,11 @@ local function PaintCraft(c, width)
 	if known then
 		status, color = GOOD .. "Learned|r", { 0.12, 1, 0 }
 	elseif hasBlueprint then
-		status, color = GOLD .. "Blueprint in your bags|r", { 1, 0.82, 0 }
+		status, color = GOLD .. L["Blueprint in your bags|r"], { 1, 0.82, 0 }
 	elseif rank and rank < craft.skill then
 		status, color = BAD .. "Needs " .. craft.skill .. " Fishing|r", { 1, 0.25, 0.25 }
 	else
-		status, color = GREY .. "Not learned yet|r", { 0.5, 0.5, 0.5 }
+		status, color = GREY .. L["Not learned yet|r"], { 0.5, 0.5, 0.5 }
 	end
 	c:SetColor(color[1], color[2], color[3], known and 0.1 or 0.16)
 	c.icon:SetTexture(C_Item.GetItemIconByID(craft.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -415,7 +416,7 @@ local function PaintCraft(c, width)
 		bp:SetShown(show)
 		if show then
 			bp.text:SetWidth(width - 56 - PAD - 8)
-			bp.text:SetText(GOLD .. "Blueprint:|r " .. (craft.blueprintShort or craft.blueprintFrom))
+			bp.text:SetText(GOLD .. L["Blueprint:|r "] .. (craft.blueprintShort or craft.blueprintFrom))
 			local h = (bp.text:GetStringHeight() or 12) + 6
 			bp:ClearAllPoints()
 			bp:SetPoint("TOPLEFT", 56, -y - 4)
@@ -460,7 +461,7 @@ function Camp.PaintPage()
 	for _, craft in ipairs(Camp.CRAFTS) do
 		learned = learned + (Camp.Known(craft) and 1 or 0)
 	end
-	f.craftsHeader.text:SetText(string.format("Camp features  %s(%d of %d learned)|r", GREY, learned, #Camp.CRAFTS))
+	f.craftsHeader.text:SetText(string.format(L["Camp features  %s(%d of %d learned)|r"], GREY, learned, #Camp.CRAFTS))
 	local y = PlaceHeader(f.craftsHeader, GAP)
 	for _, c in ipairs(f.crafts) do
 		local h = PaintCraft(c, width)
@@ -478,14 +479,14 @@ function Camp.PaintPage()
 			or C_Item.GetItemIconByID(craft.item))
 		now.icon:SetDesaturated(false)
 		now.title:SetText(GOOD .. craft.buffName .. "|r")
-		now.sub:SetText((timeLeft and string.format("%d more minutes, ", math.ceil(timeLeft / 60)) or "")
-			.. "from a " .. craft.name .. ".")
+		now.sub:SetText((timeLeft and string.format(L["%d more minutes, "], math.ceil(timeLeft / 60)) or "")
+			.. L["from a "] .. craft.name .. ".")
 		now:SetColor(0.12, 1, 0)
 	else
 		now.icon:SetTexture(C_Item.GetItemIconByID(Camp.CRAFTS[#Camp.CRAFTS].item))
 		now.icon:SetDesaturated(true)
-		now.title:SetText("No camp buff on")
-		now.sub:SetText("Sit by a campfire with a Fishing Rack or Fishing Hut to get one.")
+		now.title:SetText(L["No camp buff on"])
+		now.sub:SetText(L["Sit by a campfire with a Fishing Rack or Fishing Hut to get one."])
 		now:SetColor(0.5, 0.5, 0.5, 0.08)
 	end
 	now.buff = craft and craft.buff
@@ -497,9 +498,9 @@ function Camp.PaintPage()
 	-- How camps work: a fact a row.
 	y = PlaceHeader(f.howHeader, y)
 	local facts = {
-		"Build a campfire with Cooking, then place features beside it.",
-		string.format("Sit nearby for %d seconds: each feature's buff lasts an hour.", Camp.SIT_SECONDS),
-		string.format("Features stand %d minutes and share a %d-minute cooldown.", Camp.FEATURE_MINUTES, Camp.COOLDOWN_MINUTES),
+		L["Build a campfire with Cooking, then place features beside it."],
+		string.format(L["Sit nearby for %d seconds: each feature's buff lasts an hour."], Camp.SIT_SECONDS),
+		string.format(L["Features stand %d minutes and share a %d-minute cooldown."], Camp.FEATURE_MINUTES, Camp.COOLDOWN_MINUTES),
 	}
 	for i, row in ipairs(f.how) do
 		row.text:SetText(facts[i])
@@ -517,7 +518,7 @@ function Camp.PaintPage()
 		row.icon:SetTexture((C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(fire.recipe))
 			or "Interface\\Icons\\Spell_Fire_Fire")
 		row.name:SetText(fire.name)
-		row.holds:SetText(GREY .. "holds|r " .. fire.holds)
+		row.holds:SetText(GREY .. L["holds|r "] .. fire.holds)
 		Place(row, Rt, y, 22)
 		y = y + 22
 	end
@@ -539,7 +540,7 @@ function Camp.PaintPage()
 		if show then
 			any = true
 			row.label:SetText(GOLD .. c.buffName .. "|r")
-			row.value:SetText(string.format("%d catch%s", r.catches, r.catches == 1 and "" or "es"))
+			row.value:SetText(string.format(r.catches == 1 and L["%d catch"] or L["%d catches"], r.catches))
 			Place(row, Rt, y, 20)
 			y = y + 22
 			local items = {}
@@ -564,7 +565,7 @@ function Camp.PaintPage()
 					chip:SetScript("OnEnter", function(self)
 						GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 						GameTooltip:SetItemByID(self.id)
-						GameTooltip:AddLine(string.format("%d caught with %s on.", self.n, self.buffName), 1, 1, 1)
+						GameTooltip:AddLine(string.format(L["%d caught with %s on."], self.n, self.buffName), 1, 1, 1)
 						GameTooltip:Show()
 					end)
 					chip:SetScript("OnLeave", GameTooltip_Hide)
@@ -625,7 +626,7 @@ local function CreatePage()
 	end
 
 	f.nowHeader = UI.SectionHeader(f.right, -GAP)
-	f.nowHeader.text:SetText("Right now")
+	f.nowHeader.text:SetText(L["Right now"])
 	local now = UI.Card(f.right)
 	now.icon = Icon(now, 34)
 	now.icon:SetPoint("TOPLEFT", 12, -8)
@@ -647,14 +648,14 @@ local function CreatePage()
 	f.now = now
 
 	f.howHeader = UI.SectionHeader(f.right, -GAP)
-	f.howHeader.text:SetText("How camps work")
+	f.howHeader.text:SetText(L["How camps work"])
 	f.how = {}
 	for i = 1, 3 do
 		f.how[i] = InfoRow(f.right, i)
 	end
 
 	f.firesHeader = UI.SectionHeader(f.right, -GAP)
-	f.firesHeader.text:SetText("Campfires")
+	f.firesHeader.text:SetText(L["Campfires"])
 	f.fires = {}
 	for i, fire in ipairs(Camp.CAMPFIRES) do
 		local row = CreateFrame("Frame", nil, f.right)
@@ -671,7 +672,7 @@ local function CreatePage()
 		row:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetSpellByID(fire.recipe)
-			GameTooltip:AddLine(string.format("A Cooking recipe. Holds up to %d camp features.", fire.holds), 1, 1, 1, true)
+			GameTooltip:AddLine(string.format(L["A Cooking recipe. Holds up to %d camp features."], fire.holds), 1, 1, 1, true)
 			GameTooltip:AddLine(fire.from, 1, 0.82, 0, true)
 			GameTooltip:Show()
 		end)
@@ -681,7 +682,7 @@ local function CreatePage()
 	end
 
 	f.caughtHeader = UI.SectionHeader(f.right, -GAP)
-	f.caughtHeader.text:SetText("Caught with the buffs")
+	f.caughtHeader.text:SetText(L["Caught with the buffs"])
 	f.records, f.chips = {}, {}
 	for i, craft in ipairs(Camp.CRAFTS) do
 		if craft.buff then
@@ -699,8 +700,8 @@ local function CreatePage()
 	f.nothing = Text(f.right)
 	f.nothing:SetTextColor(0.66, 0.66, 0.66)
 	f.nothing:SetWordWrap(true)
-	f.nothing:SetText("Nothing yet. What you catch with Uncommon or Rare Fishing on shows here, to see what "
-		.. "their extra rewards really are.")
+	f.nothing:SetText(L["Nothing yet. What you catch with Uncommon or Rare Fishing on shows here, to see what "]
+		.. L["their extra rewards really are."])
 
 	f:SetScript("OnShow", Camp.PaintPage)
 	f:Hide()

@@ -8,6 +8,7 @@
 -- bullet points: the change in white, what it means in grey after it.
 
 local ADDON, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local WhatsNew = {}
 ns.WhatsNew = WhatsNew
@@ -108,9 +109,9 @@ local function RenderPage()
 
 	-- The header: the version, and when and how much on its right.
 	local count = CountChanges(release)
-	frame.pageHeader.text:SetText("Version " .. release.version)
-	frame.meta:SetText(string.format("%s  ·  %d change%s%s", release.date, count, count == 1 and "" or "s",
-		release.version == ns.VERSION and "  ·  |cff20ff20installed|r" or ""))
+	frame.pageHeader.text:SetText(L["Version "] .. release.version)
+	frame.meta:SetText(string.format(count == 1 and L["%s  ·  %d change%s"] or L["%s  ·  %d changes%s"], release.date, count,
+		release.version == ns.VERSION and L["  ·  |cff20ff20installed|r"] or ""))
 
 	local width = content:GetWidth()
 	local noteWidth = width - 10 - LEAD_WIDTH - 12 - 10
@@ -181,7 +182,7 @@ local function UpdateList(free)
 	frame.newer:SetEnabled(selected > 1)
 	frame.older:SetEnabled(selected < #ns.CHANGELOG)
 	local entry = ns.CHANGELOG[selected]
-	frame.pageLabel:SetText(string.format("%s  " .. GREY .. "%d of %d|r", entry and entry.version or "", selected, #ns.CHANGELOG))
+	frame.pageLabel:SetText(string.format("%s  " .. GREY .. L["%d of %d|r"], entry and entry.version or "", selected, #ns.CHANGELOG))
 end
 
 local function Select(index)
@@ -194,7 +195,7 @@ end
 
 local function CreateWindow()
 	local UI = ns.UI
-	local f, inset = UI.CreateShell("OneCastWhatsNewFrame", "What's new in OneCast  " .. GREY .. "v" .. (ns.VERSION or "?") .. "|r",
+	local f, inset = UI.CreateShell("OneCastWhatsNewFrame", L["What's new in OneCast  "] .. GREY .. "v" .. (ns.VERSION or "?") .. "|r",
 		"Interface\\Icons\\INV_Scroll_03")
 	f:SetSize(WIDTH, HEIGHT)
 	f:SetPoint("CENTER")
@@ -210,7 +211,7 @@ local function CreateWindow()
 	-- Right of the portrait, above the inset: how much there is.
 	local summary = f:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	summary:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", 62, 6)
-	summary:SetText(string.format("%d versions and %d changes, newest first. Pick one to read it.", #ns.CHANGELOG,
+	summary:SetText(string.format(L["%d versions and %d changes, newest first. Pick one to read it."], #ns.CHANGELOG,
 		TotalChanges()))
 
 	-- Left: the version list, under its header.
@@ -219,10 +220,10 @@ local function CreateWindow()
 	list:SetPoint("BOTTOMLEFT")
 	list:SetWidth(LIST_WIDTH)
 	local listHeader = UI.SectionHeader(list, -GAP)
-	listHeader.text:SetText("Versions")
+	listHeader.text:SetText(L["Versions"])
 	local wheel = listHeader:CreateFontString(nil, "OVERLAY", "OneCastFontDisableSmall")
 	wheel:SetPoint("RIGHT", -10, 0)
-	wheel:SetText("mouse wheel to move")
+	wheel:SetText(L["mouse wheel to move"])
 	list:EnableMouseWheel(true)
 	list:SetScript("OnMouseWheel", function(_, delta)
 		Select(selected - delta)
@@ -245,7 +246,7 @@ local function CreateWindow()
 		row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
 		row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		row.label:SetPoint("TOPLEFT", 12, -4)
-		row.label:SetText("Version " .. release.version)
+		row.label:SetText(L["Version "] .. release.version)
 		row.date = row:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 		row.date:SetTextColor(0.78, 0.78, 0.78)
 		row.date:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2)
@@ -254,7 +255,7 @@ local function CreateWindow()
 		-- The one you're running.
 		row.count = row:CreateFontString(nil, "OVERLAY", "OneCastFontGreenSmall")
 		row.count:SetPoint("TOPRIGHT", -10, -6) -- on the version's line, clear of the date under it
-		row.count:SetText(release.version == ns.VERSION and "Installed" or "")
+		row.count:SetText(release.version == ns.VERSION and L["Installed"] or "")
 		row:SetScript("OnClick", function()
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			Select(i)
@@ -277,14 +278,14 @@ local function CreateWindow()
 	f.newer = UI.PageButton(list, "Prev")
 	f.newer:SetPoint("BOTTOMLEFT", EDGE - 2, 4)
 	f.newer:SetScript("OnClick", function() Select(selected - 1) end)
-	f.newer:SetScript("OnEnter", function(self) Tip(self, "Newer version") end)
+	f.newer:SetScript("OnEnter", function(self) Tip(self, L["Newer version"]) end)
 	f.newer:SetScript("OnLeave", GameTooltip_Hide)
 	f.pageLabel = list:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	f.pageLabel:SetPoint("LEFT", f.newer, "RIGHT", 6, 0)
 	f.older = UI.PageButton(list, "Next")
 	f.older:SetPoint("LEFT", f.pageLabel, "RIGHT", 6, 0)
 	f.older:SetScript("OnClick", function() Select(selected + 1) end)
-	f.older:SetScript("OnEnter", function(self) Tip(self, "Older version") end)
+	f.older:SetScript("OnEnter", function(self) Tip(self, L["Older version"]) end)
 	f.older:SetScript("OnLeave", GameTooltip_Hide)
 
 	-- Right: the version's header, and its notes scrolling under it.
@@ -342,7 +343,7 @@ local function CreateWindow()
 	-- Along the bottom: where to send requests, and the project page, selectable to copy.
 	local footer = f:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	footer:SetPoint("BOTTOMLEFT", 14, 9)
-	footer:SetText("OneCast on CurseForge")
+	footer:SetText(L["OneCast on CurseForge"])
 	local url = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
 	url:SetSize(320, 18) -- the whole address (300 wide), never cut short
 	url:SetFontObject("OneCastFontHighlightSmall") -- not the chat font text boxes come with
@@ -360,7 +361,7 @@ local function CreateWindow()
 	url:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	local hint = f:CreateFontString(nil, "OVERLAY", "OneCastFontDisableSmall")
 	hint:SetPoint("LEFT", url, "RIGHT", 8, 0)
-	hint:SetText("click, then Ctrl+C")
+	hint:SetText(L["click, then Ctrl+C"])
 
 	f:Hide()
 	ns.Hub.Attach("news", f)
@@ -390,7 +391,7 @@ end
 -- Login announcement --------------------------------------------------------------------
 
 local function ChatLink()
-	return "|cff71d5ff|H" .. LINK .. "|h[What's new]|h|r"
+	return "|cff71d5ff|H" .. LINK .. L["|h[What's new]|h|r"]
 end
 
 -- Clicking [What's new] in chat.
@@ -411,13 +412,13 @@ events:SetScript("OnEvent", function()
 		end
 		-- Until the window has been opened for this version, point at it.
 		if not db.seenVersion then
-			ns.Print(string.format("|cffffffffv%s|r installed. See what it does: %s or /onecast new",
+			ns.Print(string.format(L["|cffffffffv%s|r installed. See what it does: %s or /onecast new"],
 				ns.VERSION, ChatLink()))
 		elseif db.seenVersion ~= ns.VERSION then
-			ns.Print(string.format("updated to |cffffffffv%s|r. See what changed: %s or /onecast new",
+			ns.Print(string.format(L["updated to |cffffffffv%s|r. See what changed: %s or /onecast new"],
 				ns.VERSION, ChatLink()))
 		else
-			ns.Print(string.format("|cffffffffv%s|r loaded. %s  /onecast for options", ns.VERSION, ChatLink()))
+			ns.Print(string.format(L["|cffffffffv%s|r loaded. %s  /onecast for options"], ns.VERSION, ChatLink()))
 		end
 	end)
 end)

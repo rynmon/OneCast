@@ -8,6 +8,7 @@
 -- combat starts, or on demand (key binding, stats window button, /onecast gear).
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Gear = {}
 ns.Gear = Gear
@@ -347,7 +348,7 @@ local function WearOutfit(saved)
 		names[#names + 1] = pick.link
 	end
 	if #names > 0 then
-		ns.Print("putting on your fishing gear: " .. table.concat(names, ", ") .. ".")
+		ns.Print(L["putting on your fishing gear: "] .. table.concat(names, ", ") .. ".")
 	end
 end
 
@@ -370,7 +371,7 @@ function Gear.PreClick()
 	if pendingPole and not ns.HasFishingPole() then
 		poleMisses[pendingPole] = (poleMisses[pendingPole] or 0) + 1
 		if poleMisses[pendingPole] == MAX_MISSES then
-			ns.Print("the game didn't put your fishing pole on after " .. MAX_MISSES .. " tries. If you have another, OneCast will use that.")
+			ns.Print(L["the game didn't put your fishing pole on after "] .. MAX_MISSES .. L[" tries. If you have another, OneCast will use that."])
 		end
 	end
 	pendingPole = nil
@@ -395,7 +396,7 @@ function Gear.PreClick()
 	WearOutfit(charDB.savedWeapons)
 	pendingUntil = GetTime() + EQUIP_PENDING
 	pendingPole = C_Item.GetItemInfoInstant(pole)
-	ns.Print("equipping " .. pole .. ". Press again to cast.")
+	ns.Print(L["equipping "] .. pole .. L[". Press again to cast."])
 	return true
 end
 
@@ -403,7 +404,7 @@ end
 -- of combat, without casting. Your weapons are saved and come back as after fishing.
 function Gear.WearNow()
 	if not charDB or InCombatLockdown() then
-		ns.Print("you can't change gear in combat.")
+		ns.Print(L["you can't change gear in combat."])
 		return false
 	end
 	restoring = false
@@ -468,7 +469,7 @@ local function Swap(link, slot)
 	C_Timer.After(SWAP_TIMEOUT, function()
 		if restoring and restoreAttempt == attempt and not InCombatLockdown() and not Wearing(slot, link) then
 			restoring = false
-			ns.Print("couldn't put " .. link .. " back on. Equip it yourself, or try /onecast gear again.")
+			ns.Print(L["couldn't put "] .. link .. L[" back on. Equip it yourself, or try /onecast gear again."])
 		end
 	end)
 end
@@ -485,7 +486,7 @@ RestoreStep = function()
 	end
 	for _, key in ipairs({ "main", "off" }) do
 		if saved[key] and not Wearing(key == "main" and MAIN or OFF, saved[key]) and not Owned(saved[key]) then
-			ns.Print(saved[key] .. " is no longer in your bags, so it can't be re-equipped.")
+			ns.Print(saved[key] .. L[" is no longer in your bags, so it can't be re-equipped."])
 			saved[key] = nil
 		end
 	end
@@ -495,7 +496,7 @@ RestoreStep = function()
 	end
 	if not saved.main and MainHandIsPole() then
 		if not UnequipToBags(MAIN) then
-			ns.Print("no bag space to take off the fishing pole.")
+			ns.Print(L["no bag space to take off the fishing pole."])
 			restoring = false
 		end
 		return
@@ -513,7 +514,7 @@ RestoreStep = function()
 		elseif link == false and GetInventoryItemID("player", invSlot) then
 			saved.outfit[invSlot] = nil
 			if not UnequipToBags(invSlot) then
-				ns.Print("no bag space to take off your fishing gear.")
+				ns.Print(L["no bag space to take off your fishing gear."])
 			end
 			return
 		end
@@ -521,7 +522,7 @@ RestoreStep = function()
 	end
 	charDB.savedWeapons = nil
 	restoring = false
-	ns.Print("weapons re-equipped.")
+	ns.Print(L["weapons re-equipped."])
 end
 
 function Gear.Restore()
@@ -606,10 +607,10 @@ end
 
 function OneCast_RestoreWeapons()
 	if InCombatLockdown() and Gear.HasSaved() then
-		ns.Print("your weapons will go back on when combat ends.")
+		ns.Print(L["your weapons will go back on when combat ends."])
 	end
 	if not Gear.Restore() then
-		ns.Print("no saved weapons to re-equip.")
+		ns.Print(L["no saved weapons to re-equip."])
 	end
 end
 

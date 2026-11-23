@@ -4,6 +4,7 @@
 -- left, and says when it's worn off while you fish (foodReminder). The tackle box has its row.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Food = {}
 ns.Food = Food
@@ -61,7 +62,7 @@ function Food.CoverHint(short)
 			pick = food
 		end
 	end
-	return pick and string.format("Eating a %s (+%d) would cover it.", Food.Name(pick), pick[2])
+	return pick and string.format(L["Eating a %s (+%d) would cover it."], Food.Name(pick), pick[2])
 end
 
 -- Worn off while you fish, with more in your bags: chat says which to eat.
@@ -74,7 +75,7 @@ events:SetScript("OnEvent", function()
 		and ns.HasFishingPole and ns.HasFishingPole() then
 		local best = Food.Best()
 		if best then
-			ns.Print(string.format("your fishing food has worn off. Eat a %s for +%d Fishing (the tackle box has it).",
+			ns.Print(string.format(L["your fishing food has worn off. Eat a %s for +%d Fishing (the tackle box has it)."],
 				Food.Name(best), best[2]))
 		end
 	end

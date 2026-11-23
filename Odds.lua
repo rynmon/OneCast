@@ -110,12 +110,14 @@ ns.ODDS = {
 }
 
 -- A catch's rarity from its best chance anywhere: tier, percent, place, and whether that's a pool.
+-- l10n: keys (labels are translated where they're shown)
 local TIERS = {
 	{ min = 10, key = "common", label = "Common" },
 	{ min = 1, key = "uncommon", label = "Uncommon" },
 	{ min = 0.1, key = "rare", label = "Rare" },
 	{ min = 0, key = "veryrare", label = "Very rare" },
 }
+-- l10n: end
 
 local rarityCache = {} -- itemID -> its rarity, or false for none
 local Rarity
@@ -165,14 +167,6 @@ Rarity = function(itemID)
 			return { key = tier.key, label = tier.label, pct = best, where = where, pool = isPool, others = others }
 		end
 	end
-end
-
--- Where the best odds are: "in Stormwind City and 8 more zones", "from an Oily Blackmouth School".
-function ns.RarityWhere(r)
-	if r.pool then
-		return "from " .. (r.where:match("^[AEIOU]") and "an " or "a ") .. r.where
-	end
-	return "in " .. r.where .. (r.others > 0 and string.format(" and %d more zone%s", r.others, r.others == 1 and "" or "s") or "")
 end
 
 -- Each tier's colour, on dark backgrounds (tooltips) and on the book's parchment.

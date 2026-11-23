@@ -27,9 +27,12 @@ jobs:
 
       - name: Syntax-check Lua files
         run: |
-          for file in *.lua .github/scripts/*.lua; do
+          for file in *.lua Locales/*.lua .github/scripts/*.lua; do
             luac5.1 -p "$file"
           done
+
+      - name: Translations keep their placeholders and colour codes
+        run: python3 tools/l10n.py check
 
       - name: Changelog has notes for the TOC version
         run: |

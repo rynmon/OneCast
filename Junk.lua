@@ -5,6 +5,7 @@
 -- would sell and for how much, selling as soon as the vendor opens, or neither.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Junk = {}
 ns.Junk = Junk
@@ -65,7 +66,7 @@ function Junk.Sell()
 		if not entry or not (MerchantFrame and MerchantFrame:IsShown()) then
 			selling = false
 			if stacks > 0 then
-				ns.Print(string.format("sold %d stack%s of fishing junk for %s.", stacks, stacks == 1 and "" or "s", Coins(total)))
+				ns.Print(string.format(stacks == 1 and L["sold %d stack of fishing junk for %s."] or L["sold %d stacks of fishing junk for %s."], stacks, Coins(total)))
 			end
 			Junk.UpdateButton()
 			return
@@ -89,7 +90,7 @@ function Junk.UpdateButton()
 		button:Hide()
 		return
 	end
-	button:SetText(string.format("Sell fishing junk (%s)", Coins(total)))
+	button:SetText(string.format(L["Sell fishing junk (%s)"], Coins(total)))
 	button:SetWidth(math.max(160, button:GetFontString():GetStringWidth() + 28))
 	button:Show()
 end
@@ -101,8 +102,8 @@ local function CreateButton()
 	button:SetScript("OnClick", Junk.Sell)
 	button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-		GameTooltip:SetText("Sell fishing junk")
-		GameTooltip:AddLine("Sells the grey junk you've fished up, and nothing else:", 1, 1, 1, true)
+		GameTooltip:SetText(L["Sell fishing junk"])
+		GameTooltip:AddLine(L["Sells the grey junk you've fished up, and nothing else:"], 1, 1, 1, true)
 		local list = Junk.Find()
 		local names = {}
 		for _, entry in ipairs(list) do
@@ -111,7 +112,7 @@ local function CreateButton()
 		for id, count in pairs(names) do
 			GameTooltip:AddDoubleLine(C_Item.GetItemNameByID(id) or ("item " .. id), "x" .. count, 0.62, 0.62, 0.62, 1, 1, 1)
 		end
-		GameTooltip:AddLine("Sell it automatically, or hide this button, under Fishing junk at vendors in OneCast's options.", 0.6, 0.6, 0.6, true)
+		GameTooltip:AddLine(L["Sell it automatically, or hide this button, under Fishing junk at vendors in OneCast's options."], 0.6, 0.6, 0.6, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)

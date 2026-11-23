@@ -4,6 +4,7 @@
 -- the results under it as you type, and its grid narrows to the catches that match.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Search = {}
 ns.Search = Search
@@ -129,7 +130,7 @@ function Search.Find(query)
 		end
 		for _, recipe in ipairs(fish.recipes or {}) do
 			if Has(recipe[2], query) then
-				Add("recipe", recipe[1], recipe[2], string.format("%s %s(%s %d, uses %s)|r", recipe[2], GREY, recipe[3],
+				Add("recipe", recipe[1], recipe[2], string.format(L["%s %s(%s %d, uses %s)|r"], recipe[2], GREY, recipe[3],
 					recipe[4] or 0, name), OpenFish(fish.id))
 			end
 		end
@@ -150,36 +151,36 @@ function Search.Find(query)
 	for zone in pairs(zones) do
 		if Has(zone, query) then
 			local needed = ns.ZONE_FISHING_SKILL and ns.ZONE_FISHING_SKILL[zone]
-			Add("zone", zone, zone, zone .. GREY .. (needed and (" (zone, needs " .. needed .. ")") or " (zone)") .. "|r", OpenZone(zone))
+			Add("zone", zone, zone, zone .. GREY .. (needed and (L[" (zone, needs "] .. needed .. ")") or L[" (zone)"]) .. "|r", OpenZone(zone))
 		end
 	end
 	for _, g in ipairs(ns.Journey and ns.Journey.GEAR or {}) do
 		local name = ItemName(g.id)
 		if Has(name, query) and ns.Journey.ForYourFaction(g) then
-			Add("gear", g.id, name, Icon(g.id) .. name .. GREY .. " (fishing gear)|r", OpenJourney("gear"))
+			Add("gear", g.id, name, Icon(g.id) .. name .. GREY .. L[" (fishing gear)|r"], OpenJourney("gear"))
 		end
 	end
 	for _, r in ipairs(ns.Journey and ns.Journey.RANKS or {}) do
-		local name = r.name .. " Fishing"
+		local name = r.name .. L[" Fishing"]
 		if Has(name, query) then
-			Add("rank", r.name, name, name .. GREY .. " (rank)|r", OpenJourney("ranks"))
+			Add("rank", r.name, name, name .. GREY .. L[" (rank)|r"], OpenJourney("ranks"))
 		end
 	end
 	local where = SettingCategories()
 	for _, opt in ipairs(ns.OPTIONS or {}) do
 		if Has(opt.label, query) and where[opt.key] then
-			Add("setting", opt.key, opt.label, opt.label .. GREY .. " (setting, " .. where[opt.key] .. ")|r", OpenSetting(where[opt.key]))
+			Add("setting", opt.key, opt.label, opt.label .. GREY .. string.format(L[" (setting, %s)|r"], L[where[opt.key]]), OpenSetting(where[opt.key]))
 		end
 	end
 	-- The cast key: a setting of the game's, chosen in OneCast's own window.
-	for _, name in ipairs({ "Cast and reel key", "Key binding" }) do
+	for _, name in ipairs({ L["Cast and reel key"], L["Key binding"] }) do
 		if Has(name, query) and ns.Onboarding then
-			Add("setting", "castKey", name, name .. GREY .. " (setting, Fishing)|r", ns.Onboarding.Show)
+			Add("setting", "castKey", name, name .. GREY .. L[" (setting, Fishing)|r"], ns.Onboarding.Show)
 		end
 	end
 	for key, spec in pairs(ns.OPTION_CHOICES or {}) do
 		if Has(spec.label, query) and where[key] then
-			Add("setting", key, spec.label, spec.label .. GREY .. " (setting, " .. where[key] .. ")|r", OpenSetting(where[key]))
+			Add("setting", key, spec.label, spec.label .. GREY .. string.format(L[" (setting, %s)|r"], L[where[key]]), OpenSetting(where[key]))
 		end
 	end
 	table.sort(results, function(a, b)
@@ -211,7 +212,7 @@ function Search.ShowResults(query, anchor)
 	for _, r in ipairs(results) do
 		entries[#entries + 1] = { r.text, r.open }
 	end
-	menu = ns.UI and ns.UI.ShowMenu and ns.UI.ShowMenu("Search: " .. strtrim(query), entries)
+	menu = ns.UI and ns.UI.ShowMenu and ns.UI.ShowMenu(L["Search: "] .. strtrim(query), entries)
 	if menu then
 		menu.searchResults = true
 		if not menu.searchHooked then

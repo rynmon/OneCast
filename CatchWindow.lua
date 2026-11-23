@@ -5,6 +5,7 @@
 -- Catch window setting, which keeps it open across sessions and reloads; its X turns that off.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local CatchWindow = {}
 ns.CatchWindow = CatchWindow
@@ -108,7 +109,7 @@ local function Create()
 	f.empty:SetPoint("RIGHT", -PAD - 4, 0)
 	f.empty:SetJustifyH("LEFT")
 	f.empty:SetWordWrap(true)
-	f.empty:SetText(GREY .. "Nothing caught yet this session. Your catch shows here as it comes in.|r")
+	f.empty:SetText(GREY .. L["Nothing caught yet this session. Your catch shows here as it comes in.|r"])
 	f.more = inset:CreateFontString(nil, "OVERLAY", "OneCastFontDisableSmall")
 	f.more:SetPoint("BOTTOMRIGHT", -PAD, 2)
 
@@ -175,7 +176,7 @@ function CatchWindow.Refresh()
 	local rows = ns.Stats.SessionRows()
 	local fit = Fit()
 	offset = math.max(0, math.min(offset, #rows - fit))
-	frame.title:SetText("Caught this session")
+	frame.title:SetText(L["Caught this session"])
 	frame.count:SetText(#rows > 0 and (GREY .. #rows .. (#rows == 1 and " kind" or " kinds") .. "|r") or "")
 	for i, row in ipairs(frame.rows) do
 		local r = i <= fit and rows[offset + i]
@@ -198,7 +199,7 @@ function CatchWindow.Refresh()
 	end
 	frame.empty:SetShown(#rows == 0)
 	local below = #rows - fit - offset
-	frame.more:SetText(below > 0 and string.format("%d more: scroll", below) or "")
+	frame.more:SetText(below > 0 and string.format(L["%d more: scroll"], below) or "")
 end
 
 function CatchWindow.Show()

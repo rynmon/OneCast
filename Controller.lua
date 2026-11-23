@@ -17,6 +17,7 @@
 -- interface's own; in the standard interface the cursor addon or the game's pad cursor does it.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Controller = {}
 ns.Controller = Controller
@@ -31,19 +32,19 @@ Controller.BUTTONS = {
 	{ "PAD4", "Y / Triangle" },
 	{ "PADLSHOULDER", "LB / L1" },
 	{ "PADRSHOULDER", "RB / R1" },
-	{ "PADLSTICK", "Left stick click" },
-	{ "PADRSTICK", "Right stick click" },
-	{ "PADDUP", "D-pad up" },
-	{ "PADDDOWN", "D-pad down" },
-	{ "PADDLEFT", "D-pad left" },
-	{ "PADDRIGHT", "D-pad right" },
+	{ "PADLSTICK", L["Left stick click"] },
+	{ "PADRSTICK", L["Right stick click"] },
+	{ "PADDUP", L["D-pad up"] },
+	{ "PADDDOWN", L["D-pad down"] },
+	{ "PADDLEFT", L["D-pad left"] },
+	{ "PADDRIGHT", L["D-pad right"] },
 }
 -- With the triggers held: the game reads LT as Shift and RT as Ctrl on a controller.
 Controller.STARTS = {
-	{ "both", "LT + RT + button", "CTRL-SHIFT-" },
-	{ "left", "LT + button", "SHIFT-" },
-	{ "right", "RT + button", "CTRL-" },
-	{ "off", "Off" },
+	{ "both", L["LT + RT + button"], "CTRL-SHIFT-" },
+	{ "left", L["LT + button"], "SHIFT-" },
+	{ "right", L["RT + button"], "CTRL-" },
+	{ "off", L["Off"] },
 }
 
 local told = {}          -- OneCast's windows the gamepad interface has been told about
@@ -180,7 +181,7 @@ function Controller.StartLabel(id)
 	local entry = Valid(id or "both", Controller.STARTS)
 	local key = Controller.FishingKey() or "PAD1"
 	if not (entry and entry[3]) then
-		return "Off"
+		return L["Off"]
 	end
 	local function Icon(k, short)
 		local glyph = Controller.Glyph(k, 24)
@@ -246,8 +247,8 @@ function Controller.Update()
 		if not noticed and ns.db and not ns.db.padNoticeSeen then
 			noticed = true
 			ns.db.padNoticeSeen = true
-			ns.Print(string.format("controller: %s casts and reels while your fishing pole is on%s. Change it under Controller in OneCast's options.",
-				Controller.Glyph(key, 20), window and (", and " .. Controller.Glyph(window, 20) .. " opens OneCast") or ""))
+			ns.Print(string.format(L["controller: %s casts and reels while your fishing pole is on%s. Change it under Controller in OneCast's options."],
+				Controller.Glyph(key, 20), window and (L[", and "] .. Controller.Glyph(window, 20) .. L[" opens OneCast"]) or ""))
 		end
 	end
 	if ns.Mini and ns.Mini.Refresh then
@@ -1000,27 +1001,27 @@ local function LegendItems(window)
 	local adjust = selected and selected.padAdjust
 	local scrollStop = selected and selected.padScrollStop
 	if adjust then
-		items[#items + 1] = { { "PADDLEFT", "PADDRIGHT" }, "Change" }
+		items[#items + 1] = { { "PADDLEFT", "PADDRIGHT" }, L["Change"] }
 	end
 	if scrollStop then
 		-- A page of text: the D-pad (and the right stick) scroll it, and A has nothing to do.
-		items[#items + 1] = { { "PADDUP", "PADDDOWN" }, "Scroll" }
+		items[#items + 1] = { { "PADDUP", "PADDDOWN" }, L["Scroll"] }
 	else
-		items[#items + 1] = { { "PAD1" }, adjust and "Next" or "Select" }
+		items[#items + 1] = { { "PAD1" }, adjust and L["Next"] or L["Select"] }
 	end
-	items[#items + 1] = { { "PAD2" }, "Close" }
+	items[#items + 1] = { { "PAD2" }, L["Close"] }
 	if selected and selected.padMore and Ours(selected) then
-		items[#items + 1] = { { CONTEXT_KEY }, selected.padMore == true and "More" or selected.padMore }
+		items[#items + 1] = { { CONTEXT_KEY }, selected.padMore == true and L["More"] or selected.padMore }
 	end
 	if #(TopTabs(window)) > 1 then
-		items[#items + 1] = { { "PADLSHOULDER", "PADRSHOULDER" }, window.gamepadTabsLabel or "Tabs" }
+		items[#items + 1] = { { "PADLSHOULDER", "PADRSHOULDER" }, window.gamepadTabsLabel or L["Tabs"] }
 	end
 	local side = ns.Hub and ns.Hub.SideTabs and (ns.Hub.SideTabs()) or {}
 	if #side > 1 then
-		items[#items + 1] = { { "PADLTRIGGER", "PADRTRIGGER" }, "Pages" }
+		items[#items + 1] = { { "PADLTRIGGER", "PADRTRIGGER" }, L["Pages"] }
 	end
 	if Controller.ScrollActive(window) and not scrollStop then
-		items[#items + 1] = { { "PADRSTICK" }, window.padScrollLabel or "Scroll", stick = true }
+		items[#items + 1] = { { "PADRSTICK" }, window.padScrollLabel or L["Scroll"], stick = true }
 	end
 	return items
 end
@@ -1151,7 +1152,7 @@ function Controller.MiniItems()
 		end
 		local keys = entry[1] == "both" and { "PADLTRIGGER", "PADRTRIGGER", key }
 			or entry[1] == "left" and { "PADLTRIGGER", key } or { "PADRTRIGGER", key }
-		return { { keys, "Put your pole on" } }
+		return { { keys, L["Put your pole on"] } }
 	end
 	local items = { { { key }, fishing and "Reel in" or "Cast" } }
 	local window = Controller.WindowKey()
@@ -1195,29 +1196,29 @@ function Controller.Status()
 	end
 	local manager = Manager()
 	local key, window = Controller.FishingKey(), Controller.WindowKey()
-	ns.Print("controller in use: " .. YesNo(Controller.Active()) .. " | gamepad interface: " .. YesNo(Controller.Native())
-		.. " | pole on: " .. YesNo(ns.HasFishingPole and ns.HasFishingPole()) .. " | line out: " .. YesNo(ns.IsFishing and ns.IsFishing()))
-	ns.Print("fishing button: " .. (key and (Controller.Glyph(key, 20) .. " (" .. key .. ")") or "off") .. " | with no pole: "
-		.. (Controller.StartText() or "off") .. " | window button: " .. (window and (Controller.Glyph(window, 20) .. " (" .. window .. ")") or "off"))
-	ns.Print("buttons taken now: " .. YesNo(held) .. " | a window has the focus: " .. YesNo(WindowFocused())
-		.. " | it's OneCast's: " .. YesNo(OursFocused()) .. " | more options on X: " .. YesNo(navBound)
-		.. " | the game's navigation found: " .. YesNo(manager ~= nil))
+	ns.Print(L["controller in use: "] .. YesNo(Controller.Active()) .. L[" | gamepad interface: "] .. YesNo(Controller.Native())
+		.. L[" | pole on: "] .. YesNo(ns.HasFishingPole and ns.HasFishingPole()) .. L[" | line out: "] .. YesNo(ns.IsFishing and ns.IsFishing()))
+	ns.Print(L["fishing button: "] .. (key and (Controller.Glyph(key, 20) .. " (" .. key .. ")") or "off") .. L[" | with no pole: "]
+		.. (Controller.StartText() or "off") .. L[" | window button: "] .. (window and (Controller.Glyph(window, 20) .. " (" .. window .. ")") or "off"))
+	ns.Print(L["buttons taken now: "] .. YesNo(held) .. L[" | a window has the focus: "] .. YesNo(WindowFocused())
+		.. L[" | it's OneCast's: "] .. YesNo(OursFocused()) .. L[" | more options on X: "] .. YesNo(navBound)
+		.. L[" | the game's navigation found: "] .. YesNo(manager ~= nil))
 	local names = {}
 	local function Name(frame)
 		local ok, name = pcall(function()
-			return frame and (frame:GetName() or (frame:GetParent() and ((frame:GetParent():GetName() or "?") .. "'s child"))) or "none"
+			return frame and (frame:GetName() or (frame:GetParent() and ((frame:GetParent():GetName() or "?") .. L["'s child"]))) or "none"
 		end)
 		return ok and tostring(name) or "?"
 	end
 	for frame in pairs(told) do
 		names[#names + 1] = Name(frame)
 	end
-	ns.Print("OneCast windows in the game's navigation: " .. (#names > 0 and table.concat(names, ", ") or "none")
-		.. " | in combat: " .. YesNo(InCombatLockdown()))
-	ns.Print("focused window: " .. Name(manager and manager.focusedFrame) .. " | selected: " .. Name(Selected()))
+	ns.Print(L["OneCast windows in the game's navigation: "] .. (#names > 0 and table.concat(names, ", ") or "none")
+		.. L[" | in combat: "] .. YesNo(InCombatLockdown()))
+	ns.Print(L["focused window: "] .. Name(manager and manager.focusedFrame) .. L[" | selected: "] .. Name(Selected()))
 	local heldNow = Controller.HeldButtons()
-	ns.Print("buttons read: " .. YesNo(heldNow ~= nil) .. " | start ready (triggers held): " .. YesNo(startHeld)
-		.. " | /onecast pad watch to see your presses")
+	ns.Print(L["buttons read: "] .. YesNo(heldNow ~= nil) .. L[" | start ready (triggers held): "] .. YesNo(startHeld)
+		.. L[" | /onecast pad watch to see your presses"])
 end
 
 -- Putting the pole on ---------------------------------------------------------------------------
@@ -1302,11 +1303,11 @@ end
 local watchUntil
 function Controller.Watch()
 	if not Controller.HeldButtons() then
-		ns.Print("controller watch: the game isn't reporting a controller's buttons.")
+		ns.Print(L["controller watch: the game isn't reporting a controller's buttons."])
 		return
 	end
 	watchUntil = GetTime() + 10
-	ns.Print("controller watch: press buttons for the next 10 seconds, the triggers too.")
+	ns.Print(L["controller watch: press buttons for the next 10 seconds, the triggers too."])
 end
 
 local watchedLast = {}
@@ -1316,13 +1317,13 @@ local function WatchTick()
 	end
 	if GetTime() > watchUntil then
 		watchUntil = nil
-		ns.Print("controller watch: done.")
+		ns.Print(L["controller watch: done."])
 		return
 	end
 	local held = Controller.HeldButtons() or {}
 	for name in pairs(held) do
 		if not watchedLast[name] then
-			ns.Print(string.format("pressed %s (%s) | Shift: %s, Ctrl: %s", name, Controller.Glyph(name, 20),
+			ns.Print(string.format(L["pressed %s (%s) | Shift: %s, Ctrl: %s"], name, Controller.Glyph(name, 20),
 				IsShiftKeyDown() and "down" or "up", IsControlKeyDown() and "down" or "up"))
 		end
 	end

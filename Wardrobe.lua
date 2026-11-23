@@ -9,6 +9,7 @@
 -- and the eye compares the outfit with what you wear now.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Wardrobe = {}
 ns.Wardrobe = Wardrobe
@@ -119,10 +120,10 @@ end
 
 local HOW_TEXT = {
 	auto = GREY .. "Automatic|r",
-	chosen = GOOD .. "Your pick|r",
-	kept = GREY .. "As you wear it|r",
-	missing = RED .. "Not in your bags|r",
-	none = GREY .. "Nothing to wear|r",
+	chosen = GOOD .. L["Your pick|r"],
+	kept = GREY .. L["As you wear it|r"],
+	missing = RED .. L["Not in your bags|r"],
+	none = GREY .. L["Nothing to wear|r"],
 }
 
 local function Mark(on, text)
@@ -134,11 +135,11 @@ local function SlotMenu(info)
 	local G = Gear()
 	local entries = {}
 	local choice = G.Choice(info.slot)
-	entries[#entries + 1] = { Mark(choice == nil, "Automatic: the best Fishing bonus"), function()
+	entries[#entries + 1] = { Mark(choice == nil, L["Automatic: the best Fishing bonus"]), function()
 		G.SetChoice(info.slot, nil)
 		Wardrobe.Refresh()
 	end }
-	entries[#entries + 1] = { Mark(choice == "keep", "Keep what you're wearing"), function()
+	entries[#entries + 1] = { Mark(choice == "keep", L["Keep what you're wearing"]), function()
 		G.SetChoice(info.slot, "keep")
 		Wardrobe.Refresh()
 	end }
@@ -160,20 +161,20 @@ local function PoleMenu()
 	local G = Gear()
 	local chosen = OneCastCharDB and OneCastCharDB.outfitPole
 	local entries = {}
-	entries[#entries + 1] = { Mark(not chosen, "Automatic: the best in your bags"), function()
+	entries[#entries + 1] = { Mark(not chosen, L["Automatic: the best in your bags"]), function()
 		OneCastCharDB.outfitPole = nil
 		Wardrobe.Refresh()
 	end }
 	for _, p in ipairs(G.Poles()) do
 		local text = Icon(p.id) .. (ItemName(p.link) or "?")
 			.. ((p.bonus or 0) > 0 and (GOOD .. "  +" .. p.bonus .. "|r") or "")
-			.. (p.worn and (GREY .. "  (in your hand)|r") or "")
+			.. (p.worn and (GREY .. L["  (in your hand)|r"]) or "")
 		entries[#entries + 1] = { Mark(chosen == p.id, text), function()
 			OneCastCharDB.outfitPole = p.id
 			Wardrobe.Refresh()
 		end }
 	end
-	ns.UI.ShowMenu("Fishing pole", entries)
+	ns.UI.ShowMenu(L["Fishing pole"], entries)
 end
 
 local function ResetSlot(info)
@@ -259,20 +260,20 @@ local function SlotButton(parent, info, x, y, right)
 		local plan = self.plan
 		if plan then
 			GameTooltip:AddLine(" ")
-			GameTooltip:AddDoubleLine("While you fish", (ItemName(plan.link) or "nothing")
+			GameTooltip:AddDoubleLine(L["While you fish"], (ItemName(plan.link) or L["nothing"])
 				.. ((plan.bonus or 0) > 0 and (GOOD .. " +" .. plan.bonus .. "|r") or ""), 1, 0.82, 0, 1, 1, 1)
 			local worn = plan.worn
-			GameTooltip:AddDoubleLine("You wear now", (worn and ItemName(worn.link) or "nothing")
+			GameTooltip:AddDoubleLine(L["You wear now"], (worn and ItemName(worn.link) or L["nothing"])
 				.. (worn and (worn.bonus or 0) > 0 and (GOOD .. " +" .. worn.bonus .. "|r") or ""), 1, 0.82, 0, 1, 1, 1)
 			if plan.how == "missing" then
-				GameTooltip:AddLine("Your pick isn't in your bags, so this slot stays as it is.", 1, 0.4, 0.4, true)
+				GameTooltip:AddLine(L["Your pick isn't in your bags, so this slot stays as it is."], 1, 0.4, 0.4, true)
 			end
 		end
 		GameTooltip:AddLine(" ")
-		GameTooltip:AddLine(string.format("Click: choose (%d to pick from)", plan and plan.options or 0), 0.6, 0.8, 1)
-		GameTooltip:AddLine("Right-click: back to Automatic", 0.6, 0.8, 1)
+		GameTooltip:AddLine(string.format(L["Click: choose (%d to pick from)"], plan and plan.options or 0), 0.6, 0.8, 1)
+		GameTooltip:AddLine(L["Right-click: back to Automatic"], 0.6, 0.8, 1)
 		if self.link then
-			GameTooltip:AddLine("Shift-click: link it in chat", 0.6, 0.8, 1)
+			GameTooltip:AddLine(L["Shift-click: link it in chat"], 0.6, 0.8, 1)
 		end
 		GameTooltip:Show()
 	end)
@@ -301,7 +302,7 @@ local function Paint(b, plan)
 	b.name:SetText(b.info.name)
 	local name = ItemName(plan.link)
 	b.item:SetText(name and ((color and color.hex or "|cffffffff") .. name .. "|r") or (GREY .. "Empty|r"))
-	b.how:SetText((HOW_TEXT[plan.how] or "") .. (plan.changes and (GOOD .. "  · goes on|r") or ""))
+	b.how:SetText((HOW_TEXT[plan.how] or "") .. (plan.changes and (GOOD .. L["  · goes on|r"]) or ""))
 	-- The card: green where it adds Fishing (brighter where it goes on), red where your pick is
 	-- missing, grey where there's nothing to wear; as tall as its words.
 	local card = b.card
@@ -328,7 +329,7 @@ end
 
 local function CreateWindow()
 	local UI = ns.UI
-	local f, inset = UI.CreateShell("OneCastWardrobeFrame", "Fishing wardrobe",
+	local f, inset = UI.CreateShell("OneCastWardrobeFrame", L["Fishing wardrobe"],
 		C_Item.GetItemIconByID(19972) or "Interface\\Icons\\INV_Helmet_31")
 	f:SetSize(WIDTH, ns.UI.PAGE_HEIGHT)
 	f:SetPoint("CENTER")
@@ -353,7 +354,7 @@ local function CreateWindow()
 	f.catalog = ns.Journey.GearView(inset, WIDTH)
 	f.catalog:Hide()
 	f.Tabs, f.tab = {}, "outfit"
-	for i, tab in ipairs({ { "outfit", "Outfit" }, { "gear", "Gear guide" } }) do
+	for i, tab in ipairs({ { "outfit", L["Outfit"] }, { "gear", L["Gear guide"] } }) do
 		local b = UI.TryCreate("Button", "OneCastWardrobeFrameTab" .. i, f, "PanelTopTabButtonTemplate")
 			or CreateFrame("Button", "OneCastWardrobeFrameTab" .. i, f, "UIPanelButtonTemplate")
 		ns.Theme.Register(b, "button")
@@ -457,7 +458,7 @@ local function CreateWindow()
 	f.modelHint:SetWidth(MODEL_WIDTH - 8)
 	f.modelHint:SetWordWrap(true)
 	f.modelHint:SetJustifyH("CENTER")
-	f.modelHint:SetText("Drag to turn  ·  wheel to zoom\ndouble-click to reset")
+	f.modelHint:SetText(L["Drag to turn  ·  wheel to zoom\ndouble-click to reset"])
 
 	-- At the model's head: the outfit, or what you wear now.
 	f.compare = ns.UI.GoldButton(outfit, 150, 20)
@@ -469,14 +470,14 @@ local function CreateWindow()
 	end)
 	f.compare:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText(f.showWorn and "Showing what you wear now" or "Showing your fishing outfit")
-		GameTooltip:AddLine("Click to switch, to compare the two.", 1, 1, 1, true)
+		GameTooltip:SetText(f.showWorn and L["Showing what you wear now"] or L["Showing your fishing outfit"])
+		GameTooltip:AddLine(L["Click to switch, to compare the two."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	f.compare:SetScript("OnLeave", GameTooltip_Hide)
 
 	-- The pole: the right side's last slot.
-	local poleInfo = { name = "Fishing pole", pole = true }
+	local poleInfo = { name = L["Fishing pole"], pole = true }
 	local poleRow = ROWS - 1 -- level with Wrist, a little apart from the armour
 	f.pole = SlotButton(outfit, poleInfo, WIDTH - 10 - EDGE - SLOT, top - poleRow * step, true)
 
@@ -496,17 +497,17 @@ local function CreateWindow()
 	f.wear = CreateFrame("Button", nil, outfit, "UIPanelButtonTemplate")
 	f.wear:SetSize(150, 24)
 	f.wear:SetPoint("BOTTOMRIGHT", outfit, "BOTTOM", -4, 14)
-	f.wear:SetText("Wear it now")
+	f.wear:SetText(L["Wear it now"])
 	f.wear:SetScript("OnClick", function()
 		ns.Gear.WearNow()
 	end)
 	f.off = CreateFrame("Button", nil, outfit, "UIPanelButtonTemplate")
 	f.off:SetSize(150, 24)
 	f.off:SetPoint("BOTTOMLEFT", outfit, "BOTTOM", 4, 14)
-	f.off:SetText("Take it off")
+	f.off:SetText(L["Take it off"])
 	f.off:SetScript("OnClick", function()
 		if not ns.Gear.Restore() then
-			ns.Print("nothing to take off: your weapons are already on.")
+			ns.Print(L["nothing to take off: your weapons are already on."])
 		end
 	end)
 	for _, b in ipairs({ f.wear, f.off }) do
@@ -514,16 +515,16 @@ local function CreateWindow()
 		b:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_TOP")
 			if self == f.wear then
-				GameTooltip:SetText("Wear it now")
-				GameTooltip:AddLine("Put your pole and this outfit on, without casting. Your weapons and what you wore come back with Take it off, or after fishing.", 1, 1, 1, true)
+				GameTooltip:SetText(L["Wear it now"])
+				GameTooltip:AddLine(L["Put your pole and this outfit on, without casting. Your weapons and what you wore come back with Take it off, or after fishing."], 1, 1, 1, true)
 			else
-				GameTooltip:SetText("Take it off")
-				GameTooltip:AddLine("Put your weapons and what you wore back on.", 1, 1, 1, true)
+				GameTooltip:SetText(L["Take it off"])
+				GameTooltip:AddLine(L["Put your weapons and what you wore back on."], 1, 1, 1, true)
 			end
 			if ns.Gear.Locked() then
-				GameTooltip:AddLine("Not in combat: gear can't change until it ends.", 1, 0.4, 0.4, true)
+				GameTooltip:AddLine(L["Not in combat: gear can't change until it ends."], 1, 0.4, 0.4, true)
 			elseif self == f.off and not ns.Gear.HasSaved() then
-				GameTooltip:AddLine("Nothing to take off: your weapons are on.", 0.6, 0.6, 0.6, true)
+				GameTooltip:AddLine(L["Nothing to take off: your weapons are on."], 0.6, 0.6, 0.6, true)
 			end
 			GameTooltip:Show()
 		end)
@@ -536,7 +537,7 @@ local function CreateWindow()
 	f.auto:SetPoint("BOTTOMLEFT", 8, 3)
 	f.auto.label = f:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
 	f.auto.label:SetPoint("LEFT", f.auto, "RIGHT", 2, 0)
-	f.auto.label:SetText("Wear it whenever the cast key puts your pole on")
+	f.auto.label:SetText(L["Wear it whenever the cast key puts your pole on"])
 	f.auto:SetScript("OnClick", function(self)
 		local setting = ns.optionSettings and ns.optionSettings.fishingOutfit
 		if setting then
@@ -548,18 +549,18 @@ local function CreateWindow()
 	f.reset = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	f.reset:SetSize(120, 20)
 	f.reset:SetPoint("BOTTOMRIGHT", -24, 5)
-	f.reset:SetText("Reset choices")
+	f.reset:SetText(L["Reset choices"])
 	f.reset:SetScript("OnClick", function()
 		if OneCastCharDB then
 			OneCastCharDB.outfit, OneCastCharDB.outfitPole = nil, nil
 		end
-		ns.Print("wardrobe reset: every slot and the pole are automatic again.")
+		ns.Print(L["wardrobe reset: every slot and the pole are automatic again."])
 		Wardrobe.Refresh()
 	end)
 	f.reset:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Reset choices")
-		GameTooltip:AddLine("Every slot and the pole back to Automatic: the best Fishing bonus in your bags.", 1, 1, 1, true)
+		GameTooltip:SetText(L["Reset choices"])
+		GameTooltip:AddLine(L["Every slot and the pole back to Automatic: the best Fishing bonus in your bags."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	f.reset:SetScript("OnLeave", GameTooltip_Hide)
@@ -632,7 +633,7 @@ function Wardrobe.Refresh()
 	if not frame.showWorn and pole.link and pole.how ~= "missing" and model.TryOn then
 		model:TryOn(pole.link)
 	end
-	frame.compare:SetText(frame.showWorn and "What you wear now" or "Your fishing outfit")
+	frame.compare:SetText(frame.showWorn and L["What you wear now"] or L["Your fishing outfit"])
 
 	-- Your Fishing now, and with the outfit on.
 	local rank, modifier
@@ -644,26 +645,26 @@ function Wardrobe.Refresh()
 	if outfit > 0 and rank then
 		local now = rank + (modifier or 0)
 		if gain > 0 then
-			frame.total:SetText(string.format("Fishing %d %s->|r %s%d|r with this outfit  %s(+%d from gear)|r",
+			frame.total:SetText(string.format(L["Fishing %d %s->|r %s%d|r with this outfit  %s(+%d from gear)|r"],
 				now, GREY, GOOD, now + gain, GREY, outfit))
 		else
 			-- Nothing to gain: an arrow from a number to itself says nothing.
-			frame.total:SetText(string.format("Fishing %d  %s+%d from this outfit|r", now, GOOD, outfit))
+			frame.total:SetText(string.format(L["Fishing %d  %s+%d from this outfit|r"], now, GOOD, outfit))
 		end
 	elseif outfit > 0 then
-		frame.total:SetText(string.format("This outfit: %s+%d Fishing|r", GOOD, outfit))
+		frame.total:SetText(string.format(L["This outfit: %s+%d Fishing|r"], GOOD, outfit))
 	else
-		frame.total:SetText(GREY .. "No gear with a Fishing bonus yet.|r")
+		frame.total:SetText(GREY .. L["No gear with a Fishing bonus yet.|r"])
 	end
 	if outfit == 0 then
-		frame.totalNote:SetText(GREY .. "A fishing hat, Nat Pagle's boots or gloves with the Fishing enchant in your bags show up here, and go on with your pole.|r")
+		frame.totalNote:SetText(GREY .. L["A fishing hat, Nat Pagle's boots or gloves with the Fishing enchant in your bags show up here, and go on with your pole.|r"])
 	elseif chosenMissing then
-		frame.totalNote:SetText(RED .. "A piece you picked isn't in your bags: that slot stays as it is.|r")
+		frame.totalNote:SetText(RED .. L["A piece you picked isn't in your bags: that slot stays as it is.|r"])
 	elseif changes == 0 then
-		frame.totalNote:SetText(GREY .. "You're wearing all of it already.|r")
+		frame.totalNote:SetText(GREY .. L["You're wearing all of it already.|r"])
 	else
-		frame.totalNote:SetText(string.format("%s%d piece%s go%s on with the pole, glowing above.|r", GREY, changes,
-			changes == 1 and "" or "s", changes == 1 and "es" or ""))
+		frame.totalNote:SetText(string.format(changes == 1 and L["%s%d piece goes on with the pole, glowing above.|r"]
+			or L["%s%d pieces go on with the pole, glowing above.|r"], GREY, changes))
 	end
 
 	-- The summary's card: green with Fishing to gain, red with a pick missing, as tall as its words.

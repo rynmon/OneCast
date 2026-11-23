@@ -12,6 +12,11 @@ ns.CHANGELOG = {
 			{ "New", {
 				{ "The fishing atlas.", "Zone tooltips say what players' data reports found in Forever, and Forever's own levels replace Classic's where reports show they differ." },
 				{ "Report code.", "Data reports end with a one-line code that survives a CurseForge comment, so that line alone is enough to share." },
+				{ "Cook or sell.", "Each catch shows what it's worth cooked against raw, and your session's worth says what cooking would add." },
+				{ "Translations.", "OneCast now speaks German, French, Spanish, Portuguese, Russian, Chinese and Korean, following your game's language or the one you pick in the options." },
+			} },
+			{ "Reported by duerrewildstar", {
+				{ "Conjured lures first.", "A new tackle box option puts your Camper's Lure or \"Secret\" Bait on before your chosen lure, so the lures you bought last longer." },
 			} },
 			{ "Thank you", {
 				{ "Your reports.", "The atlas starts from your reports, thank you: elxtrick, scootaroo, JHernPh, tamorok44, darkkostorm, user_vlqzwhsmfy7zfn3u and user_f9l821d0lwaxvvsd." },

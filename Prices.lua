@@ -6,6 +6,7 @@
 -- button, or /onecast scan).
 
 local ADDON, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Prices = {}
 ns.Prices = Prices
@@ -49,26 +50,26 @@ end
 
 function Prices.Scan()
 	if not Prices.CanScan() then
-		ns.Print(Prices.NaowhScans() and "Naowh Forever scans the auction house itself: open it and its prices update."
-			or "scanning needs Auctionator installed.")
+		ns.Print(Prices.NaowhScans() and L["Naowh Forever scans the auction house itself: open it and its prices update."]
+			or L["scanning needs Auctionator installed."])
 		return
 	end
 	if not auctionOpen then
-		ns.Print("open the auction house first, then scan.")
+		ns.Print(L["open the auction house first, then scan."])
 		return
 	end
 	local names = CaughtItemNames()
 	if #names == 0 then
-		ns.Print("nothing caught yet to price.")
+		ns.Print(L["nothing caught yet to price."])
 		return
 	end
 	local api = API()
 	local search = api.MultiSearchExact or api.MultiSearch
 	local ok, err = pcall(search, ADDON, names)
 	if ok then
-		ns.Print(string.format("Auctionator is searching %d items. Prices update as it finishes.", #names))
+		ns.Print(string.format(L["Auctionator is searching %d items. Prices update as it finishes."], #names))
 	else
-		ns.Print("Auctionator search failed: " .. tostring(err))
+		ns.Print(L["Auctionator search failed: "] .. tostring(err))
 	end
 end
 

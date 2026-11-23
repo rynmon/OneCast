@@ -9,6 +9,7 @@
 -- Account-wide: OneCastDB.pools[uiMapID] = { { x, y, name, seen }, ... }.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Pools = {}
 ns.Pools = Pools
@@ -166,7 +167,7 @@ end
 -- What a pool gives, on its tooltip, per catch by Classic's odds: each item in its quality's
 -- colour, marked if it's in the collection and no character of yours has caught it yet. A
 -- trunk or rum that depends on the waters lists the ones it can be, or the one it's been here.
-local LOOT_HEADER = "|cff9d9d9dEach catch, by Classic's odds|r"
+local LOOT_HEADER = L["|cff9d9d9dEach catch, by Classic's odds|r"]
 
 -- Whether this tooltip already has the lines: our own Show() fires OnShow again.
 local function HasLoot(tooltip)
@@ -194,7 +195,7 @@ local function ItemText(id, indent)
 	local icon = C_Item.GetItemIconByID(id)
 	local missing = fish and ns.Collection and ns.Collection.Get(id).total == 0
 	return (indent or "") .. (icon and ("|T" .. icon .. ICON) or "") .. (color and color.hex or "|cffffffff") .. name .. "|r"
-		.. (missing and "  |cff20ff20not caught yet|r" or "")
+		.. (missing and L["  |cff20ff20not caught yet|r"] or "")
 end
 
 -- A trunk or rum on its slot's one line, with the word they share dropped (Iron Bound, Black
@@ -241,7 +242,7 @@ local function AddPoolLoot(tooltip, name, show)
 					tooltip:AddDoubleLine(ItemText(id), i == 1 and Percent(entry.pct) or "", 1, 1, 1, 0.7, 0.7, 0.7)
 				end
 			else
-				tooltip:AddDoubleLine("|cffbbbbbb" .. (entry.what == "rum" and "A rum, by the waters:" or "A trunk, by the waters:") .. "|r",
+				tooltip:AddDoubleLine("|cffbbbbbb" .. (entry.what == "rum" and L["A rum, by the waters:"] or L["A trunk, by the waters:"]) .. "|r",
 					Percent(entry.pct), 1, 1, 1, 0.7, 0.7, 0.7)
 				local names = {}
 				for _, id in ipairs(entry.ids) do

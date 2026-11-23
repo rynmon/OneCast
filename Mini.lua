@@ -4,6 +4,7 @@
 -- weapons go back on, as the window does. Click it for the full stats; right-click or its X closes it until the pole comes off.
 
 local _, ns = ...
+local L = ns.L -- translations (Locale.lua)
 
 local Mini = {}
 ns.Mini = Mini
@@ -66,7 +67,7 @@ local function Create()
 		UI.CloseOwn(f) -- its X works in combat too
 	end
 	-- Done fishing: weapons and gear back on.
-	local done = UI and UI.IconButton and UI.IconButton(f, "Weapons", "Done fishing: your weapons and gear back on. The session carries on until you reset it.", function()
+	local done = UI and UI.IconButton and UI.IconButton(f, "Weapons", L["Done fishing: your weapons and gear back on. The session carries on until you reset it."], function()
 		OneCast_DoneFishing()
 	end)
 	if done then
@@ -141,9 +142,9 @@ local function Create()
 	end)
 	body:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-		GameTooltip:SetText("OneCast mini bar")
-		GameTooltip:AddLine("Click for the full stats. Right-click to close. Drag to move.", 1, 1, 1, true)
-		GameTooltip:AddLine("Turn it off under Stats window in OneCast's options.", 0.6, 0.6, 0.6, true)
+		GameTooltip:SetText(L["OneCast mini bar"])
+		GameTooltip:AddLine(L["Click for the full stats. Right-click to close. Drag to move."], 1, 1, 1, true)
+		GameTooltip:AddLine(L["Turn it off under Stats window in OneCast's options."], 0.6, 0.6, 0.6, true)
 		GameTooltip:Show()
 	end)
 	body:SetScript("OnLeave", GameTooltip_Hide)
@@ -212,19 +213,19 @@ local function ZoneLine(zone, badge)
 	local place = badge.place or zone
 	local said
 	if status.kind == "ok" then
-		said = string.format("%s needs %d: no fish get away", place, status.needed)
+		said = string.format(L["%s needs %d: no fish get away"], place, status.needed)
 	elseif status.kind == "short" then
-		said = string.format("%s needs %d: %d short, fish get away", place, status.needed, status.short)
+		said = string.format(L["%s needs %d: %d short, fish get away"], place, status.needed, status.short)
 	elseif status.kind == "getaways" then
-		said = place .. ": fish got away here, skill too low"
+		said = place .. L[": fish got away here, skill too low"]
 	elseif status.kind == "clear" then
-		said = place .. ": level unknown, none got away yet"
+		said = place .. L[": level unknown, none got away yet"]
 	elseif status.kind == "note" then
-		said = place .. ": no minimum skill"
+		said = place .. L[": no minimum skill"]
 	elseif status.kind == "outgrown" then
-		said = place .. ": level unknown, you're past the last getaway"
+		said = place .. L[": level unknown, you're past the last getaway"]
 	else
-		said = place .. ": fishing level unknown"
+		said = place .. L[": fishing level unknown"]
 	end
 	return (MOOD[badge.mood] or "") .. said .. "|r"
 end
@@ -235,12 +236,12 @@ function Mini.Refresh()
 	end
 	local Stats = ns.Stats
 	local rank, maxRank, modifier = Stats.FishingSkill()
-	frame.titleText:SetText(rank and string.format("%s %d/%d%s", ns.GetFishingName and ns.GetFishingName() or "Fishing",
-		rank, maxRank, (modifier or 0) > 0 and string.format(" |cff20ff20+%d|r", modifier) or "") or "Fishing")
+	frame.titleText:SetText(rank and string.format("%s %d/%d%s", ns.GetFishingName and ns.GetFishingName() or L["Fishing"],
+		rank, maxRank, (modifier or 0) > 0 and string.format(L[" |cff20ff20+%d|r"], modifier) or "") or L["Fishing"])
 	local zone = Stats.CurrentZone()
 	local badge = zone and Stats.ZoneBadge(zone)
 	frame.zone:SetText(badge and ZoneLine(zone, badge) or "")
-	frame.session:SetText(Stats.Summary() or "|cff9d9d9dNo casts yet this session.|r")
+	frame.session:SetText(Stats.Summary() or L["|cff9d9d9dNo casts yet this session.|r"])
 	-- The latest catch: its icon, its name, and when.
 	local last = Stats.LatestCatch and Stats.LatestCatch()
 	local card = frame.latest
@@ -251,7 +252,7 @@ function Mini.Refresh()
 		card.name:SetText(last.name or "?")
 		card.name:SetTextColor(color and color.r or 1, color and color.g or 1, color and color.b or 1)
 		card.border:SetVertexColor(color and color.r or 1, color and color.g or 1, color and color.b or 1)
-		card.sub:SetText("Latest catch  ·  " .. Stats.Since(last.time) .. ((last.quantity or 1) > 1 and ("  ·  x" .. last.quantity) or ""))
+		card.sub:SetText(L["Latest catch  ·  "] .. Stats.Since(last.time) .. ((last.quantity or 1) > 1 and ("  ·  x" .. last.quantity) or ""))
 	end
 	local lure, problem
 	if ns.Lure then
@@ -308,7 +309,7 @@ function Mini.Refresh()
 		fs:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -3)
 		fs:SetPoint("RIGHT", -PAD, 0)
 		local count = g.target and string.format("%s%d/%d|r", done and "|cff20ff20" or "|cff71d5ff", math.min(g.got, g.target), g.target)
-			or ((g.got or 0) > 0 and string.format("|cffffd100x%d|r", g.got) or "|cffffd100wanted|r")
+			or ((g.got or 0) > 0 and string.format(L["|cffffd100x%d|r"], g.got) or "|cffffd100wanted|r")
 		fs:SetText(string.format("%s%s  %s", icon and ("|T" .. icon .. ":12:12:0:0:64:64:5:59:5:59|t ") or "",
 			g.name or C_Item.GetItemNameByID(entry.id) or ("item " .. entry.id), count))
 		fs:Show()
