@@ -6,6 +6,16 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.0.9",
+		date = "23 November 2026",
+		sections = {
+			{ "Fixed", {
+				{ "Feedback setup.", "The setup added to a bug report shows your real Fishing cap again, not \"/0\". Thanks to Testuserplsignore!" },
+				{ "Zones page.", "Its note no longer runs into the page number, and says gear and food count towards your skill too." },
+			} },
+		},
+	},
+	{
 		version = "1.0.8",
 		date = "23 November 2026",
 		sections = {

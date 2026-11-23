@@ -78,7 +78,11 @@ function Feedback.SetupLines()
 	local version, build = GetBuildInfo()
 	lines[#lines + 1] = string.format("OneCast %s  ·  game %s (%s)  ·  %s", ns.VERSION or "?", tostring(version or "?"),
 		tostring(build or "?"), GetLocale and GetLocale() or "?")
-	local rank, maxRank, modifier = ns.Stats and ns.Stats.FishingSkill()
+	-- Called on its own: "a and f()" would keep only f's first value, and the cap showed as 0.
+	local rank, maxRank, modifier
+	if ns.Stats then
+		rank, maxRank, modifier = ns.Stats.FishingSkill()
+	end
 	if rank then
 		lines[#lines + 1] = string.format("Fishing %d/%d%s", rank, maxRank or 0, (modifier or 0) > 0 and (" +" .. modifier) or "")
 	end

@@ -1594,8 +1594,9 @@ local function RenderZones()
 				(modifier or 0) > 0 and (" +" .. modifier) or ""))
 		end
 	end
-	-- Rungs as tall as the page allows (the marker and the note under them have their room).
-	local room = (HEIGHT - 102) - y - 24 - 60
+	-- Rungs as tall as the page allows (the marker, the two-line note under them and the page
+	-- number have their room).
+	local room = (HEIGHT - 102) - y - 24 - 76
 	local rungRow = math.max(RUNG_ROW, math.min(46, math.floor(room / math.max(#groups, 1))))
 	for i, group in ipairs(groups) do
 		if group.level and effective and effective < group.level then
@@ -1647,8 +1648,8 @@ local function RenderZones()
 	Mark()
 	local foot = PoolString(left, QuestFont, 12, INK_SOFT)
 	foot:SetWidth(width)
-	foot:SetText("Lures and poles count towards your skill. The levels are Classic's: Forever's may differ, "
-		.. "and getaways you see are kept and shared in your data report.")
+	-- Two lines at most (540 px of Friz at 12 in a 336 px column), clear of the page number below.
+	foot:SetText("Gear, lures and food count towards your skill. Levels not yet confirmed in Forever are Classic's.")
 	foot:SetPoint("TOPLEFT", left.page, "TOPLEFT", x, -(y + 10))
 
 	-- The chosen rung.
