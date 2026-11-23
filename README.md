@@ -231,7 +231,10 @@ And around it:
 Found a bug, or have an idea? Open the **Feedback** tab (or type `/onecast feedback`), pick Bug or Idea and write it. OneCast can add your version and setup (no names), then you copy the text and paste it in a comment here or in a [GitHub issue](https://github.com/rynmon/OneCast/issues/new/choose). The Zones tab, the tackle box and much of 1.0 started as comments, so thank you to everyone who suggests something!
 
 ### Data report
-Nobody has published Forever's real zone fishing levels or all of its loot, so OneCast learns them from players. Pick **Data report** on the Feedback tab (or type `/onecast report`) to see what you've found that OneCast doesn't know yet: a zone's real level, a fish or treasure that's new, what a camp buff brings in. A green dot on the tab says when there's something new. Copy the report and paste it in a comment or the [data report form](https://github.com/rynmon/OneCast/issues/new?template=data-report.yml). It holds fishing numbers only: no character name, realm or guild.
+Nobody has published Forever's real zone fishing levels or all of its loot, so OneCast learns them from players. Pick **Data report** on the Feedback tab (or type `/onecast report`) to see what you've found that OneCast doesn't know yet: a zone's real level, a fish or treasure that's new, what a camp buff brings in. A green dot on the tab says when there's something new. Copy the report and paste it in a comment or the [data report form](https://github.com/rynmon/OneCast/issues/new?template=data-report.yml): its last line, the report code, is all OneCast needs, so that line alone is enough. It holds fishing numbers only: no character name, realm or guild.
+
+### The fishing atlas
+Every report pasted in the comments goes into OneCast's **fishing atlas**, released with each update. A zone's tooltip says what players have seen there in Forever, like "Confirmed in Forever by 3 players' reports", and where Forever's own level turns out to differ from Classic's, OneCast uses Forever's. As reports with the code come in, a fish's page also shows how often it's really caught in each zone.
 
 ---
 

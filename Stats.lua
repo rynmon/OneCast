@@ -2264,7 +2264,7 @@ function Stats.CappedRows(zone)
 end
 
 -- The zone's status as a coloured sentence, for dark backgrounds.
-function Stats.ZoneVerdict(zone, spot)
+local function Verdict(zone, spot)
 	local rank, maxRank = FishingSkill()
 	if not rank then
 		return GREY .. "Fishing skill not found.|r"
@@ -2308,6 +2308,13 @@ function Stats.ZoneVerdict(zone, spot)
 	return string.format("|cffff2020%s needs %d: %d short, fish will get away.|r %sabout %d catches to go%s.|r",
 		zone, status.needed, status.short, GREY, CatchesToGo(rank, status.short),
 		rank + status.short > maxRank and " (train first)" or "")
+end
+
+-- The verdict, and under it what Forever's players have seen there (Atlas.lua), for tooltips.
+function Stats.ZoneVerdict(zone, spot)
+	local verdict = Verdict(zone, spot)
+	local atlas = ns.Atlas and ns.Atlas.ZoneLine(zone)
+	return atlas and (verdict .. "\n" .. GREY .. atlas .. "|r") or verdict
 end
 
 -- The zone's status in short parts, for the strip under the skill bar: `mood` ("good", "bad",

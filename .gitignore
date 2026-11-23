@@ -11,3 +11,7 @@ desktop.ini
 .idea/
 *.swp
 *~
+
+# Raw data reports pasted from CurseForge comments (commenter names): read by tools/atlas.py, kept local.
+/reports/
+__pycache__/

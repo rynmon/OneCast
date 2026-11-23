@@ -1214,6 +1214,15 @@ local function ZoneCell(pool, fish, row, info, x, y, width)
 		if here then
 			GameTooltip:AddDoubleLine("Odds here", ns.OneIn(here) .. " catches", 1, 0.82, 0, 1, 1, 1)
 		end
+		-- Forever's own rate, from players' reports, once they've counted enough catches.
+		local share, total, reports
+		if ns.Atlas then
+			share, total, reports = ns.Atlas.ItemShare(fish.id, row.zone)
+		end
+		if share then
+			GameTooltip:AddDoubleLine("In Forever", string.format("%s catches (%d counted, %d %s)", ns.OneIn(share * 100),
+				total, reports, reports == 1 and "report" or "reports"), 1, 0.82, 0, 1, 1, 1)
+		end
 		if row.tag then
 			GameTooltip:AddLine(TAG_TEXT[row.tag] or row.tag, 0.8, 0.8, 0.8, true)
 		end

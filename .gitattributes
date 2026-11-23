@@ -9,3 +9,5 @@
 /.gitattributes export-ignore
 /assets export-ignore
 /DEVELOPMENT.md export-ignore
+/tools export-ignore
+/reports export-ignore

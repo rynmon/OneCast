@@ -413,6 +413,165 @@ local function Telling(zone, z)
 	return (z.escapeSkill or 0) > 0 -- a getaway from before 0.7.0
 end
 
+-- The report code ---------------------------------------------------------------------------
+-- The whole report as one line, for tools/atlas.py to read from a pasted CurseForge comment:
+-- comments double-space lines and treat * _ ~ ` [ ] # > as formatting, so it uses only letters,
+-- digits and . , ! @ + : -, numbers in base 36. Records are split by "!", fields by ",":
+--   H,1,version,locale,id,rank,cap,yyyymmdd   the header; id is this character's, random, no name
+--   Z,area,casts,catches,getaways             a zone (area ID, or @Name+With+Plus if it has none)
+--   S,step,caught,away                        its catches and getaways at skill step*25 to +24
+--   I,item,count                              items under the record above (zone, buff, container)
+--   B,key,catches                             a camp buff ("rack", "hut") and what came with it on
+--   O,item,opened                             a fished-up container and what it held
+--   J,kind,id,how,npc,area,bonus              journey finds: r rank (by cap), s spell, g gear;
+--                                             how is t trainer, v vendor, q quest, l loot, u unseen
+--   D,item,npc,area,count,object              a camp item's drop
+--   X,checksum                                over everything before it
+Report.CODE_VERSION = 1
+local DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+local function B36(n)
+	n = math.floor(tonumber(n) or 0)
+	if n <= 0 then
+		return "0"
+	end
+	local out = ""
+	while n > 0 do
+		local d = n % 36
+		out = DIGITS:sub(d + 1, d + 1) .. out
+		n = math.floor(n / 36)
+	end
+	return out
+end
+Report.B36 = B36
+
+local function Checksum(s)
+	local sum = 0
+	for i = 1, #s do
+		sum = (sum + i * s:byte(i)) % 1679616 -- 36^4
+	end
+	return B36(sum)
+end
+Report.Checksum = Checksum
+
+-- This character's report ID: six random base-36 digits, made once. Lets the atlas keep only a
+-- character's newest report (they hold all-time totals) without knowing whose it is.
+local function ReportID()
+	local charDB = OneCastCharDB
+	if not charDB then
+		return "0"
+	end
+	if not charDB.reportID then
+		local id = ""
+		for _ = 1, 6 do
+			local d = math.random(0, 35)
+			id = id .. DIGITS:sub(d + 1, d + 1)
+		end
+		charDB.reportID = id
+	end
+	return charDB.reportID
+end
+
+local function Place(zone)
+	local id = zone and AreaID(zone)
+	if id then
+		return B36(id)
+	end
+	return "@" .. tostring(zone or "?"):gsub("[^%w' ]", ""):gsub(" ", "+")
+end
+
+local HOW = { trainer = "t", vendor = "v", quest = "q", loot = "l" }
+
+function Report.Code()
+	local charDB = OneCastCharDB or {}
+	local rec = {}
+	local function add(...)
+		rec[#rec + 1] = table.concat({ ... }, ",")
+	end
+	local function items(list)
+		local ids = {}
+		for id in pairs(list or {}) do
+			ids[#ids + 1] = id
+		end
+		table.sort(ids)
+		for _, id in ipairs(ids) do
+			local v = list[id]
+			local n = type(v) == "table" and v.count or v
+			if (tonumber(n) or 0) > 0 then
+				add("I", B36(id), B36(n))
+			end
+		end
+	end
+	local rank, maxRank = ns.Stats.FishingSkill()
+	local version = (ns.VERSION or ""):gsub("[^%w.]", "")
+	add("H", Report.CODE_VERSION, version ~= "" and version or "0", GetLocale(), ReportID(), B36(rank), B36(maxRank),
+		date("%Y%m%d"))
+	local zones = {}
+	for zone in pairs(charDB.zoneStats or {}) do
+		zones[#zones + 1] = zone
+	end
+	table.sort(zones)
+	local step = ns.Stats.SKILL_STEP
+	for _, zone in ipairs(zones) do
+		local z = charDB.zoneStats[zone]
+		if (z.casts or 0) > 0 or (z.catches or 0) > 0 then
+			add("Z", Place(zone), B36(z.casts), B36(z.catches), B36(z.escapes))
+			local steps = {}
+			for _, key in ipairs({ "skillCatches", "skillGetaways" }) do
+				for bucket in pairs(z[key] or {}) do
+					steps[bucket] = true
+				end
+			end
+			local list = {}
+			for bucket in pairs(steps) do
+				list[#list + 1] = bucket
+			end
+			table.sort(list)
+			for _, bucket in ipairs(list) do
+				add("S", B36(bucket / step), B36(z.skillCatches and z.skillCatches[bucket]),
+					B36(z.skillGetaways and z.skillGetaways[bucket]))
+			end
+			items(z.items)
+		end
+	end
+	for _, craft in ipairs(ns.Camp and ns.Camp.CRAFTS or {}) do
+		local r = craft.buff and ns.Camp.Record(craft.key)
+		if r and r.catches > 0 then
+			add("B", craft.key, B36(r.catches))
+			items(r.items)
+		end
+	end
+	local opened = {}
+	for id in pairs(charDB.containerLoot or {}) do
+		opened[#opened + 1] = id
+	end
+	table.sort(opened)
+	for _, id in ipairs(opened) do
+		local record = charDB.containerLoot[id]
+		add("O", B36(id), B36(record.opened))
+		items(record.items)
+	end
+	local finds = charDB.journeyFinds or {}
+	for kind, key in pairs({ r = "ranks", s = "spells", g = "gear" }) do
+		local ids = {}
+		for id in pairs(finds[key] or {}) do
+			ids[#ids + 1] = id
+		end
+		table.sort(ids)
+		for _, id in ipairs(ids) do
+			local f = finds[key][id]
+			add("J", kind, B36(id), HOW[f.how] or "u", B36(f.npc), Place(f.zone), B36(f.bonus))
+		end
+	end
+	for id, sources in pairs(charDB.campDrops or {}) do
+		for _, d in pairs(sources) do
+			add("D", B36(id), B36(d.npc), Place(d.zone), B36(d.count), d.object and "o" or "")
+		end
+	end
+	local body = "OneCast:" .. table.concat(rec, "!")
+	return body .. "!X," .. Checksum(body)
+end
+
 function Report.Text()
 	local out = {}
 	local function add(line)
@@ -512,6 +671,10 @@ function Report.Text()
 			add(string.format("- %q x%d (%s%s)", m.text, m.count, m.event, m.id and (", " .. m.id) or ""))
 		end
 	end
+	-- The code last: one line that survives a CurseForge comment, for the atlas to read.
+	add("")
+	add("Report code (keep this line when you paste: it's what OneCast reads):")
+	add(Report.Code())
 	return table.concat(out, "\n")
 end
 

@@ -6,6 +6,19 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.0",
+		date = "23 November 2026",
+		sections = {
+			{ "New", {
+				{ "The fishing atlas.", "Zone tooltips say what players' data reports found in Forever, and Forever's own levels replace Classic's where reports show they differ." },
+				{ "Report code.", "Data reports end with a one-line code that survives a CurseForge comment, so that line alone is enough to share." },
+			} },
+			{ "Thank you", {
+				{ "Your reports.", "The atlas starts from your reports, thank you: elxtrick, scootaroo, JHernPh, tamorok44, darkkostorm, user_vlqzwhsmfy7zfn3u and user_f9l821d0lwaxvvsd." },
+			} },
+		},
+	},
+	{
 		version = "1.1.1",
 		date = "23 November 2026",
 		sections = {

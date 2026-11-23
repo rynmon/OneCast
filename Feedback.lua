@@ -29,7 +29,7 @@ local KINDS = {
 	idea = { label = "Idea", title = "Feature request", ask = "What would you like?",
 		hint = "What it would do for you, and where in OneCast it would go." },
 	data = { label = "Data report", ask = "What you've found",
-		hint = "Nobody knows Forever's real fishing levels and loot. Your catches can tell: share them. Fishing numbers only, no names." },
+		hint = "Nobody knows Forever's real fishing levels and loot. Your catches can tell: share them. The last line, the code, is all OneCast needs. No names." },
 }
 local KIND_ORDER = { "bug", "idea", "data" }
 local KIND_WIDTH, KIND_STEP = 96, 102 -- three in the column: 10 + 2 * 102 + 96 = 310 of 315
