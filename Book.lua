@@ -119,7 +119,7 @@ local function EasiestSkill(fish)
 	return best
 end
 
--- In reach: a fish with a known zone your Fishing (lure and pole included) already covers, and
+-- In reach: a fish with a known zone your Fishing (gear, lure and food included) already covers, and
 -- not one that only bites during an event.
 local function InReach(fish)
 	if fish.event then
@@ -2215,17 +2215,8 @@ function Book.OpenZoneMenu(owner)
 	end)
 end
 
--- Camp is a page of its own now (Camp.lua): these stay for anything still asking the book.
-function Book.ShowCamp()
-	ns.Camp.ShowPage()
-end
-
 function Book.ShowCollection()
 	Book.Show()
-end
-
-function Book.RefreshCampIfShown()
-	ns.Camp.PaintPage()
 end
 
 Book.ZoneMapID = ZoneMapID

@@ -19,7 +19,8 @@ local LEVELS = {
 		-- Snappers). Not a Classic number: a getaway above 25 would overrule it, as for any zone.
 		-- Three more reports (19 to 22 November 2026) agree: 2 to 5 got away at 0-24 each, and
 		-- none in over 300 catches from 25 up. Mulgore's and Dun Morogh's 25 hold in Forever too
-		-- (4 of 9 got away at 0-24 in Mulgore; 1 of 24 at 0-24 in Dun Morogh, none in 48 above).
+		-- (4 of 9 got away at 0-24 in Mulgore; 1 of 24 at 0-24 in Dun Morogh, none in 48 above),
+		-- and Elwynn Forest's (none in 64 catches from 25 up, 22 November 2026).
 		"Zephras Isle",
 	},
 	[75] = {
@@ -48,6 +49,7 @@ local LEVELS = {
 		-- Desolace's 225 is confirmed in Forever by a player's report (14 November 2026): fish got
 		-- away less often as skill rose towards 225 (3 of 4 at 150-174, 2 of 7 at 175-199, 1 of 7
 		-- at 200-224), and none in 231 catches from 225 up.
+		-- Dustwallow Marsh's too (23 November 2026): 4 of 27 got away at 200-224, none in 46 from 250.
 		"Alterac Mountains", "Arathi Highlands", "Desolace", "Dustwallow Marsh",
 		"Stranglethorn Vale", "Swamp of Sorrows", "Thousand Needles", "Scarlet Monastery",
 		-- Forever's own, from a player's /onecast report (10 November 2026), fishing Eastwind
@@ -60,6 +62,8 @@ local LEVELS = {
 		"City of Dalaran",
 	},
 	[300] = {
+		-- Feralas' and Tanaris' 300 hold in Forever (23 November 2026): 9 of 21 got away at 250-274
+		-- in Feralas and 4 of 6 in Tanaris, none in over 300 catches from 300 up.
 		"Azshara", "Felwood", "Feralas", "Moonglade", "Tanaris", "The Hinterlands",
 		"Un'Goro Crater", "Western Plaguelands", "Sunken Temple", "Maraudon",
 	},
@@ -112,7 +116,9 @@ end
 -- (see 225 and 25 above).
 -- Excavation Site: Wetlands is Forever's own, fished in a player's report (17 November 2026):
 -- 3 catches, none got away, too few for a level.
-ns.ZONE_FISHING_UNKNOWN = { "Shen'dralas", "Mount Hyjal", "Gilneas", "Excavation Site: Wetlands" }
+-- The Drowned City is Forever's own too: 4 catches at skill 350-374, none got away (23 November
+-- 2026), too few for a level.
+ns.ZONE_FISHING_UNKNOWN = { "Shen'dralas", "Mount Hyjal", "Gilneas", "Excavation Site: Wetlands", "The Drowned City" }
 
 -- Other names the game gives a zone, for part of it: stats are kept under the tables' name.
 -- Dalaran is the city inside Forever's City of Dalaran (a player's report, 17 November 2026).

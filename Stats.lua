@@ -354,25 +354,155 @@ StaticPopupDialogs["ONECAST_GOAL"] = {
 }
 
 -- Fishing skill: rank, max rank and bonus (lure, pole), or nil if not found.
+local GameSkill
+
+-- Your Fishing and what adds to it: rank, cap, and the bonus from gear, lure, food and anything
+-- else, as { rank, maxRank, modifier, parts = { { kind, label, bonus } }, gearAdded }.
+-- The game's own modifier counts a lure and fishing food, but Forever leaves equipped fishing gear
+-- out of it (a +3 pole, reported 23 November 2026), so the gear's Fishing is added here: unless
+-- the game's number is already big enough to hold it, so it's never counted twice.
+local function SkillParts()
+	local rank, maxRank, modifier = GameSkill()
+	if not rank then
+		return nil
+	end
+	-- The items' own Fishing is what the game leaves out; enchants on them (the fishing line) it
+	-- counts already (Nat Pagle's rod with the line showed only the line's +5, 23 November 2026).
+	local gear, enchants, gearParts = 0, 0, {}
+	if ns.Gear and ns.Gear.EquippedBonus then
+		gear, enchants, gearParts = ns.Gear.EquippedBonus()
+	end
+	local lure, lureName, lureUnknown = 0, nil, false
+	if ns.Lure and ns.Lure.IsActive and ns.Lure.IsActive() then
+		local shown = ns.Lure.Shown()
+		if shown then
+			lure, lureName = shown.bonus or 0, ns.Lure.Name(shown)
+		else
+			lureUnknown = true
+		end
+	end
+	local food = ns.Food and ns.Food.Active and ns.Food.Active() or 0
+	local gearInGame = gear > 0 and not lureUnknown and modifier >= lure + food + enchants + gear
+	local added = (gear > 0 and not gearInGame) and gear or 0
+	local parts = {}
+	for _, p in ipairs(gearParts or {}) do
+		if p.bonus > 0 then
+			parts[#parts + 1] = { kind = "gear", link = p.link, bonus = p.bonus }
+		end
+		if p.enchant > 0 then
+			local name = p.link:match("|h%[(.-)%]|h")
+			parts[#parts + 1] = { kind = "enchant", bonus = p.enchant,
+				label = p.slot == 16 and "Fishing line" or ("Enchant on " .. (name or "your gear")) }
+		end
+	end
+	-- What the game's number holds that isn't a lure, food or an enchant OneCast can see.
+	local other = modifier - food - enchants - (gearInGame and gear or 0) - (lureUnknown and 0 or lure)
+	if lure > 0 or lureUnknown then
+		parts[#parts + 1] = { kind = "lure", label = lureName or "A lure", bonus = lureUnknown and math.max(0, other) or lure }
+		if lureUnknown then
+			other = 0
+		end
+	end
+	if food > 0 then
+		parts[#parts + 1] = { kind = "food", label = "Fishing food", bonus = food }
+	end
+	if other > 0 then
+		parts[#parts + 1] = { kind = "other", label = "Other bonuses", bonus = other }
+	end
+	return { rank = rank, maxRank = maxRank, modifier = modifier + added, parts = parts, gearAdded = added > 0 }
+end
+
 local function FishingSkill()
+	local s = SkillParts()
+	if s then
+		return s.rank, s.maxRank, s.modifier
+	end
+end
+
+-- The breakdown, for the Fishing bar's tooltip.
+function Stats.SkillTooltip(tooltip)
+	local s = SkillParts()
+	tooltip:SetText(ns.GetFishingName and ns.GetFishingName() or "Fishing")
+	if not s then
+		tooltip:AddLine("Your Fishing skill isn't known yet.", 1, 1, 1, true)
+		return
+	end
+	tooltip:AddDoubleLine("Your skill", string.format("%d/%d", s.rank, s.maxRank), 1, 0.82, 0, 1, 1, 1)
+	for _, p in ipairs(s.parts) do
+		local label = p.link and (p.link:match("|h%[(.-)%]|h") or p.link) or p.label
+		local r, g, b = 1, 1, 1
+		if p.link then
+			local quality = C_Item.GetItemQualityByID and C_Item.GetItemQualityByID(p.link)
+			local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+			if color then
+				r, g, b = color.r, color.g, color.b
+			end
+		end
+		tooltip:AddDoubleLine(label, "+" .. p.bonus, r, g, b, 0.12, 1, 0)
+	end
+	if #s.parts == 0 then
+		tooltip:AddLine("Nothing adds to it right now: no fishing gear, lure or food.", 0.62, 0.62, 0.62, true)
+	end
+	tooltip:AddDoubleLine("In all", tostring(s.rank + s.modifier), 1, 0.82, 0, 1, 1, 1)
+end
+
+-- Hovering a Fishing bar shows the breakdown. Only the mouse's movement is taken where the game
+-- allows it, so the window can still be dragged by the bar.
+local function SkillHover(bar)
+	if bar.SetMouseMotionEnabled then
+		bar:SetMouseMotionEnabled(true)
+	else
+		bar:EnableMouse(true)
+	end
+	bar:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+		Stats.SkillTooltip(GameTooltip)
+		GameTooltip:Show()
+	end)
+	bar:SetScript("OnLeave", GameTooltip_Hide)
+	return bar
+end
+
+-- The rank cap that holds a skill, for when the game gives none.
+local RANK_CAPS = { 75, 150, 225, 300 }
+local function CapFor(rank)
+	for _, cap in ipairs(RANK_CAPS) do
+		if rank <= cap then
+			return cap
+		end
+	end
+	return rank
+end
+
+GameSkill = function()
+	local found
 	if GetProfessions and GetProfessionInfo then
 		local _, _, _, fishing = GetProfessions()
 		if fishing then
 			local _, _, rank, maxRank, _, _, _, modifier = GetProfessionInfo(fishing)
 			if rank then
-				return rank, maxRank, modifier or 0
+				found = { rank, maxRank, modifier or 0 }
 			end
 		end
 	end
-	-- Classic-style skill list, in case Forever keeps fishing there.
-	local fishingName = ns.GetFishingName and ns.GetFishingName()
-	if fishingName and GetNumSkillLines and GetSkillLineInfo then
-		for i = 1, GetNumSkillLines() do
-			local name, isHeader, _, rank, _, modifier, maxRank = GetSkillLineInfo(i)
-			if not isHeader and name == fishingName then
-				return rank, maxRank, modifier or 0
+	-- Classic-style skill list, in case Forever keeps fishing there, or gave a cap of 0 above
+	-- (a player's "Fishing 198/0", 23 November 2026).
+	if not (found and (found[2] or 0) > 0) then
+		local fishingName = ns.GetFishingName and ns.GetFishingName()
+		if fishingName and GetNumSkillLines and GetSkillLineInfo then
+			for i = 1, GetNumSkillLines() do
+				local name, isHeader, _, rank, _, modifier, maxRank = GetSkillLineInfo(i)
+				if not isHeader and name == fishingName and rank then
+					found = { rank, maxRank, modifier or 0 }
+				end
 			end
 		end
+	end
+	if found then
+		if (found[2] or 0) <= 0 then
+			found[2] = CapFor(found[1])
+		end
+		return found[1], found[2], found[3]
 	end
 end
 
@@ -385,7 +515,7 @@ function Stats.CatchesPerPoint(rank)
 	return math.ceil((rank - 75) / 25) + 1
 end
 
--- Effective skill (lure and pole included) in steps of 25, for the record of what happened at
+-- Effective skill (gear, lure and food included) in steps of 25, for the record of what happened at
 -- which skill in each zone: { [bucket] = count } under totals.skillCatches and .skillGetaways.
 -- Kept for good (a clean run doesn't clear it), as evidence of a zone's real level.
 local SKILL_STEP = 25
@@ -2068,13 +2198,13 @@ function Stats.CappedRows(zone)
 	end
 	rows[#rows + 1] = { "With gear", tostring(effective) .. (verdict and (SEP .. verdict) or ""), {
 		tip = function(tooltip)
-			tooltip:SetText("Your Fishing with your gear")
-			tooltip:AddLine(string.format("%d skill%s.", rank, (modifier or 0) > 0
-				and string.format(", +%d from your lure and fishing gear", modifier) or ", nothing added by a lure or gear"), 1, 1, 1, true)
+			-- The same breakdown as the Fishing bar's: each piece of gear, the lure and food.
+			Stats.SkillTooltip(tooltip)
 			if status.needed then
+				tooltip:AddLine(" ")
 				tooltip:AddLine(string.format("%s needs %d for no fish to get away.", status.place, status.needed), 1, 1, 1, true)
 			end
-			tooltip:AddLine("Past 300, only a lure and fishing gear add more: the wardrobe's Gear guide has the best of it.", 0.7, 0.7, 0.7, true)
+			tooltip:AddLine("Past 300, only fishing gear, a lure and fishing food add more: the wardrobe's Gear guide has the best gear.", 0.7, 0.7, 0.7, true)
 		end,
 		click = function()
 			if ns.Wardrobe and ns.Wardrobe.ShowGear then
@@ -3528,7 +3658,7 @@ ns.UI = {
 	HasAtlas = HasAtlas,
 	SizedFont = SizedFont,
 	CreateShell = CreateShell,
-	RankBar = function(parent, name) return RankBar(parent, name) end, -- Forever's Fishing bar: (parent, name), then :SetRank(fraction, "186/225")
+	RankBar = function(parent, name) return SkillHover(RankBar(parent, name)) end, -- Forever's Fishing bar: (parent, name), then :SetRank(fraction, "186/225")
 	SectionHeader = SectionHeader,
 	RowBackground = RowBackground,
 	-- An entry drawn as the stats window's lists are: no box of its own, only the list's row shading
@@ -3680,6 +3810,22 @@ ns.UI = {
 		b:SetMenu(false)
 		return b
 	end,
+	-- An item's icon, its bevelled border trimmed: (parent, size).
+	Icon = function(parent, size)
+		local icon = parent:CreateTexture(nil, "ARTWORK")
+		icon:SetSize(size, size)
+		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		return icon
+	end,
+	-- Across a column at `y` down from its top, inside the page's edge: (region, parent, y, height).
+	Place = function(region, parent, y, height)
+		region:ClearAllPoints()
+		region:SetPoint("TOPLEFT", parent, "TOPLEFT", EDGE, -y)
+		region:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -EDGE, -y)
+		if height then
+			region:SetHeight(height)
+		end
+	end,
 	ApplyRowShading = function()
 		for _, bg in ipairs(Stats.shadedRows or {}) do
 			ShadeRow(bg)
@@ -3792,7 +3938,7 @@ local function CreateWindow()
 	CreateTabs(f, inset)
 
 	-- Fishing skill: the professions window's rank bar, then the verdict for this zone.
-	f.skillBar = RankBar(inset, ns.GetFishingName and ns.GetFishingName() or "Fishing")
+	f.skillBar = SkillHover(RankBar(inset, ns.GetFishingName and ns.GetFishingName() or "Fishing"))
 
 	f.zoneStrip = ZoneStrip(inset)
 

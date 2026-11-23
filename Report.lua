@@ -223,14 +223,30 @@ Findings = function()
 				.. (#where > 0 and (", caught in " .. table.concat(where, ", ")) or "") .. ".")
 	end
 	-- Anything else fished up that the collection lacks (treasure, gear, junk new to Forever), and
-	-- the first Forever catch of anything OneCast only knows from Classic.
+	-- the first Forever catch of anything OneCast only knows from Classic. What came only while a
+	-- camp buff was on is the buff's extra reward (ore, herbs, vials: Rare Fishing, 23 November
+	-- 2026), not fishing loot: the report's camp section has it.
+	local fromCamp = {}
+	for _, craft in ipairs(ns.Camp and ns.Camp.CRAFTS or {}) do
+		local r = craft.buff and ns.Camp.Record(craft.key)
+		for id, n in pairs(r and r.items or {}) do
+			fromCamp[id] = (fromCamp[id] or 0) + (type(n) == "table" and n.count or n)
+		end
+	end
+	local caughtInAll = {}
+	for _, zone in ipairs(zoneNames) do
+		for id, item in pairs(OneCastCharDB.zoneStats[zone].items or {}) do
+			caughtInAll[id] = (caughtInAll[id] or 0) + (item.count or 0)
+		end
+	end
 	local other, confirmed = {}, {}
 	for _, zone in ipairs(zoneNames) do
 		for id, item in pairs(OneCastCharDB.zoneStats[zone].items or {}) do
 			if (item.count or 0) > 0 then
 				local fish = ns.FISH_BY_ID and ns.FISH_BY_ID[id]
 				local list
-				if not fish and not NOT_COLLECTED[id] and not (ns.Collection and ns.Collection.IsFish(id)) and not IsGear(id) then
+				local campOnly = (fromCamp[id] or 0) >= (caughtInAll[id] or 0)
+				if not fish and not campOnly and not NOT_COLLECTED[id] and not (ns.Collection and ns.Collection.IsFish(id)) and not IsGear(id) then
 					list = other
 				elseif fish and ClassicOnly(fish) then
 					list = confirmed
@@ -408,7 +424,7 @@ function Report.Text()
 	add(string.format("Game %s (build %s), %s, %s", version or "?", build or "?", GetLocale(), date("%Y-%m-%d")))
 	local rank, maxRank, modifier = ns.Stats.FishingSkill()
 	add(rank and string.format("Fishing %d/%d%s", rank, maxRank,
-		modifier > 0 and string.format(" (+%d from lure or pole right now)", modifier) or "") or "Fishing skill not found")
+		modifier > 0 and string.format(" (+%d from gear, lure and food right now)", modifier) or "") or "Fishing skill not found")
 
 	local findings = Report.Findings()
 	add("")
@@ -432,7 +448,7 @@ function Report.Text()
 	end)
 	if #zones > 0 then
 		add("")
-		add("Zone levels: catches and getaways at each effective skill (lure and pole included).")
+		add("Zone levels: catches and getaways at each effective skill (gear, lure and food included).")
 		for _, entry in ipairs(zones) do
 			local zone, z = entry.zone, entry.z
 			local id = AreaID(zone)

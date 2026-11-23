@@ -235,10 +235,6 @@ function CatchWindow.Apply()
 	end
 end
 
-function CatchWindow.Window()
-	return frame
-end
-
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:SetScript("OnEvent", function()

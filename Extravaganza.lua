@@ -284,6 +284,9 @@ function X.Forecast()
 	if eta <= left then
 		return "ahead", eta
 	end
+	if left <= 0 then
+		return nil -- its last second: no pace to give
+	end
 	return "behind", need / left * 3600
 end
 
@@ -688,7 +691,7 @@ end)
 local PAGE_WIDTH, EDGE, GAP, PAD = 660, 10, 8, 10
 local HEADER = 24
 local ROW = 20
-local GREY, GOOD, BAD, GOLD = "|cff9d9d9d", "|cff20ff20", "|cffff4040", "|cffffd100"
+local GREY, GOOD, GOLD = "|cff9d9d9d", "|cff20ff20", "|cffffd100"
 local page
 
 local function Text(parent, font)
@@ -698,25 +701,13 @@ local function Text(parent, font)
 	return fs
 end
 
-local function Icon(parent, size)
-	local icon = parent:CreateTexture(nil, "ARTWORK")
-	icon:SetSize(size, size)
-	icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-	return icon
-end
+local function Icon(...) return ns.UI.Icon(...) end -- ns.UI is built by Stats.lua, which may load later
 
 local function ItemIcon(itemID)
 	return C_Item.GetItemIconByID(itemID) or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
-local function Place(region, parent, y, height)
-	region:ClearAllPoints()
-	region:SetPoint("TOPLEFT", parent, "TOPLEFT", EDGE, -y)
-	region:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -EDGE, -y)
-	if height then
-		region:SetHeight(height)
-	end
-end
+local function Place(...) return ns.UI.Place(...) end
 
 local function PlaceHeader(header, y)
 	Place(header, header:GetParent(), y)

@@ -759,6 +759,10 @@ local function PaintGearView(v)
 			bonus = g.bonus
 		end
 		local equipped = C_Item.IsEquippedItem and C_Item.IsEquippedItem(g.id) or false
+		-- The fishing line is used up on the pole: it's on when the pole carries its enchant.
+		if g.kind == "Line" and ns.Gear and ns.Gear.PoleEnchant then
+			equipped = ns.Gear.PoleEnchant() >= (g.bonus or 1)
+		end
 		local owned = equipped or (C_Item.GetItemCount and C_Item.GetItemCount(g.id, true) or 0) > 0
 		-- New gear only once its bonus is known; the other faction's quest rewards only if you have one.
 		local show = (not g.ifBonus or (bonus and bonus > 0)) and (owned or Journey.ForYourFaction(g))
@@ -1103,7 +1107,8 @@ end
 
 -- What players' reports have settled (22 November 2026): Fishing trainers teach Apprentice,
 -- Journeyman and Bait and Tackle (Fenn Fairweather and Baelann Swiftcurrent on Zephras Isle,
--- Uthan Stillwater in Mulgore, Grimnur Stonebrand in Ironforge, Paxton Ganter in Dun Morogh),
+-- Uthan Stillwater in Mulgore, Grimnur Stonebrand in Ironforge, Paxton Ganter in Dun Morogh,
+-- Harold Riggs in the Wetlands, Lee Brown in Elwynn Forest),
 -- Bait and Tackle from Fishing 6. Learned from a trainer, they're no longer news.
 local TRAINER_RANKS = { [75] = true, [150] = true }
 local TRAINER_SPELLS = { [1278067] = true }

@@ -125,21 +125,70 @@ local OUTFIT_SLOTS = {
 -- A tooltip line naming Fishing in the client's own language ("Angeln", "Pêche"...) with a
 -- "+N" on it: "Equip: Increased Fishing +5", "Fishing +2", "+5 Angeln". The "+" keeps out
 -- "Requires Fishing (225)".
+-- Every Fishing line on an item added up: its own bonus and a lasting enchant on it (the fishing
+-- line's +5). A timed one is a lure, "Fishing Lure (+25 Fishing Skill) (10 min)": that's the
+-- lure's, not the item's, so it's left out.
 local function FishingBonus(data)
 	local fishing = (ns.GetFishingName and ns.GetFishingName() or "Fishing"):lower()
+	local total = 0
 	for _, line in ipairs(data and data.lines or {}) do
 		local text = line.leftText
 		if type(text) == "string" and not (issecretvalue and issecretvalue(text)) then
 			local lower = text:lower()
-			if lower:find(fishing, 1, true) or lower:find("fishing", 1, true) then
+			if (lower:find(fishing, 1, true) or lower:find("fishing", 1, true)) and not text:match("%(%d+[^%d%)]+%)%s*$") then
 				local n = text:match("%+%s*(%d+)")
 				if n then
-					return tonumber(n)
+					total = total + tonumber(n)
 				end
 			end
 		end
 	end
+	return total
+end
+
+-- The Fishing your equipped gear gives, and from what. Each item's own bonus (its tooltip by item
+-- ID) is kept apart from a lasting enchant on it (the rest of what its worn tooltip says, such as
+-- the fishing line's +5), because Forever's skill counts the enchants but not the items' own:
+-- items, enchants, { { link, slot, bonus, enchant }, ... } in slot order. Kept until the gear
+-- changes, since it's asked a lot.
+local EQUIP_SLOTS = { 1, 2, 3, 15, 5, 4, 9, 10, 6, 7, 8, 11, 12, 13, 14, 16, 17 }
+local equipped
+function Gear.EquippedBonus()
+	if equipped then
+		return equipped.items, equipped.enchants, equipped.parts
+	end
+	local items, enchants, parts = 0, 0, {}
+	local tips = C_TooltipInfo
+	for _, slot in ipairs(EQUIP_SLOTS) do
+		local link = GetInventoryItemLink("player", slot)
+		if link and tips and tips.GetInventoryItem then
+			local worn = FishingBonus(tips.GetInventoryItem("player", slot))
+			if worn > 0 then
+				local id = C_Item.GetItemInfoInstant(link)
+				-- Not loaded yet (what's worn nearly always is): all of it counts as the item's.
+				local own = math.min(worn, id and Gear.ItemBonus(id) or worn)
+				items, enchants = items + own, enchants + (worn - own)
+				parts[#parts + 1] = { link = link, slot = slot, bonus = own, enchant = worn - own }
+			end
+		end
+	end
+	equipped = { items = items, enchants = enchants, parts = parts }
+	return items, enchants, parts
+end
+
+-- The Fishing an enchant on your pole gives (the fishing line's), 0 for none.
+function Gear.PoleEnchant()
+	local _, _, parts = Gear.EquippedBonus()
+	for _, p in ipairs(parts) do
+		if p.slot == MAIN then
+			return p.enchant
+		end
+	end
 	return 0
+end
+
+function Gear.ForgetEquipped()
+	equipped = nil
 end
 
 -- The wardrobe's slots, in the character sheet's order: left column, then right.
@@ -562,6 +611,15 @@ function OneCast_RestoreWeapons()
 		ns.Print("no saved weapons to re-equip.")
 	end
 end
+
+-- The gear's Fishing is worked out again when it changes: an item put on or taken off, an
+-- enchant (the fishing line) going on. What you wear always has its data loaded.
+local bonusWatch = CreateFrame("Frame")
+bonusWatch:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+bonusWatch:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+bonusWatch:SetScript("OnEvent", function()
+	equipped = nil
+end)
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")

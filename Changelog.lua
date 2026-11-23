@@ -6,6 +6,30 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.0.8",
+		date = "23 November 2026",
+		sections = {
+			{ "New", {
+				{ "Skill breakdown.", "Hover the Fishing bar to see what makes up your skill: each piece of gear, your fishing line, lure and food, and the total." },
+				{ "The Drowned City.", "Forever's new zone joins the book's Zones view, waiting for your catches to tell its fishing level." },
+			} },
+			{ "Changed", {
+				{ "Camp buff rewards.", "Ore, herbs, hides and other extras from Rare Fishing no longer show as new finds in your data report." },
+				{ "Bloated Oily Blackmouth.", "The collection now knows it's caught in Stranglethorn Vale, so its page shows where to find it." },
+			} },
+			{ "Fixed", {
+				{ "Fishing gear.", "The game leaves equipped fishing gear out of your skill, so OneCast now adds it, without counting the fishing line twice. Thanks to elxtrick and Testuserplsignore!" },
+				{ "Fishing line.", "Once it's on your pole, the Gear guide shows it as yours and the wardrobe counts it." },
+				{ "Pole bonus.", "With a lure on, your pole no longer shows the lure's +25 as its own bonus, so the best pole is picked." },
+				{ "Skill cap.", "When the game gives no cap, your skill shows against your rank's cap instead of \"198/0\"." },
+				{ "Smaller fixes.", "The With gear row and data report now count food too, and the race's pace no longer breaks in its last second." },
+			} },
+			{ "Reported by scootaroo", {
+				{ "Elwynn Forest.", "Your catches confirm its fishing level of 25 holds in Forever too." },
+			} },
+		},
+	},
+	{
 		version = "1.0.7",
 		date = "22 November 2026",
 		sections = {

@@ -168,6 +168,7 @@ ns.FISH = {
 		zones = { "Stormwind City", "Orgrimmar", "The Barrens", "Thunder Bluff", "Darkshore" },
 	},
 	{ id = 21162, name = "Bloated Oily Blackmouth", cat = "bloated",
+		more = { { "Stranglethorn Vale", "reported" } }, -- 2 caught in Forever (23 November 2026)
 	},
 	{ id = 13881, name = "Bloated Redgill", cat = "bloated",
 		zones = { "Un'Goro Crater", "Moonglade" },

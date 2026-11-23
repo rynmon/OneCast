@@ -750,7 +750,7 @@ function UpdateQuiet(reapply)
 		local level = math.max(0, math.min(100, db.quietLevel or 0)) / 100
 		local cvars = {}
 		for _, name in ipairs(QUIET_CVARS) do
-			local current = tonumber(C_CVar.GetCVar(name))
+			local current = tonumber((C_CVar.GetCVar(name))) -- one value, even if the game gives none
 			if current then
 				cvars[name] = tostring(math.floor(current * level * 100 + 0.5) / 100)
 			end

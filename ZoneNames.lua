@@ -22,6 +22,7 @@ ns.ZONE_AREA_IDS = {
 	["City of Dalaran"] = 16544, -- Forever's own; the zone that holds its Dalaran and Fel Grove
 	["Dalaran"] = 16558, -- the city in it, which the game can give as the zone (ZONE_ALIASES)
 	["Excavation Site: Wetlands"] = 16732, -- Forever's own
+	["The Drowned City"] = 16550, -- Forever's own (AreaTable, build 1.60.1.71037)
 	["Darkshore"] = 148,
 	["Darnassus"] = 1657,
 	["Deadwind Pass"] = 41,

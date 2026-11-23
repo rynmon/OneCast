@@ -41,7 +41,9 @@ Camp.CRAFTS = {
 		blueprintWhere = { zone = "Swamp of Sorrows", x = 0.695, y = 0.536, label = "The Sunken Temple, for Jammal'an's Blueprint" },
 		effect = "Rare Fishing for an hour: greater extra rewards while you fish, and the Fish Bowl's stats.",
 		reagents = { { 4470, 5, "Simple Wood" }, { 14048, 2, "Bolt of Runecloth" }, { 273295, 1, "Seasonal Fish Steaks" } },
-		does = "Placed by a campfire, it gives Rare Fishing for an hour: greater extra rewards while you fish. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
+		-- What Rare Fishing brought up in 84 catches in Stranglethorn Vale (23 November 2026): ore,
+		-- bars, herbs, hides, vials and Dream Dust beside the fish, and a trunk about one catch in three.
+		does = "Placed by a campfire, it gives Rare Fishing for an hour: greater extra rewards while you fish, such as ore, metal bars, herbs, hides and Dream Dust, and more trunks. It also provides lures and the Fish Bowl's +8% stats, and can replace a Fish Bowl." },
 }
 
 -- Cooking recipes: a campfire holds this many features. Basic comes with Cooking; the others are
@@ -289,12 +291,7 @@ local function ItemHover(region, itemID, extra)
 	page.hovers[#page.hovers + 1] = region
 end
 
-local function Icon(parent, size)
-	local icon = parent:CreateTexture(nil, "ARTWORK")
-	icon:SetSize(size, size)
-	icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-	return icon
-end
+local function Icon(...) return ns.UI.Icon(...) end -- ns.UI is built by Stats.lua, which may load later
 
 -- A craft's card: built once, filled and sized by PaintCraft.
 local function CraftCard(parent, craft)
@@ -441,14 +438,7 @@ local function InfoRow(parent, index)
 	return row
 end
 
-local function Place(region, parent, y, height)
-	region:ClearAllPoints()
-	region:SetPoint("TOPLEFT", parent, "TOPLEFT", EDGE, -y)
-	region:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -EDGE, -y)
-	if height then
-		region:SetHeight(height)
-	end
-end
+local function Place(...) return ns.UI.Place(...) end
 
 local function PlaceHeader(header, y)
 	header:ClearAllPoints()
