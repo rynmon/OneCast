@@ -6,6 +6,19 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.1",
+		date = "24 November 2026",
+		sections = {
+			{ "Fixed", {
+				{ "Characters listed twice.", "Item tooltips no longer list a character twice or count its catches twice; characters are now told apart by the game's own ID." },
+			} },
+			{ "Improved", {
+				{ "Full names.", "Characters now show with their surnames, like Platinum Andy, in tooltips and the collection, once each has logged in." },
+				{ "Cook or sell everywhere.", "The cooked against raw line now shows in a fish's tooltip anywhere, from your bags to the auction house." },
+			} },
+		},
+	},
+	{
 		version = "1.2.0",
 		date = "23 November 2026",
 		sections = {

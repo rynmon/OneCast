@@ -15,9 +15,77 @@ local function Store()
 	return ns.db.collection
 end
 
+-- Who a character is. Its GUID ("Player-<server>-<id>") never changes; the realm's name doesn't
+-- do: Forever's realm functions have given "" at some logins and the name at others (24 November
+-- 2026), which saved one character as "Platinum-" and "Platinum-CAMWOWEU5Realm4PvP", listed and
+-- counted twice. So entries are matched by GUID, and the key is fixed for the session.
+local function Realm()
+	local realm = GetNormalizedRealmName and GetNormalizedRealmName()
+	if not realm or realm == "" then
+		realm = GetRealmName and GetRealmName()
+	end
+	return (realm or ""):gsub("[%s%-]", "")
+end
+
+-- This character's name as the game shows it: Forever's characters have surnames, which its
+-- UnitFullName gives where retail's gives the realm ("Platinum", "Andy").
+local function FullName()
+	local name = UnitName("player") or "?"
+	local second = UnitFullName and select(2, UnitFullName("player"))
+	if type(second) == "string" and second ~= "" and second:gsub("[%s%-]", "") ~= Realm() then
+		return name .. " " .. second
+	end
+	return name
+end
+
+local function Server(guid)
+	return guid and guid:match("^Player%-(%d+)%-")
+end
+
+-- This character's key, fixed for the session once the collection has it (SyncCharacter).
+local sessionKey
 local function CharKey()
-	local realm = (GetNormalizedRealmName and GetNormalizedRealmName()) or GetRealmName() or "?"
-	return (UnitName("player") or "?") .. "-" .. realm
+	return sessionKey or ((UnitName("player") or "?") .. "-" .. Realm())
+end
+
+-- Other entries for this character: its name, and its GUID or none (saved before GUIDs were).
+-- Their catches are only an older copy of this character's own stats, which SyncCharacter copies
+-- in again, so they can go. A same-named character elsewhere with its own GUID stays; one saved
+-- before GUIDs comes back with its next login.
+local function DropStrayKeys(key, name, guid)
+	local store = Store()
+	local function Stray(other)
+		if other == key or other:match("^(.-)%-") ~= name then
+			return false
+		end
+		local who = store.chars[other]
+		return not (who and who.guid) or who.guid == guid
+	end
+	local drop = {}
+	for other in pairs(store.chars) do
+		drop[other] = Stray(other) or nil
+	end
+	for _, entry in pairs(store.items) do
+		for other in pairs(entry.byChar) do
+			if drop[other] == nil and Stray(other) then
+				drop[other] = true
+			end
+		end
+	end
+	if not next(drop) then
+		return
+	end
+	for other in pairs(drop) do
+		store.chars[other] = nil
+	end
+	for _, entry in pairs(store.items) do
+		for other in pairs(drop) do
+			entry.byChar[other] = nil
+		end
+		if entry.firstChar and drop[entry.firstChar] then
+			entry.firstChar = key
+		end
+	end
 end
 
 -- A fish is one of the known fish (FishData.lua), or any "Meat" trade good you fish up
@@ -63,9 +131,14 @@ function Collection.SyncCharacter()
 	if not ns.db or not charDB or not charDB.lifetime then
 		return
 	end
+	local name, guid = UnitName("player"), UnitGUID and UnitGUID("player")
+	charDB.realm = nil -- a realm kept by a 1.2.1 test build, which was really the surname
+	sessionKey = nil
 	local key = CharKey()
+	sessionKey = key
 	local store = Store()
-	store.chars[key] = { class = select(2, UnitClass("player")), name = UnitName("player") }
+	DropStrayKeys(key, name, guid)
+	store.chars[key] = { class = select(2, UnitClass("player")), name = name, full = FullName(), guid = guid }
 	for itemID in pairs(charDB.lifetime.items) do
 		if Collection.IsFish(itemID) then
 			SyncItem(itemID, key, charDB)
@@ -118,7 +191,7 @@ function Collection.Get(itemID)
 		if mine.count > 0 then
 			info.total = info.total + mine.count
 			local who = chars[key] or {}
-			info.chars[#info.chars + 1] = { key = key, name = who.name or key, class = who.class, count = mine.count }
+			info.chars[#info.chars + 1] = { key = key, name = who.full or who.name or key, class = who.class, guid = who.guid, count = mine.count }
 			for zone, n in pairs(mine.zones) do
 				info.zones[zone] = (info.zones[zone] or 0) + n
 			end
@@ -131,7 +204,7 @@ function Collection.Get(itemID)
 		return a.count > b.count
 	end)
 	if entry.firstTime then
-		info.first = { time = entry.firstTime, char = chars[entry.firstChar] and chars[entry.firstChar].name
+		info.first = { time = entry.firstTime, char = chars[entry.firstChar] and (chars[entry.firstChar].full or chars[entry.firstChar].name)
 			or entry.firstChar, zone = entry.firstZone }
 	end
 	return info
@@ -188,9 +261,10 @@ local function CharLabel(char)
 		icon = CreateAtlasMarkup(atlas, 12, 12) .. " "
 	end
 	local name = char.name or char.key or "?"
+	-- The realm only for a character on another server: by GUID where both have one.
 	local realm = char.key and char.key:match("%-(.+)$")
-	local here = (GetNormalizedRealmName and GetNormalizedRealmName()) or GetRealmName()
-	if realm and here and realm ~= here then
+	local theirs, mine = Server(char.guid), Server(UnitGUID and UnitGUID("player"))
+	if realm and theirs and mine and theirs ~= mine then
 		name = name .. "-" .. realm
 	end
 	local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -229,6 +303,19 @@ local function AddCaughtLine(tooltip, data)
 		tooltip:AddDoubleLine(L["Odds (Classic)"], ns.OneIn(rarity.pct) .. L[" catches"], GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
 		local where = rarity.where .. (rarity.others > 0 and string.format(L[" +%d more"], rarity.others) or "")
 		tooltip:AddDoubleLine(L["Best in"], where, GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
+	end
+	-- Catch to cook to sell: its best Cooking use against selling it raw.
+	-- Green when cooking pays more than selling raw.
+	local cooked, worth, better = nil, nil, false
+	if ns.Cooking then
+		cooked, worth, better = ns.Cooking.TipLine(itemID)
+	end
+	if cooked then
+		if better then
+			tooltip:AddDoubleLine(cooked, worth, 0.12, 1, 0, 1, 1, 1)
+		else
+			tooltip:AddDoubleLine(cooked, worth, GOLD_R, GOLD_G, GOLD_B, 1, 1, 1)
+		end
 	end
 	-- Which of your characters caught it, as Baganator lists where items are: the total, then each
 	-- character with its class icon, in its class colour, and its count.

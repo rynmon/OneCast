@@ -3549,13 +3549,14 @@ local function ItemRow(parent, index, y)
 			if self.note then
 				GameTooltip:AddLine(self.note, 1, 1, 1, true)
 			end
-			-- Catch to cook to sell: its best use cooked, against raw.
-			local cook, better
-			if ns.Cooking then
-				cook, better = ns.Cooking.TipLine(self.itemID)
+			-- Catch to cook to sell: its best use cooked, against raw. The item tooltip's OneCast
+			-- lines (Collection.lua) already say it unless those are turned off.
+			local cooked, worth, better
+			if ns.Cooking and not ns.db.catchTooltip then
+				cooked, worth, better = ns.Cooking.TipLine(self.itemID)
 			end
-			if cook then
-				GameTooltip:AddLine(cook, better and 0.12 or 0.7, better and 1 or 0.7, better and 0 or 0.7, true)
+			if cooked then
+				GameTooltip:AddDoubleLine(cooked, worth, better and 0.12 or 1, better and 1 or 0.82, 0, 1, 1, 1)
 			end
 			GameTooltip:AddLine(" ")
 			if self.pick then

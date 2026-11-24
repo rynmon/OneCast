@@ -147,7 +147,8 @@ function Cooking.PageLine(fishID)
 	return string.format(L["Worth more raw: %s a fish, against %s cooked into %s."], M(raw), M(best.each), best.name)
 end
 
--- One line for a catch's tooltip: its best use cooked, against raw, or nil.
+-- A catch's tooltip row: its best use cooked against raw, as a label and a value ("Cooked",
+-- "9c · raw 10c"), and whether cooking pays more; nil without a priced use.
 function Cooking.TipLine(fishID)
 	local uses, raw = Cooking.Uses(fishID)
 	local best = uses[1]
@@ -155,11 +156,7 @@ function Cooking.TipLine(fishID)
 		return nil
 	end
 	local Short = ns.Stats.ShortGold
-	local text = string.format(L["Cooked into %s: %s a fish%s"], best.name, Short(best.each),
-		raw and string.format(L[" (raw %s)"], Short(raw)) or "")
-	if not best.known then
-		text = text .. L[", recipe not known"]
-	end
-	local better = not raw or best.each > raw
-	return text, better
+	local label = best.known and L["Cooked"] or L["Cooked (not learned)"]
+	local value = Short(best.each) .. (raw and ("|cff9d9d9d  ·  " .. string.format(L["raw %s"], Short(raw)) .. "|r") or "")
+	return label, value, not raw or best.each > raw
 end
