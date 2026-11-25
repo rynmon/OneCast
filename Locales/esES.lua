@@ -54,7 +54,7 @@ L["While you're fishing, the stats window fades to see-through when your mouse i
 L["Lock the window"] = "Bloquear la ventana"
 L["Stop OneCast's window being moved or resized by accident. Turn it off to move it again."] = "Evita mover o cambiar el tamaño de la ventana de OneCast por accidente. Desactívalo para moverla otra vez."
 L["Open stats when you cast"] = "Abrir estadísticas al lanzar"
-L["Open the stats window when you start fishing. If you close it (X or minimap button), it stays closed until you take a 2-minute break from fishing."] = "Abre la ventana de estadísticas cuando empiezas a pescar. Si la cierras (X o botón del minimapa), sigue cerrada hasta que hagas una pausa de 2 minutos."
+L["Open the stats window (or the mini bar) every time you cast. Closing it only hides it until your next cast."] = "Abre la ventana de estadísticas (o la barra mini) cada vez que lanzas. Cerrarla solo la oculta hasta tu próximo lanzamiento."
 L["Open stats when your pole goes on"] = "Abrir estadísticas al equipar la caña"
 L["Open the stats window (or the mini bar) every time you equip a fishing pole, even if you closed it while fishing earlier. It won't take over the OneCast window while another page is open."] = "Abre la ventana de estadísticas (o la minibarra) cada vez que te equipas una caña, aunque la cerraras antes. No sustituye a la ventana de OneCast mientras otra página está abierta."
 L["Mini bar instead of the stats window"] = "Minibarra en lugar de estadísticas"

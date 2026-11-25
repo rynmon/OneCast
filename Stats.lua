@@ -56,10 +56,6 @@ local castZone, castSpot -- where the line went out, for the catch it brings in
 local summaryTimer
 local autoLootOffered = false -- once per login
 local frame -- the stats window, created on first open
--- Set when the player closes the window on purpose (X button, minimap button, /onecast
--- stats); it then stays closed on cast until they take a break from fishing. Escape,
--- Alt+Z and cutscenes also hide it but don't count.
-local dismissed = false
 -- Set when the window opened by itself on a cast: only then does it close itself when the
 -- weapons go back on (closeOnDone). Opening it any other way clears it.
 local autoOpened = false
@@ -1133,12 +1129,6 @@ function Stats.OnCast()
 	local now = GetServerTime()
 	Stats.AutoNewSession("cast") -- "Start a new session": after a break, or each new day
 	local s = Session()
-	if not s.lastCast or now - s.lastCast > ACTIVE_GAP then
-		dismissed = false -- back from a break: open again
-		if ns.Mini then
-			ns.Mini.dismissed = false
-		end
-	end
 	castZone = CurrentZone()
 	castSpot = CurrentSpot(castZone)
 	local zoneTotals = ZoneTotals(castZone)
@@ -1196,14 +1186,14 @@ function Stats.OnCast()
 	end
 	summaryTimer = C_Timer.NewTimer(ACTIVE_GAP + 1, Stats.PrintSessionSummary)
 
-	-- Open on cast, unless the player closed it during this stretch of fishing. In mini mode, the
-	-- slim bar opens instead.
+	-- Open on every cast: closing the window (or the mini bar) only hides it until the next one.
+	-- In mini mode, the slim bar opens instead. Another OneCast page that's open stays open.
 	if ns.db and ns.db.statsMini and ns.Mini then
-		if ns.db.openOnCast and not dismissed then
+		if ns.db.openOnCast then
 			ns.Mini.OnCast()
 		end
 		RefreshIfShown()
-	elseif ns.db and ns.db.openOnCast and not dismissed and not (frame and frame:IsShown())
+	elseif ns.db and ns.db.openOnCast and not (frame and frame:IsShown())
 		and not ns.Hub.IsOpen() then
 		Stats.Show()
 		autoOpened = true
@@ -1226,9 +1216,7 @@ function Stats.CheckPoleOn()
 	if not has or was ~= false or not (ns.db and ns.db.openOnPole) then
 		return
 	end
-	dismissed = false
 	if ns.db.statsMini and ns.Mini then
-		ns.Mini.dismissed = false
 		if not ns.Mini.IsShown() then
 			ns.Mini.Show(true)
 		end
@@ -3968,12 +3956,6 @@ local function CreateWindow()
 	else
 		f:SetPoint("CENTER")
 	end
-	if f.CloseButton then
-		f.CloseButton:HookScript("OnClick", function()
-			dismissed = true
-		end)
-	end
-
 	CreateTabs(f, inset)
 
 	-- Fishing skill: the professions window's rank bar, then the verdict for this zone.
@@ -4483,7 +4465,6 @@ end
 
 function Stats.Toggle(view)
 	if frame and frame:IsShown() and not view then
-		dismissed = true
 		frame:Hide()
 	else
 		Stats.Show(view)

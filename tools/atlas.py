@@ -2,14 +2,22 @@
 reports/*.txt, read and merged into AtlasData.lua (shipped with the addon) and
 reports/summary.md (for you: what's confirmed, what's new, and draft changelog credits).
 
-Usage, from the repository root:  python tools/atlas.py
+Usage, from the repository root:  python tools/atlas.py [--rebuild]
 
 Paste comments into any .txt file under reports/ just as they come off the page: names, "2 hours
 ago", double-spaced lines and all. Reads the report code (OneCast:H,...) that 1.2 and later add,
 and the readable reports of older versions. Each character's newest report counts once: reports
-hold all-time totals. Codes carry a random per-character ID; older reports go by commenter name.
+hold all-time totals. Codes carry a random per-character ID; older reports go by commenter name,
+and a report pasted without its commenter by its own text.
+
+By default the reports are added to the atlas already in AtlasData.lua, so reports/ only needs
+the new ones. What each character added is kept in tools/atlas-ledger.json (commit it with the
+atlas): a character's newer report replaces their older one, and a report already in is skipped.
+The players in the atlas from before the ledger (8, to 23 November 2026) can't be replaced that
+way; their newer reports are added as new players. --rebuild builds the atlas from reports/ alone
+instead, for when every comment is pasted there.
 """
-import re, os, glob, datetime
+import re, os, sys, json, glob, hashlib, datetime
 from collections import defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -208,12 +216,22 @@ def read_pastes(problems):
     return reports
 
 # --- Merging ---------------------------------------------------------------------------------
+def who_of(r):
+    """Which character a report is from: its code's ID, else its commenter, else (pasted without
+    a name) the report's own content, so the same report pasted twice is still one character."""
+    if r["id"]:
+        return "id:" + r["id"]
+    if r["author"]:
+        return "name:" + r["author"]
+    body = json.dumps(contribution(r), sort_keys=True)
+    return "text:" + hashlib.sha1(body.encode("utf-8")).hexdigest()[:16]
+
 def merge(reports):
     """The newest report per character: by code ID, else by commenter. Newest: the latest date,
     then the higher Fishing, then the one higher up the page."""
     newest = {}
     for order, r in enumerate(reports):
-        who = ("id:" + r["id"]) if r["id"] else ("name:" + (r["author"] or f"unknown{order}"))
+        who = who_of(r)
         # CurseForge lists the newest comment first, and a character's skill only rises.
         key = (r["date"], r.get("rank", 0), -order)
         if who not in newest or key > newest[who][0]:
@@ -274,6 +292,122 @@ def judge(key, a):
         verdict = f"at least {low} (fish got away up to {low - 1})"
     return {"low": low, "clean": clean, "listed": listed, "level": level, "verdict": verdict}
 
+# --- Adding to the atlas already there -------------------------------------------------------
+LEDGER = os.path.join(ROOT, "tools", "atlas-ledger.json")
+
+def jkey(k):
+    """A zone key for JSON: area IDs and zone names apart."""
+    return ("i:" + str(k)) if isinstance(k, int) else ("s:" + k)
+
+def unjkey(k):
+    return int(k[2:]) if k.startswith("i:") else k[2:]
+
+def contribution(r):
+    """What one report adds to the atlas, as plain JSON."""
+    return {
+        "zones": {jkey(k): {"catches": z["catches"], "getaways": z["getaways"],
+                            "steps": {str(s): list(cg) for s, cg in sorted(z["steps"].items())},
+                            "items": {str(i): n for i, n in sorted(z["items"].items())}}
+                  for k, z in sorted(r["zones"].items(), key=lambda kv: jkey(kv[0]))},
+        "camp": {k: {"catches": b["catches"], "items": {str(i): n for i, n in sorted(b["items"].items())}}
+                 for k, b in sorted(r["camp"].items())},
+        "containers": {str(i): {"opened": b["opened"], "items": {str(x): n for x, n in sorted(b["items"].items())}}
+                       for i, b in sorted(r["containers"].items())},
+    }
+
+def entry(r):
+    return {"date": r["date"], "rank": r.get("rank", 0), "source": r["source"], "author": r["author"],
+            "contribution": contribution(r)}
+
+def empty_atlas():
+    zones = defaultdict(lambda: {"reports": 0, "catches": 0, "getaways": 0, "steps": defaultdict(lambda: [0, 0]), "items": defaultdict(int)})
+    camp = defaultdict(lambda: {"reports": 0, "catches": 0, "items": defaultdict(int)})
+    containers = defaultdict(lambda: {"opened": 0, "items": defaultdict(int)})
+    return zones, camp, containers
+
+def parse_atlas():
+    """AtlasData.lua back into numbers: players, and zones, camp and containers as build() makes
+    them. Reads the file as write() lays it out."""
+    text = read("AtlasData.lua")
+    zones, camp, containers = empty_atlas()
+    m = re.search(r"players = (\d+)", text)
+    players = int(m.group(1)) if m else 0
+    section = None
+    for line in text.splitlines():
+        s = line.strip()
+        if s in ("zones = {", "camp = {", "containers = {"):
+            section = s.split()[0]
+            continue
+        m = re.match(r'\[(?:(\d+)|"((?:[^"\\]|\\.)*)")\] = \{ (.*) \},(?: --.*)?$', s)
+        if not (m and section):
+            continue
+        key = int(m.group(1)) if m.group(1) else m.group(2).replace('\\"', '"')
+        body = m.group(3)
+        def num(field):
+            f = re.search(r"\b" + field + r" = (\d+)", body)
+            return int(f.group(1)) if f else 0
+        items_at = body.find("items = {")
+        items = dict((int(i), int(n)) for i, n in re.findall(r"\[(\d+)\] = (\d+)", body[items_at:])) if items_at >= 0 else {}
+        if section == "zones":
+            z = zones[key]
+            z["reports"], z["catches"], z["getaways"] = num("reports"), num("catches"), num("getaways")
+            steps_part = body[body.find("steps = {"):items_at if items_at >= 0 else len(body)]
+            for st, c, g in re.findall(r"\[(\d+)\] = \{ (\d+), (\d+) \}", steps_part):
+                z["steps"][int(st)] = [int(c), int(g)]
+            for i, n in items.items():
+                z["items"][i] = n
+        elif section == "camp":
+            camp[key]["reports"], camp[key]["catches"] = num("reports"), num("catches")
+            for i, n in items.items():
+                camp[key]["items"][i] = n
+        elif section == "containers":
+            containers[key]["opened"] = num("opened")
+            for i, n in items.items():
+                containers[key]["items"][i] = n
+    return players, zones, camp, containers
+
+def apply(zones, camp, containers, contrib, sign):
+    """Add (sign 1) or take away (sign -1) what one report contributed."""
+    for jk, z in contrib["zones"].items():
+        a = zones[unjkey(jk)]
+        a["reports"] += sign
+        a["catches"] += sign * z["catches"]
+        a["getaways"] += sign * z["getaways"]
+        for st, (c, g) in z["steps"].items():
+            a["steps"][int(st)][0] += sign * c
+            a["steps"][int(st)][1] += sign * g
+        for i, n in z["items"].items():
+            a["items"][int(i)] += sign * n
+    for k, b in contrib["camp"].items():
+        camp[k]["reports"] += sign
+        camp[k]["catches"] += sign * b["catches"]
+        for i, n in b["items"].items():
+            camp[k]["items"][int(i)] += sign * n
+    for k, b in contrib["containers"].items():
+        containers[int(k)]["opened"] += sign * b["opened"]
+        for i, n in b["items"].items():
+            containers[int(k)]["items"][int(i)] += sign * n
+    # What's left at nothing (a replaced report's zone no one else reported) goes.
+    for key in [k for k, a in zones.items() if a["reports"] <= 0]:
+        del zones[key]
+    for a in zones.values():
+        for st in [st for st, (c, g) in a["steps"].items() if c <= 0 and g <= 0]:
+            del a["steps"][st]
+        for i in [i for i, n in a["items"].items() if n <= 0]:
+            del a["items"][i]
+    for key in [k for k, b in camp.items() if b["reports"] <= 0]:
+        del camp[key]
+    for key in [k for k, b in containers.items() if b["opened"] <= 0]:
+        del containers[key]
+
+def load_ledger():
+    if os.path.exists(LEDGER):
+        return json.load(open(LEDGER, encoding="utf-8"))
+    return {"characters": {}}
+
+def save_ledger(ledger):
+    open(LEDGER, "w", encoding="utf-8", newline="\n").write(json.dumps(ledger, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
+
 # --- Writing ---------------------------------------------------------------------------------
 def lua_key(k):
     return f"[{k}]" if isinstance(k, int) else '["' + k.replace('"', '\\"') + '"]'
@@ -281,11 +415,11 @@ def lua_key(k):
 def lua_map(d):
     return "{ " + ", ".join(f"[{k}] = {v}" for k, v in sorted(d.items()) if v) + " }"
 
-def write(chosen, zones, camp, containers, trainers):
+def write(players, zones, camp, containers):
     today = datetime.date.today().isoformat()
     out = [
         "-- The Forever fishing atlas: generated by tools/atlas.py from players' data reports.",
-        "-- Don't edit by hand: paste new reports into reports/ and run the script again.",
+        "-- Don't edit by hand: paste new reports into reports/ and run the script again (it adds them).",
         "-- zones: [area ID or name] = { reports, catches, getaways, low (none get away from here up),",
         "--   level (set only where Forever's data overrules the listed one), steps, items }.",
         "",
@@ -293,7 +427,7 @@ def write(chosen, zones, camp, containers, trainers):
         "",
         "ns.ATLAS = {",
         f'\tgenerated = "{today}",',
-        f"\tplayers = {len(chosen)},",
+        f"\tplayers = {players},",
         "\tzones = {",
     ]
     for key in sorted(zones, key=lambda k: zone_name(k)):
@@ -321,9 +455,11 @@ def write(chosen, zones, camp, containers, trainers):
     out.append("}")
     open(os.path.join(ROOT, "AtlasData.lua"), "w", encoding="utf-8", newline="\n").write("\n".join(out) + "\n")
 
-def summary(chosen, zones, camp, containers, trainers, problems):
+def summary(chosen, zones, camp, containers, trainers, problems, players, run_note):
+    """chosen: the reports this run put into the atlas (added or replacing), for the credits."""
+    sources = ", ".join(sorted({r["source"] for r in chosen})) or "none"
     lines = [f"# Atlas summary, {datetime.date.today().isoformat()}", "",
-             f"{len(chosen)} players' newest reports, from {', '.join(sorted({r['source'] for r in chosen}))}.", ""]
+             f"{players} players in the atlas. This run: {run_note} (from {sources}).", ""]
     if problems:
         lines += ["## Problems", ""] + [f"- {p}" for p in problems] + [""]
     lines += ["## Zones", "", "| Zone | Listed | Reports | Catches | Getaways | Verdict |", "|---|---|---|---|---|---|"]
@@ -342,13 +478,43 @@ def summary(chosen, zones, camp, containers, trainers, problems):
     open(os.path.join(ROOT, "reports", "summary.md"), "w", encoding="utf-8", newline="\n").write("\n".join(lines) + "\n")
 
 def main():
+    rebuild = "--rebuild" in sys.argv[1:]
     problems = []
     reports = read_pastes(problems)
     chosen = merge(reports)
-    zones, camp, containers, trainers = build(chosen)
-    write(chosen, zones, camp, containers, trainers)
-    summary(chosen, zones, camp, containers, trainers, problems)
-    print(f"{len(reports)} reports read, {len(chosen)} players' newest kept, {len(zones)} zones.")
+    _, _, _, trainers = build(chosen)
+    if rebuild:
+        # From reports/ alone: every comment must be pasted there.
+        zones, camp, containers, _ = build(chosen)
+        players = len(chosen)
+        ledger = {"characters": {who_of(r): entry(r) for r in chosen}}
+        folded, run_note = chosen, f"rebuilt from {len(chosen)} players' newest reports"
+    else:
+        # On top of the atlas already there.
+        players, zones, camp, containers = parse_atlas()
+        ledger = load_ledger()
+        folded, added, replaced, skipped = [], 0, 0, 0
+        for r in chosen:
+            who, new = who_of(r), entry(r)
+            old = ledger["characters"].get(who)
+            if old is not None:
+                # Already in: skip it unless it's this character's newer report.
+                if (new["date"], new["rank"]) < (old["date"], old["rank"]) or new["contribution"] == old["contribution"]:
+                    skipped += 1
+                    continue
+                apply(zones, camp, containers, old["contribution"], -1)
+                replaced += 1
+            else:
+                players += 1
+                added += 1
+            apply(zones, camp, containers, new["contribution"], 1)
+            ledger["characters"][who] = new
+            folded.append(r)
+        run_note = f"{added} added, {replaced} replaced by a newer report, {skipped} already in"
+    write(players, zones, camp, containers)
+    save_ledger(ledger)
+    summary(folded, zones, camp, containers, trainers, problems, players, run_note)
+    print(f"{len(reports)} reports read. {run_note}. {players} players and {len(zones)} zones in the atlas.")
     for p in problems:
         print("problem:", p)
     changed = [(zone_name(k), judge(k, a)) for k, a in zones.items() if judge(k, a)["level"]]

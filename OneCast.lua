@@ -159,7 +159,7 @@ local OPTIONS = ns.Retranslate({
 	{ cmd = "lock", key = "lockWindow", label = L["Lock the window"],
 		tooltip = L["Stop OneCast's window being moved or resized by accident. Turn it off to move it again."] },
 	{ cmd = "autoopen", key = "openOnCast", label = L["Open stats when you cast"],
-		tooltip = L["Open the stats window when you start fishing. If you close it (X or minimap button), it stays closed until you take a 2-minute break from fishing."] },
+		tooltip = L["Open the stats window (or the mini bar) every time you cast. Closing it only hides it until your next cast."] },
 	{ cmd = "openpole", key = "openOnPole", label = L["Open stats when your pole goes on"],
 		tooltip = L["Open the stats window (or the mini bar) every time you equip a fishing pole, even if you closed it while fishing earlier. It won't take over the OneCast window while another page is open."] },
 	{ cmd = "mini", key = "statsMini", label = L["Mini bar instead of the stats window"],

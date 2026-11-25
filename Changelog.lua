@@ -6,6 +6,18 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.2",
+		date = "25 November 2026",
+		sections = {
+			{ "Reported by Wiggles Lightblossom", {
+				{ "Open stats when you cast.", "The stats window (or the mini bar) now opens on every cast. Closing it only hides it until your next cast, instead of keeping it shut until you took a 2-minute break from fishing." },
+			} },
+			{ "The fishing atlas", {
+				{ "More from your reports.", "The Barrens joins the atlas, confirmed at 100, Mulgore has a second report, and the Bloated Glossy Mightfish shows Tanaris, where players' reports caught it. Thank you for sending them!" },
+			} },
+		},
+	},
+	{
 		version = "1.2.1",
 		date = "24 November 2026",
 		sections = {

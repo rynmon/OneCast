@@ -1,0 +1,54 @@
+{
+ "characters": {
+  "text:4b10ec7fd0c36087": {
+   "author": null,
+   "contribution": {
+    "camp": {},
+    "containers": {},
+    "zones": {
+     "i:17": {
+      "catches": 50,
+      "getaways": 9,
+      "items": {},
+      "steps": {
+       "100": [
+        11,
+        0
+       ],
+       "75": [
+        39,
+        9
+       ]
+      }
+     },
+     "i:215": {
+      "catches": 56,
+      "getaways": 0,
+      "items": {},
+      "steps": {
+       "0": [
+        3,
+        0
+       ],
+       "25": [
+        25,
+        0
+       ],
+       "50": [
+        27,
+        0
+       ],
+       "75": [
+        1,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "date": "20261125",
+   "rank": 105,
+   "source": "2026-11-25-mulgore-barrens.txt"
+  }
+ }
+}

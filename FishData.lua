@@ -158,6 +158,7 @@ ns.FISH = {
 	{ id = 21163, name = "Bloated Firefin Snapper", cat = "bloated",
 	},
 	{ id = 21243, name = "Bloated Glossy Mightfish", cat = "bloated",
+		more = { { "Tanaris", "reported" } }, -- caught in Tanaris by two players' data reports (19 and 23 November 2026)
 	},
 	{ id = 6644, name = "Bloated Mackerel", cat = "bloated",
 	},

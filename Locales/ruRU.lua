@@ -54,7 +54,7 @@ L["While you're fishing, the stats window fades to see-through when your mouse i
 L["Lock the window"] = "Закрепить окно"
 L["Stop OneCast's window being moved or resized by accident. Turn it off to move it again."] = "Не даёт случайно сдвинуть окно OneCast или изменить его размер. Выключите, чтобы снова двигать."
 L["Open stats when you cast"] = "Открывать статистику при забросе"
-L["Open the stats window when you start fishing. If you close it (X or minimap button), it stays closed until you take a 2-minute break from fishing."] = "Открывает окно статистики, когда вы начинаете ловить. Если закрыть его (крестик или кнопка у миникарты), оно не откроется до 2-минутного перерыва в ловле."
+L["Open the stats window (or the mini bar) every time you cast. Closing it only hides it until your next cast."] = "Открывает окно статистики (или мини-панель) при каждом забросе. Закрытие скрывает его только до следующего заброса."
 L["Open stats when your pole goes on"] = "Открывать статистику, когда надета удочка"
 L["Open the stats window (or the mini bar) every time you equip a fishing pole, even if you closed it while fishing earlier. It won't take over the OneCast window while another page is open."] = "Открывает окно статистики (или мини-панель) каждый раз, когда вы надеваете удочку, даже если вы закрыли его раньше. Оно не заменит окно OneCast, пока открыта другая страница."
 L["Mini bar instead of the stats window"] = "Мини-панель вместо окна статистики"

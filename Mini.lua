@@ -116,10 +116,9 @@ local function Create()
 	if UI and UI.RememberPosition then
 		UI.RememberPosition(f, "mini")
 	end
-	-- Closed with its X: it stays closed for this stretch of fishing.
+	-- Closed with its X: it no longer counts as opened by itself (so it isn't closed for you later).
 	if f.CloseButton then
 		f.CloseButton:HookScript("OnClick", function()
-			Mini.dismissed = true
 			autoOpened = false
 		end)
 	end
@@ -134,7 +133,6 @@ local function Create()
 	body:SetScript("OnDragStop", function() f:GetScript("OnDragStop")(f) end)
 	body:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
-			Mini.dismissed = true
 			Mini.Hide()
 		elseif ns.Stats and ns.Stats.Show then
 			ns.Stats.Show()
@@ -368,9 +366,6 @@ end
 
 -- From the stats' cast handling: open in place of the window when mini mode is on.
 function Mini.OnCast()
-	if Mini.dismissed then
-		return
-	end
 	if not Mini.IsShown() then
 		Mini.Show(true)
 	else
@@ -386,8 +381,6 @@ events:SetScript("OnEvent", function()
 		if not (ns.HasFishingPole and not ns.HasFishingPole()) then
 			return
 		end
-		-- The pole's off: closing it by hand only lasted this stretch of fishing.
-		Mini.dismissed = false
 		if autoOpened and Mini.IsShown() and ns.db and ns.db.closeOnDone then
 			Mini.Hide()
 		end

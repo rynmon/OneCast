@@ -54,7 +54,7 @@ L["While you're fishing, the stats window fades to see-through when your mouse i
 L["Lock the window"] = "창 잠금"
 L["Stop OneCast's window being moved or resized by accident. Turn it off to move it again."] = "OneCast 창이 실수로 이동하거나 크기가 바뀌지 않게 합니다. 다시 옮기려면 끄세요."
 L["Open stats when you cast"] = "던질 때 통계 열기"
-L["Open the stats window when you start fishing. If you close it (X or minimap button), it stays closed until you take a 2-minute break from fishing."] = "낚시를 시작하면 통계 창을 엽니다. 닫으면(X 또는 미니맵 버튼) 낚시를 2분 쉴 때까지 닫힌 채로 있습니다."
+L["Open the stats window (or the mini bar) every time you cast. Closing it only hides it until your next cast."] = "낚싯줄을 던질 때마다 통계 창(또는 미니 바)을 엽니다. 닫아도 다음에 던질 때까지만 숨겨집니다."
 L["Open stats when your pole goes on"] = "낚싯대를 장착하면 통계 열기"
 L["Open the stats window (or the mini bar) every time you equip a fishing pole, even if you closed it while fishing earlier. It won't take over the OneCast window while another page is open."] = "낚싯대를 장착할 때마다 통계 창(또는 미니 바)을 엽니다. 앞서 낚시 중에 닫았더라도 엽니다. 다른 페이지가 열려 있으면 OneCast 창을 차지하지 않습니다."
 L["Mini bar instead of the stats window"] = "통계 창 대신 미니 바"
