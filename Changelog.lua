@@ -6,6 +6,15 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.4",
+		date = "26 November 2026",
+		sections = {
+			{ "Fixed", {
+				{ "Auto loot on a controller.", "In the gamepad interface, a catch opened a loot window even with auto loot on. OneCast now takes the catch for you whenever auto loot is on, whether the game's setting or Auto loot while fishing." },
+			} },
+		},
+	},
+	{
 		version = "1.2.3",
 		date = "26 November 2026",
 		sections = {

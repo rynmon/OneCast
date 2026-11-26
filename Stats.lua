@@ -540,9 +540,27 @@ Stats.SKILL_STEP = SKILL_STEP
 -- "Fast loot": with auto loot on, every slot taken at once the moment the loot window is ready,
 -- instead of the game's one at a time. Fishing loot and what fished-up containers held only, and
 -- only once OneCast has read what it was.
+-- Auto loot the game didn't do: Forever's gamepad interface opens its own loot window for a catch
+-- even with auto loot on, and says so (LOOT_READY's autoLoot is false). Wanted is the game's
+-- setting, turned around while its loot key (Shift by default) is held, as the game does it.
+local function AutoLootWanted()
+	local on = C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("autoLootDefault") == "1"
+	if IsModifiedClick and IsModifiedClick("AUTOLOOTTOGGLE") then
+		on = not on
+	end
+	return on
+end
+
 function Stats.FastLoot(autoLoot)
-	if not (ns.db and ns.db.fastLoot and autoLoot and LootSlot) then
+	if not LootSlot then
 		return
+	end
+	if autoLoot then
+		if not (ns.db and ns.db.fastLoot) then
+			return -- the game's own auto loot has it
+		end
+	elseif not AutoLootWanted() then
+		return -- auto loot is off: the loot window is wanted
 	end
 	for slot = GetNumLootItems(), 1, -1 do
 		LootSlot(slot)
