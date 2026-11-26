@@ -761,10 +761,10 @@ local CATEGORY = {
 	General = { icon = "Interface\\Icons\\INV_Misc_Gear_01", blurb = L["How OneCast looks, and what it shows where."] },
 	Fishing = { icon = "Interface\\Icons\\Trade_Fishing", blurb = L["How you cast and reel, your pole and fishing gear, and what happens to what you catch."] },
 	Lures = { item = 6533, icon = "Interface\\Icons\\INV_Misc_Orb_03", blurb = L["Which lure OneCast uses on this character, and the tackle box button."] },
-	["While fishing"] = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = L["What you see and hear with your line out: your bobber marked, and the splash over everything else."] },
+	["While fishing"] = { icon = "Interface\\Icons\\INV_Misc_Horn_01", blurb = L["What you see and hear with your line out: your bobber marked, the splash over everything else, and less in the way of the water."] },
 	Controller = { icon = "Interface\\Icons\\INV_Misc_EngGizmos_17", blurb = L["Fish with a controller: the button that casts and reels, the one that opens OneCast, prompts and rumble."] },
-	Accessibility = { icon = "Interface\\Icons\\INV_Misc_Spyglass_03", blurb = L["Bigger text and controller buttons, ticks on what you have, and calmer windows with less moving."] },
-	["Stats and sessions"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = L["The stats window and mini bar, and when a fishing session starts and ends."] },
+	Accessibility = { icon = "Interface\\Icons\\INV_Misc_Spyglass_03", blurb = L["Bigger text and controller buttons, shaded rows, and calmer windows with less moving."] },
+	["Stats and sessions"] = { icon = "Interface\\Icons\\INV_Misc_Book_09", blurb = L["When the stats window, mini bar and catch window open and close, the window lock, and when a fishing session starts and ends."] },
 	["Alerts"] = { icon = "Interface\\Icons\\INV_Misc_Bell_01", blurb = L["Rare catch alerts, wanted catches, skill-ups and reminders."] },
 }
 

@@ -752,6 +752,60 @@ if C_Container and C_Container.UseContainerItem then
 end
 Stats.NoteOpened = NoteOpened -- for the tests
 
+-- Open with the cast key (openWithCast): a press of the cast key opens the next fished-up clam,
+-- bloated fish or unlocked crate in the bags before it casts again. Only one that holds loot (a
+-- locked trunk doesn't until it's picked), with a free bag slot for what's inside and no loot
+-- window open. One still in its slot after it was opened (its loot didn't fit, or was left) is
+-- skipped for a minute, so a press can never keep you from fishing.
+local OPEN_RETRY = 60 -- seconds one that didn't open is left alone
+local skipUntil = {}  -- "bag:slot" -> GetTime() until which it's skipped
+local tried           -- the last one opened: { key, id, count, at }
+
+local function FreeBagSlots()
+	local free = 0
+	for bag = 0, NUM_BAG_SLOTS or 4 do
+		local n, family = C_Container.GetContainerNumFreeSlots(bag)
+		if (family or 0) == 0 then
+			free = free + (n or 0)
+		end
+	end
+	return free
+end
+
+-- A press of the cast key, out of combat with the pole on: a macro that opens one, or nil to cast.
+function Stats.OpenPress()
+	if not (ns.db and ns.db.openWithCast and C_Container and C_Container.GetContainerItemInfo) then
+		return nil
+	end
+	if (GetNumLootItems and GetNumLootItems() > 0) or FreeBagSlots() < 1 then
+		return nil
+	end
+	local now = GetTime()
+	for bag = 0, NUM_BAG_SLOTS or 4 do
+		for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
+			local id = C_Container.GetContainerItemID(bag, slot)
+			if id and Openable(id) then
+				local key = bag .. ":" .. slot
+				local info = C_Container.GetContainerItemInfo(bag, slot)
+				local count = type(info) == "table" and info.stackCount or 1
+				-- Opened a moment ago and still all there: it didn't open, so it waits.
+				if tried and tried.key == key and tried.id == id and count >= tried.count
+					and now - tried.at > Containers.WINDOW and now - tried.at < OPEN_RETRY then
+					skipUntil[key] = now + OPEN_RETRY
+					tried = nil
+				end
+				if (skipUntil[key] or 0) <= now and type(info) == "table" and info.hasLoot ~= false
+					and not info.isLocked then
+					tried = { key = key, id = id, count = count, at = now }
+					NoteOpened(bag, slot) -- what's inside counts for it, as if opened by hand
+					return string.format("/use %d %d", bag, slot)
+				end
+			end
+		end
+	end
+	return nil
+end
+
 -- The items to price for a set of totals: the containers that were opened swapped for what they held.
 Worth = function(totals)
 	if not (totals.opened or totals.contents) then

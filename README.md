@@ -22,6 +22,7 @@ Every cast, reel and lure is still your own press. OneCast never fishes for you.
 - Your keys go straight back to normal when the line comes in or combat starts.
 - **Auto loot while fishing:** auto loot comes on with your pole and goes back to how you had it after.
 - **Fast loot:** takes the whole catch the moment the loot window opens, quicker than the game's own auto loot. Only fishing loot and what's inside the trunks and crates you fish up.
+- **Open clams with the cast key:** turn it on and each press opens a clam, bloated fish or unlocked crate you fished up before it casts again, so you don't have to dig through your bags.
 - Warns you when you cast with full bags.
 
 ### 🎮 Controller support

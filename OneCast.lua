@@ -69,6 +69,7 @@ local defaults = {
 	autoLootHint = true,
 	autoLootFishing = false,
 	fastLoot = false,
+	openWithCast = false,
 	padFishing = true,   -- a controller button casts and reels while the pole is on
 	padButton = "PAD1",  -- A / Cross
 	padStart = "both",   -- LT + RT + the button works with no pole on
@@ -176,6 +177,8 @@ local OPTIONS = ns.Retranslate({
 		tooltip = L["Turn the game's auto loot on while your fishing pole is equipped, so catches go straight to your bags, and back to how you had it when your weapons go back on. Auto loot that's already on stays on."] },
 	{ cmd = "fastloot", key = "fastLoot", label = L["Fast loot"],
 		tooltip = L["With auto loot on, take a catch the instant its loot window opens, all at once, quicker than the game's own auto loot takes it item by item. Only fishing loot and what's inside the trunks and crates you fish up; other loot is left to the game."] },
+	{ cmd = "openclams", key = "openWithCast", label = L["Open clams with the cast key"],
+		tooltip = L["With your pole on, the cast key opens a clam, bloated fish or unlocked crate you fished up before it casts again, one each press, so you don't have to open them in your bags. Not with your bags full or a loot window open, and one that won't open is left for a minute, so it never stops you fishing."] },
 	{ cmd = "autoloot", key = "autoLootHint", label = L["Offer to turn on auto loot"],
 		tooltip = L["If auto loot is off when you catch something, offer once per login to turn it on, so catches go straight to your bags."] },
 	{ cmd = "alertsound", key = "alertSound", label = L["Play a sound with it"],
@@ -189,7 +192,7 @@ local OPTIONS = ns.Retranslate({
 	{ cmd = "alert", key = "alert", label = L["Rare catch alert"],
 		tooltip = L["Sound and a raid-warning flash when you catch something at or above the alert quality, Wanted fish have their own alert."] },
 	{ cmd = "pools", key = "rememberPools", label = L["Remember fishing pools"],
-		tooltip = L["Hover over a fishing pool with your pole on and cast, and the spot you fished it from is marked on the collection book's zone maps. Pools move, so a mark shows where one has been. English pool names only. /onecast forgetpools clears them."] },
+		tooltip = L["Hover over a fishing pool with your pole on and cast, and the spot you fished it from is marked on the collection book's zone maps. Pools move, so a mark shows where one has been. Not on Portuguese or Italian clients yet: the game's names for pools there aren't known. /onecast forgetpools clears them."] },
 	{ cmd = "campreminder", key = "campReminder", label = L["Camp buff reminders"],
 		tooltip = L["Say in chat when the Uncommon or Rare Fishing buff from a Fishing Rack or Fishing Hut wears off. The Camp page has more on camps."] },
 	{ cmd = "extravaganza", key = "extravaganza", label = L["Fishing Extravaganza reminders"],
@@ -217,7 +220,7 @@ local OPTION_PAGES = {
 	{ name = "Fishing",
 		{ "Casting", "castKey", "doubleClick", "softInteract" },
 		{ "Pole and gear", "autoEquip", "fishingOutfit", "restoreDelay", "restoreOnCombat" },
-		{ "Loot and bags", "autoLootFishing", "fastLoot", "autoLootHint", "bagWarning", "junkMode", "auctionSource" },
+		{ "Loot and bags", "autoLootFishing", "fastLoot", "openWithCast", "autoLootHint", "bagWarning", "junkMode", "auctionSource" },
 	},
 	{ name = "Lures",
 		{ "Your lure", "lureChoice", "conjuredFirst", "autoLure" },
@@ -226,7 +229,7 @@ local OPTION_PAGES = {
 	{ name = "While fishing",
 		{ "Your bobber", "bobberMarker", "bobberStyle", "beamColor", "bobberHeight" },
 		{ "Sound", "soundBoost", "quietOthers", "quietLevel" },
-		{ "Immersion", "cleanView" },
+		{ "Immersion", "cleanView", "fadeStats" },
 	},
 	{ name = "Controller",
 		{ "Fishing button", "padFishing", "padButton", "padStart", "padWindow" },
@@ -234,17 +237,18 @@ local OPTION_PAGES = {
 	},
 	{ name = "Accessibility",
 		{ "Text and buttons", "largerText", "rowShading", "glyphSize" },
-		{ "Collection and gear", "collectionTicks" },
 		{ "Motion", "reduceMotion" },
 	},
 	{ name = "Stats and sessions",
-		{ "Windows", "openOnCast", "openOnPole", "statsMini", "catchWindow", "closeOnDone", "doneCloses", "escapeCloses", "fadeStats" },
+		{ "Windows", "openOnCast", "openOnPole", "statsMini", "catchWindow", "closeOnDone", "doneCloses", "escapeCloses", "lockWindow" },
 		{ "Sessions", "sessionStart", "sessionBreak", "sessionSummary" },
 	},
 	{ name = "Alerts",
-		{ "Alerts and reminders", "alert", "alertSound", "alertQuality", "skillToast", "goalAlerts", "newCatchMessage", "extravaganza", "campReminder", "foodReminder" },
+		{ "Alerts", "alert", "alertSound", "alertQuality", "goalAlerts", "newCatchMessage", "skillToast" },
+		{ "Reminders", "foodReminder", "campReminder", "extravaganza" },
 	},
 }
+-- Pages don't scroll: each must fit the window (about 554 px, at 24 a row and 40 a section).
 -- l10n: end
 -- Greyed out and indented while the option they belong to is off.
 -- { key, value }: the setting belongs to that choice, and is greyed out unless it's chosen.
@@ -504,8 +508,8 @@ local CHOICES = ns.Retranslate({
 -- The options on the main page, before OPTION_PAGES, for the window's Options page.
 -- l10n: keys (page and section names are keys: Hub.lua translates them as it shows them)
 local OPTION_MAIN = {
-	{ "Look", "theme", "themeEffects", "tabSide", "statsScale" },
-	{ "General", "language", "lockWindow", "minimapButton", "tabBadges", "loginMessage" },
+	{ "Look", "theme", "themeEffects", "tabSide", "statsScale", "collectionTicks" },
+	{ "General", "language", "minimapButton", "tabBadges", "loginMessage" },
 	{ "Tooltips and map", "catchTooltip", "poolTooltip", "mapStrip", "rememberPools" },
 }
 -- l10n: end
@@ -895,6 +899,16 @@ button:HookScript("PreClick", function(self, _, down)
 		self:SetAttribute("type", nil)
 		equippingPress = down
 		return
+	end
+	-- A fished-up clam in the bags (Open clams with the cast key): this press opens it instead.
+	-- Never while a lure is going on: using an item would cut its cast short.
+	if HasFishingPole() and not ns.Lure.IsCasting() then
+		local open = ns.Stats.OpenPress and ns.Stats.OpenPress()
+		if open then
+			self:SetAttribute("type", "macro")
+			self:SetAttribute("macrotext", open)
+			return
+		end
 	end
 	-- A lure wanted, or one going on: this press applies it or waits, instead of casting.
 	local lure = ns.Lure.CastPress(down)

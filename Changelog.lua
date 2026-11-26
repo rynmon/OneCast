@@ -6,6 +6,21 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.3",
+		date = "26 November 2026",
+		sections = {
+			{ "Reported by user_8699sa1cm7z8eqgy", {
+				{ "Open clams with the cast key.", "A new option (Options, Fishing, Loot and bags) opens a clam, bloated fish or unlocked crate you fished up with your next press of the cast key, before it casts again. It leaves them alone while your bags are full or a loot window is open, so it never stops you fishing." },
+			} },
+			{ "Improved", {
+				{ "Tidier options.", "A few settings moved to where you'd look for them: Lock the window is with the other window settings in Stats and sessions, Fade stats while fishing is under While fishing, Ticks on what you've caught is under General's Look, and Alerts are split into alerts and reminders." },
+			} },
+			{ "Fixed", {
+				{ "Pools in other languages.", "The Remember fishing pools setting no longer says it works with English pool names only: it works in every language except Portuguese and Italian." },
+			} },
+		},
+	},
+	{
 		version = "1.2.2",
 		date = "25 November 2026",
 		sections = {

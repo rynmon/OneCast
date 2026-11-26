@@ -1018,9 +1018,10 @@ end
 local function ScanGear()
 	for bag = 0, NUM_BAG_SLOTS or 4 do
 		for slot = 1, C_Container.GetContainerNumSlots(bag) do
-			local info = C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
-			if info and info.itemID then
-				CheckItem(info.itemID, info.hyperlink)
+			-- Every bag change runs this: the ID alone (no table made) settles items seen before.
+			local id = C_Container.GetContainerItemID(bag, slot)
+			if id and not checked[id] then
+				CheckItem(id, C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(bag, slot))
 			end
 		end
 	end
