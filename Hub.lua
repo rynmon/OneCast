@@ -1076,6 +1076,47 @@ local function CreateOptions()
 		return line
 	end
 
+	-- A second key of your own that fishes only while the pole is on, and is itself otherwise.
+	local POLE_KEY_TIP = L["Optional: a second key that casts and reels only while your fishing pole is on. The rest of the time "]
+		.. L["it does what it always does: choose Space, and Space jumps again once your weapons are back on. "]
+		.. L["In a fight it's always back to normal. As it's only OneCast's with the pole on, it can't put your pole on: "]
+		.. L["the cast and reel key does that, and can be another key or left unbound."]
+		.. L["\n\nClick the button, then press the key. Right-click clears it."]
+	local function PoleKeyRow()
+		local line = Line("poleKey")
+		line:EnableMouse(true)
+		local text = line:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		text:SetPoint("LEFT", LABEL_LEFT, 0)
+		text:SetPoint("RIGHT", -(CONTROL_WIDTH + 8), 0)
+		text:SetJustifyH("LEFT")
+		text:SetWordWrap(false)
+		text:SetText(L["Key while your pole is on"])
+		local O = ns.Onboarding
+		local button = O.CaptureButton(line, CONTROL_WIDTH, ROW - 2, function()
+			f:Refresh()
+		end, { pole = true, unbound = "|cff9d9d9d" .. L["Optional|r"] })
+		button:SetPoint("RIGHT", -2, 0)
+		local function Now()
+			return O.PoleKeyText() or L["none"]
+		end
+		local function Enter()
+			Hover(line, L["Key while your pole is on"], POLE_KEY_TIP, Now())
+		end
+		line:SetScript("OnEnter", Enter)
+		line:SetScript("OnLeave", Unhover)
+		button:HookScript("OnEnter", Enter)
+		button:HookScript("OnLeave", function() Unhover(line) end)
+		button:HookScript("OnClick", Enter)
+		if ns.Controller then
+			ns.Controller.NoStop(line) -- the button's the stop
+		end
+		line.Update = function()
+			button:Refresh()
+		end
+		line.SetActive = function() end
+		return line
+	end
+
 	-- A setting with a value: the game's page arrows either side of it.
 	local function ChoiceRow(key, spec)
 		local line = Line(key)
@@ -1293,6 +1334,8 @@ local function CreateOptions()
 			local row
 			if key == "castKey" then
 				row = KeyRow()
+			elseif key == "poleKey" then
+				row = PoleKeyRow()
 			elseif choices[key] then
 				row = choices[key].list and ChoiceRow(key, choices[key]) or SliderRow(key, choices[key])
 			elseif byKey[key] then

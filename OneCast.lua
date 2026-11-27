@@ -70,6 +70,7 @@ local defaults = {
 	autoLootFishing = false,
 	fastLoot = false,
 	openWithCast = false,
+	poleKey = false,     -- a key that casts only while the pole is on ("SPACE"), or false
 	padFishing = true,   -- a controller button casts and reels while the pole is on
 	padButton = "PAD1",  -- A / Cross
 	padStart = "both",   -- LT + RT + the button works with no pole on
@@ -218,7 +219,7 @@ local OPTIONS = ns.Retranslate({
 -- l10n: keys (page and section names are keys: Hub.lua translates them as it shows them)
 local OPTION_PAGES = {
 	{ name = "Fishing",
-		{ "Casting", "castKey", "doubleClick", "softInteract" },
+		{ "Casting", "castKey", "poleKey", "doubleClick", "softInteract" },
 		{ "Pole and gear", "autoEquip", "fishingOutfit", "restoreDelay", "restoreOnCombat" },
 		{ "Loot and bags", "autoLootFishing", "fastLoot", "openWithCast", "autoLootHint", "bagWarning", "junkMode", "auctionSource" },
 	},
@@ -554,6 +555,7 @@ local QUIET_CVARS = { "Sound_MusicVolume", "Sound_AmbienceVolume", "Sound_Dialog
 -- Separate owners so dropping the double-click override never drops the reel one.
 local reelOwner = CreateFrame("Frame")
 local clickOwner = CreateFrame("Frame")
+local poleKeyOwner = CreateFrame("Frame") -- "Key while your pole is on"
 
 -- OneCast's small print -------------------------------------------------------------------------
 -- Its own font objects, which every OneCast window uses for its text. A font object's changes
@@ -735,6 +737,30 @@ local function HasFishingPole()
 end
 ns.HasFishingPole = HasFishingPole
 
+-- "Key while your pole is on": a key of your own that casts and reels only with the pole on, and
+-- otherwise does what it always has (Space jumps). An override binding, never saved, so the
+-- game's own key bindings aren't touched. Out of combat only: combat gives the key back.
+local function UpdatePoleKey()
+	if InCombatLockdown() then
+		return
+	end
+	ClearOverrideBindings(poleKeyOwner)
+	if db and db.poleKey and HasFishingPole() then
+		SetOverrideBindingClick(poleKeyOwner, false, db.poleKey, BUTTON_NAME)
+	end
+end
+ns.UpdatePoleKey = UpdatePoleKey
+
+-- Every key that casts now: the game's bindings for it, and the pole key while the pole is on.
+function ns.CastKeys()
+	local keys = { GetBindingKey(BINDING_COMMAND) }
+	local pole = db and db.poleKey
+	if pole and HasFishingPole() and not tContains(keys, pole) then
+		keys[#keys + 1] = pole
+	end
+	return keys
+end
+
 local function LeaseCVars(group, cvars)
 	local leased = leases[group]
 	for name, value in pairs(cvars) do
@@ -845,7 +871,7 @@ local function StartReelMode()
 	if db.soundBoost then
 		LeaseCVars("cast", SOUND_CVARS)
 	end
-	for _, key in ipairs({ GetBindingKey(BINDING_COMMAND) }) do
+	for _, key in ipairs(ns.CastKeys()) do
 		SetOverrideBinding(reelOwner, true, key, "INTERACTTARGET")
 	end
 	-- A controller's fishing button reels too: its cast binding steps aside first.
@@ -949,8 +975,7 @@ WorldFrame:HookScript("OnMouseDown", function(_, mouseButton)
 end)
 
 local function BoundKeysText()
-	local keys = { GetBindingKey(BINDING_COMMAND) }
-	return #keys > 0 and table.concat(keys, ", ") or L["not bound"]
+	return ns.Onboarding.KeyText(true) or L["not bound"]
 end
 
 -- Minimap button: a plain round button orbiting the minimap, dragged to any angle.
@@ -1245,8 +1270,8 @@ function ns.FillTooltip(tip, isMinimap)
 	tip:AddDoubleLine(L["OneCast"], "v" .. ns.VERSION, 1, 1, 1, GREY[1], GREY[2], GREY[3])
 	tip:AddLine(" ")
 
-	local keys = { GetBindingKey(BINDING_COMMAND) }
-	Row(L["Cast / reel"], #keys > 0 and table.concat(keys, ", ") or L["not bound"], #keys > 0 and WHITE or RED)
+	local keys = ns.Onboarding.KeyText(true)
+	Row(L["Cast / reel"], keys or L["not bound"], keys and WHITE or RED)
 	local session = ns.Stats.Summary()
 	Row(L["Session"], session or L["nothing yet"], session and WHITE or GREY)
 	local lure, problem = ns.Lure.StatusLine()
@@ -1575,6 +1600,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 		if event == "PLAYER_LOGIN" then
 			UpdateQuiet() -- logged in with the pole on
 			UpdateLoot()
+			UpdatePoleKey()
 		end
 		if event == "PLAYER_LOGIN" and ns.Onboarding then
 			ns.Onboarding.OnLogin() -- no cast key yet: the welcome, to choose one
@@ -1601,15 +1627,18 @@ events:SetScript("OnEvent", function(_, event, ...)
 			StopWatch()
 			LineIn()
 		end
+		UpdatePoleKey() -- the gear's known by now, if it wasn't at login
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		ns.Gear.OnCombatStart()
 		-- Last chance before lockdown: give every key back to its normal binding.
 		fishing = false
 		ClearOverrideBindings(reelOwner)
 		ClearOverrideBindings(clickOwner)
+		ClearOverrideBindings(poleKeyOwner) -- Space jumps again in a fight
 		ReleaseCVars("cast") -- the quiet ones follow the pole, which combat puts away
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		ApplyFishingSpell()
+		UpdatePoleKey()
 		-- A line still out: combat took the reel key away, and pressing it now would recast.
 		local _, _, _, _, _, _, _, spellID = UnitChannelInfo("player")
 		if IsFishingSpell(spellID) then
@@ -1620,6 +1649,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" then
 		UpdateQuiet()
 		UpdateLoot()
+		UpdatePoleKey()
 	elseif event == "PLAYER_LOGOUT" then
 		-- CVars are saved on logout; never save ours.
 		ReleaseCVars("cast")

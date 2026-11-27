@@ -178,6 +178,11 @@ function Search.Find(query)
 			Add("setting", "castKey", name, name .. GREY .. L[" (setting, Fishing)|r"], ns.Onboarding.Show)
 		end
 	end
+	-- The key while your pole is on: OneCast's own, on the Fishing page under the cast key.
+	local poleKey = L["Key while your pole is on"]
+	if Has(poleKey, query) then
+		Add("setting", "poleKey", poleKey, poleKey .. GREY .. L[" (setting, Fishing)|r"], OpenSetting("Fishing"))
+	end
 	for key, spec in pairs(ns.OPTION_CHOICES or {}) do
 		if Has(spec.label, query) and where[key] then
 			Add("setting", key, spec.label, spec.label .. GREY .. string.format(L[" (setting, %s)|r"], L[where[key]]), OpenSetting(where[key]))

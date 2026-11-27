@@ -18,6 +18,7 @@ Every cast, reel and lure is still your own press. OneCast never fishes for you.
 ### 🎣 One-button fishing
 - One key casts, then the same key reels in your bobber using the game's soft-interact.
 - With no pole on, the key equips the best one in your bags.
+- **Key while your pole is on (optional):** a second key, such as Space, that casts and reels only while your pole is on and does its usual job (jumping) the rest of the time and in a fight. The game's own key bindings aren't changed. Set it under the cast key in **Options → Fishing**.
 - Your weapons are remembered and put back after a break (you choose how long), when combat starts, or with **Done fishing**.
 - Your keys go straight back to normal when the line comes in or combat starts.
 - **Auto loot while fishing:** auto loot comes on with your pole and goes back to how you had it after.

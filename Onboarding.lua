@@ -28,20 +28,48 @@ local function Command()
 	return ns.BINDING_COMMAND or "CLICK OneCastButton:LeftButton"
 end
 
--- The keys that cast, as the game shows them ("Shift-F"), or nil.
-function Onboarding.KeyText()
-	local keys = { GetBindingKey(Command()) }
-	if #keys == 0 then
-		return nil
-	end
-	for i, key in ipairs(keys) do
-		keys[i] = GetBindingText and GetBindingText(key) or key
-	end
-	return table.concat(keys, ", ")
+local function KeyName(key)
+	return GetBindingText and GetBindingText(key) or key
 end
 
+-- The keys that cast, as the game shows them ("Shift-F"), or nil. With `withPole`, the key
+-- while your pole is on as well ("F, Space with your pole on").
+function Onboarding.KeyText(withPole)
+	local keys = { GetBindingKey(Command()) }
+	for i, key in ipairs(keys) do
+		keys[i] = KeyName(key)
+	end
+	local pole = withPole and ns.db and ns.db.poleKey
+	if pole then
+		keys[#keys + 1] = string.format(L["%s with your pole on"], KeyName(pole))
+	end
+	return #keys > 0 and table.concat(keys, ", ") or nil
+end
+
+-- Is there a key to fish with, for all time or while the pole is on?
 function Onboarding.Bound()
-	return GetBindingKey(Command()) ~= nil
+	return GetBindingKey(Command()) ~= nil or (ns.db and ns.db.poleKey) and true or false
+end
+
+-- The key while your pole is on, as the game shows it, or nil.
+function Onboarding.PoleKeyText()
+	local pole = ns.db and ns.db.poleKey
+	return pole and KeyName(pole) or nil
+end
+
+-- Make `key` the key while your pole is on (OneCast's own setting, not a game binding), or with
+-- no key, none. Returns true, or false and why not.
+function Onboarding.BindPole(key)
+	if InCombatLockdown() then
+		return false, L["not in combat"]
+	end
+	if ns.db then
+		ns.db.poleKey = key or false
+	end
+	if ns.UpdatePoleKey then
+		ns.UpdatePoleKey()
+	end
+	return true
 end
 
 -- `key` with whatever modifiers are held, as the game writes them: ALT-CTRL-SHIFT-F.
@@ -97,8 +125,23 @@ end
 
 local function Finish(button, key)
 	StopCapture(button)
+	local text = KeyName(key)
+	if button.pole then
+		local ok, why = Onboarding.BindPole(key)
+		if not ok then
+			ns.Print(L["couldn't set the cast key: "] .. why .. ".")
+			return
+		end
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		ns.Print(string.format(L["%s casts and reels while your pole is on, and does what it always does the rest of the time."],
+			WHITE .. text .. "|r"))
+		button:Refresh()
+		if button.onChange then
+			button.onChange(text)
+		end
+		return
+	end
 	local ok, detail = Onboarding.Bind(key)
-	local text = GetBindingText and GetBindingText(key) or key
 	if not ok then
 		ns.Print(L["couldn't set the cast key: "] .. detail .. ".")
 		return
@@ -147,26 +190,49 @@ local function StartCapture(button)
 	end)
 end
 
+-- `labels.pole`: the button sets the key while your pole is on instead, and a right-click clears it.
 function Onboarding.CaptureButton(parent, width, height, onChange, labels)
 	local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 	b:SetSize(width, height)
-	b:RegisterForClicks("LeftButtonUp")
-	b.onChange = onChange
 	labels = labels or {}
+	b.pole = labels.pole
+	-- Not "AnyUp": a side or middle mouse button chosen as the key would end the capture on its
+	-- press, then start another on its release.
+	if b.pole then
+		b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	else
+		b:RegisterForClicks("LeftButtonUp")
+	end
+	b.onChange = onChange
 	function b:Refresh()
 		if capturing == self then
 			return
 		end
-		local text = Onboarding.KeyText()
+		local text
+		if self.pole then
+			text = Onboarding.PoleKeyText()
+		else
+			text = Onboarding.KeyText()
+		end
 		if text then
 			self:SetText(labels.bound and labels.bound(text) or text)
 		else
 			self:SetText(labels.unbound or (RED .. L["Not bound|r"]))
 		end
 	end
-	b:SetScript("OnClick", function(self)
+	b:SetScript("OnClick", function(self, mouse)
 		if capturing == self then
 			StopCapture(self) -- a second click calls it off
+		elseif self.pole and mouse == "RightButton" then
+			-- Right-click: no key while the pole is on.
+			if Onboarding.PoleKeyText() and Onboarding.BindPole(nil) then
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+				ns.Print(L["no key while your pole is on now."])
+				self:Refresh()
+				if self.onChange then
+					self.onChange(nil)
+				end
+			end
 		else
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 			StartCapture(self)

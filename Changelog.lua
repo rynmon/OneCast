@@ -6,6 +6,15 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.6",
+		date = "27 November 2026",
+		sections = {
+			{ "New", {
+				{ "A fishing key that's only borrowed.", "An optional key that casts and reels only while your pole is on. Pick any key you already use: when you put your weapons back on or get into a fight, it goes back to its usual job. Choose Space, for example, and it fishes with your pole on and jumps the rest of the time. Find it in Options > Fishing, under your cast key. Thanks to Amenitra for the idea!" },
+			} },
+		},
+	},
+	{
 		version = "1.2.5",
 		date = "27 November 2026",
 		sections = {
