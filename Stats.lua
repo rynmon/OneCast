@@ -772,12 +772,14 @@ Stats.NoteOpened = NoteOpened -- for the tests
 
 -- Open with the cast key (openWithCast): a press of the cast key opens the next fished-up clam,
 -- bloated fish or unlocked crate in the bags before it casts again. Only one that holds loot (a
--- locked trunk doesn't until it's picked), with a free bag slot for what's inside and no loot
--- window open. One still in its slot after it was opened (its loot didn't fit, or was left) is
--- skipped for a minute, so a press can never keep you from fishing.
+-- locked trunk doesn't until it's picked), with a free bag slot for what's inside (with the bags
+-- full it says why, once) and no loot window open. One still in its slot after it was opened
+-- (its loot didn't fit, or was left) is skipped for a minute, so a press can never keep you from
+-- fishing.
 local OPEN_RETRY = 60 -- seconds one that didn't open is left alone
 local skipUntil = {}  -- "bag:slot" -> GetTime() until which it's skipped
 local tried           -- the last one opened: { key, id, count, at }
+local fullWarned      -- told the bags are too full to open one, until there's room again
 
 local function FreeBagSlots()
 	local free = 0
@@ -795,8 +797,12 @@ function Stats.OpenPress()
 	if not (ns.db and ns.db.openWithCast and C_Container and C_Container.GetContainerItemInfo) then
 		return nil
 	end
-	if (GetNumLootItems and GetNumLootItems() > 0) or FreeBagSlots() < 1 then
+	if GetNumLootItems and GetNumLootItems() > 0 then
 		return nil
+	end
+	local full = FreeBagSlots() < 1
+	if not full then
+		fullWarned = false
 	end
 	local now = GetTime()
 	for bag = 0, NUM_BAG_SLOTS or 4 do
@@ -814,6 +820,15 @@ function Stats.OpenPress()
 				end
 				if (skipUntil[key] or 0) <= now and type(info) == "table" and info.hasLoot ~= false
 					and not info.isLocked then
+					if full then
+						-- No room for what's inside: say so once (with the bag warning), and cast.
+						if not fullWarned and ns.db.bagWarning and ns.Print then
+							fullWarned = true
+							ns.Print(string.format(L["your bags are full, so the cast key can't open %s. Make room and it will."],
+								info.hyperlink or C_Item.GetItemNameByID(id) or "?"))
+						end
+						return nil
+					end
 					tried = { key = key, id = id, count = count, at = now }
 					NoteOpened(bag, slot) -- what's inside counts for it, as if opened by hand
 					return string.format("/use %d %d", bag, slot)

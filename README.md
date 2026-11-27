@@ -22,7 +22,7 @@ Every cast, reel and lure is still your own press. OneCast never fishes for you.
 - Your keys go straight back to normal when the line comes in or combat starts.
 - **Auto loot while fishing:** auto loot comes on with your pole and goes back to how you had it after.
 - **Fast loot:** takes the whole catch the moment the loot window opens, quicker than the game's own auto loot. Only fishing loot and what's inside the trunks and crates you fish up.
-- **Open clams with the cast key:** turn it on and each press opens a clam, bloated fish or unlocked crate you fished up before it casts again, so you don't have to dig through your bags.
+- **Cast key opens containers:** turn it on and each press opens a clam, bloated fish or unlocked crate you fished up before it casts again, so you don't have to dig through your bags. With your bags full it casts instead, and says why once.
 - Warns you when you cast with full bags.
 
 ### 🎮 Controller support
@@ -122,6 +122,7 @@ And around it:
 
 - The four Fishing ranks, Apprentice to Artisan: where you stand and how many catches to your cap, and for each rank how and where to learn it and where to fish at that stage.
 - **Show on map** sets a waypoint to Expert's book in Booty Bay and to Nat Pagle for the Artisan quest. Nat's four fish tick off as you catch them.
+- **Luremaster:** under the ranks, the Legacy system's fishing perk: whether you've learned it, your rank (25% or 50% chance of an extra fish while a lure is on), and how many extra fish it's given you.
 
 ### 🏕️ Fishing at camp
 ![The Camp page: the Fish Bowl, Fishing Rack and Fishing Hut with their reagents and where the blueprints drop, your camp buff right now, the campfires, and what you caught with each buff on](https://raw.githubusercontent.com/rynmon/OneCast/main/assets/screenshots/camp.png?v=1.0.8)

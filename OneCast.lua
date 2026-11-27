@@ -177,7 +177,7 @@ local OPTIONS = ns.Retranslate({
 		tooltip = L["Turn the game's auto loot on while your fishing pole is equipped, so catches go straight to your bags, and back to how you had it when your weapons go back on. Auto loot that's already on stays on."] },
 	{ cmd = "fastloot", key = "fastLoot", label = L["Fast loot"],
 		tooltip = L["With auto loot on, take a catch the instant its loot window opens, all at once, quicker than the game's own auto loot takes it item by item. Only fishing loot and what's inside the trunks and crates you fish up; other loot is left to the game."] },
-	{ cmd = "openclams", key = "openWithCast", label = L["Open clams with the cast key"],
+	{ cmd = "openclams", key = "openWithCast", label = L["Cast key opens containers"],
 		tooltip = L["With your pole on, the cast key opens a clam, bloated fish or unlocked crate you fished up before it casts again, one each press, so you don't have to open them in your bags. Not with your bags full or a loot window open, and one that won't open is left for a minute, so it never stops you fishing."] },
 	{ cmd = "autoloot", key = "autoLootHint", label = L["Offer to turn on auto loot"],
 		tooltip = L["If auto loot is off when you catch something, offer once per login to turn it on, so catches go straight to your bags."] },
@@ -248,7 +248,7 @@ local OPTION_PAGES = {
 		{ "Reminders", "foodReminder", "campReminder", "extravaganza" },
 	},
 }
--- Pages don't scroll: each must fit the window (about 554 px, at 24 a row and 40 a section).
+-- A page scrolls past about 554 px (24 a row, 40 a section), but one that fits reads better.
 -- l10n: end
 -- Greyed out and indented while the option they belong to is off.
 -- { key, value }: the setting belongs to that choice, and is greyed out unless it's chosen.
@@ -900,7 +900,7 @@ button:HookScript("PreClick", function(self, _, down)
 		equippingPress = down
 		return
 	end
-	-- A fished-up clam in the bags (Open clams with the cast key): this press opens it instead.
+	-- A fished-up clam in the bags (Cast key opens containers): this press opens it instead.
 	-- Never while a lure is going on: using an item would cut its cast short.
 	if HasFishingPole() and not ns.Lure.IsCasting() then
 		local open = ns.Stats.OpenPress and ns.Stats.OpenPress()

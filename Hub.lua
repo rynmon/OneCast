@@ -971,6 +971,12 @@ local function CreateOptions()
 
 	local function Hover(line, title, text, now, cmd)
 		line.hover:Show()
+		-- Chosen without the mouse (a controller): scrolled into view. Not under the mouse, or a
+		-- half-hidden row would scroll the next one under it, and that the next, to the end.
+		local holder = line:GetParent() and line:GetParent().holder
+		if holder and holder.Reveal and not line:IsMouseOver() then
+			holder.Reveal(line)
+		end
 		ShowDetail(title, text, now, cmd)
 	end
 	local function Unhover(line)
@@ -1327,18 +1333,69 @@ local function CreateOptions()
 	end
 	f.Select = Select
 
+	-- Each category's page scrolls, when its settings are more than the window holds: the wheel,
+	-- a slim bar in the gap before the details, and a row chosen with a controller brought into
+	-- view.
+	local function ScrollingPage()
+		local holder = CreateFrame("Frame", nil, content)
+		holder:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP, 0)
+		holder:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", PANE_GAP, 0)
+		holder:SetWidth(LIST_WIDTH)
+		holder:Hide()
+		local scroll = CreateFrame("ScrollFrame", nil, holder)
+		scroll:SetAllPoints()
+		local child = CreateFrame("Frame", nil, scroll)
+		child:SetSize(LIST_WIDTH, 1)
+		scroll:SetScrollChild(child)
+		local bar
+		local function MaxScroll()
+			return math.max(0, math.floor((child:GetHeight() or 0) - (scroll:GetHeight() or 0)))
+		end
+		local function ScrollTo(pixels)
+			scroll:SetVerticalScroll(math.max(0, math.min(MaxScroll(), pixels)))
+			bar:Set(math.floor(scroll:GetVerticalScroll() or 0), MaxScroll(), scroll:GetHeight() or 0, child:GetHeight() or 0)
+		end
+		bar = UI.ScrollBar(holder, ScrollTo)
+		bar:SetPoint("TOPLEFT", holder, "TOPRIGHT", 0, 0)
+		bar:SetPoint("BOTTOMLEFT", holder, "BOTTOMRIGHT", 0, 0)
+		bar:Hide()
+		scroll:EnableMouseWheel(true)
+		scroll:SetScript("OnMouseWheel", function(self, delta)
+			ScrollTo((self:GetVerticalScroll() or 0) - delta * ROW * 2)
+		end)
+		local function Fit()
+			ScrollTo(scroll:GetVerticalScroll() or 0)
+		end
+		holder:SetScript("OnShow", Fit)
+		scroll:SetScript("OnSizeChanged", Fit)
+		-- A row out of sight (or partly), scrolled just far enough to show it whole.
+		function holder.Reveal(line)
+			local top = -(select(5, line:GetPoint(1)) or 0)
+			local view, now = scroll:GetHeight() or 0, scroll:GetVerticalScroll() or 0
+			if view <= 0 then
+				return
+			end
+			if top < now then
+				ScrollTo(top)
+			elseif top + ROW > now + view then
+				ScrollTo(top + ROW - view)
+			end
+		end
+		holder.child, holder.ScrollTo = child, ScrollTo
+		return holder
+	end
+
 	for i, cat in ipairs(categories) do
-		page = CreateFrame("Frame", nil, content)
-		page:SetPoint("TOPLEFT", nav, "TOPRIGHT", PANE_GAP, 0)
-		page:SetPoint("BOTTOMLEFT", nav, "BOTTOMRIGHT", PANE_GAP, 0)
-		page:SetWidth(LIST_WIDTH)
-		page:Hide()
-		pages[cat.name] = page
-		f.pages[#f.pages + 1] = page
+		local holder = ScrollingPage()
+		page = holder.child
+		page.holder = holder
+		pages[cat.name] = holder
+		f.pages[#f.pages + 1] = holder
 		y = 0
 		for _, section in ipairs(cat.sections) do
 			Section(section)
 		end
+		page:SetHeight(math.max(1, -y))
 		f.pageHeights[cat.name] = -y
 
 		local info = CATEGORY[cat.name] or {}

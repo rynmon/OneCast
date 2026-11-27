@@ -257,6 +257,70 @@ local function Paint(c, index, current, rank)
 	return math.max(text, 8 + 40 + 10)
 end
 
+-- Luremaster, the Legacy system's fishing perk, under the ranks: a smaller card (no zones), as the
+-- Ranks view doesn't scroll and the four ranks fill most of it. Tier 3 of the Professions tree,
+-- 2 ranks: 25% then 50% chance of an extra fish while a lure is on (Lure.Luremaster).
+local function PerkCard(parent)
+	local c = ns.UI.Card(parent)
+	c.icon = c:CreateTexture(nil, "ARTWORK")
+	c.icon:SetSize(40, 40)
+	c.icon:SetPoint("TOPLEFT", 12, -8)
+	c.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+	c.icon:SetTexture(C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(ns.Lure.LUREMASTER)
+		or "Interface\\Icons\\INV_Misc_Orb_03")
+	c.check = c:CreateTexture(nil, "OVERLAY")
+	c.check:SetSize(18, 18)
+	c.check:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", 4, -4)
+	if ns.UI.HasAtlas("UI-LFG-ReadyMark") then
+		c.check:SetAtlas("UI-LFG-ReadyMark")
+	else
+		c.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+	end
+	c.title = c:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	c.title:SetPoint("TOPLEFT", c.icon, "TOPRIGHT", 12, 0)
+	c.status = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	c.status:SetPoint("TOPRIGHT", -12, -10)
+	c.status:SetJustifyH("RIGHT")
+	c.how = c:CreateFontString(nil, "OVERLAY", "OneCastFontHighlightSmall")
+	c.how:SetPoint("TOPLEFT", c.title, "BOTTOMLEFT", 0, -6)
+	c.how:SetPoint("RIGHT", -12, 0)
+	c.how:SetJustifyH("LEFT")
+	c.how:SetWordWrap(true)
+	c:EnableMouse(true)
+	c:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetSpellByID(select(2, ns.Lure.Luremaster()) or ns.Lure.LUREMASTER)
+		GameTooltip:Show()
+	end)
+	c:SetScript("OnLeave", GameTooltip_Hide)
+	return c
+end
+
+local function PaintPerk(c)
+	local chance = ns.Lure.Luremaster()
+	local rank = chance and (chance >= ns.Lure.LUREMASTER_MAX and 2 or 1) or 0
+	c.title:SetText(L["Luremaster"] .. "  " .. GREY .. L["Legacy perk"] .. "|r")
+	c.check:SetShown(rank == 2)
+	c.icon:SetDesaturated(rank == 0)
+	local how
+	if rank == 0 then
+		c.status:SetText(GREY .. L["Not learned|r"])
+		how = "|cffffffff" .. string.format(L["Learn it in the Legacy system's Professions tree (tier 3): while a lure is on, a %d%% chance of an extra fish at rank 1, %d%% at rank 2."],
+			ns.Lure.LUREMASTER_MAX / 2, ns.Lure.LUREMASTER_MAX) .. "|r"
+	else
+		c.status:SetText((rank == 2 and GOOD or GOLD) .. string.format(L["Rank %d of 2: %d%%|r"], rank, chance))
+		local life = OneCastCharDB and OneCastCharDB.lifetime and OneCastCharDB.lifetime.luremaster
+		local extra = life and life.extra or 0
+		how = (rank == 2 and GREY or "|cffffffff")
+			.. string.format(L["A %d%% chance of an extra fish while a lure is on."], chance)
+			.. (rank == 1 and string.format(L[" Rank 2 makes it %d%%."], ns.Lure.LUREMASTER_MAX) or "")
+			.. (extra > 0 and string.format(L[" It's given you %d extra fish so far."], extra) or "") .. "|r"
+	end
+	c.how:SetText(how)
+	c:SetColor(rank == 2 and 0.12 or 1, rank == 2 and 1 or 0.82, rank == 2 and 0 or 0, rank == 0 and 0 or rank == 2 and 0.1 or 0.22)
+	return math.max(8 + (c.title:GetStringHeight() or 14) + 6 + (c.how:GetStringHeight() or 12) + 10, 8 + 40 + 10)
+end
+
 -- Fishing gear: poles first, then what you wear. `from` is where it comes from: Forever's own
 -- where Wowhead's Forever data has it (marked forever), else Classic's from CMaNGOS's world
 -- database (vendors, quest rewards and loot). The bonus is read from the game's own tooltip, so
@@ -677,6 +741,9 @@ local function CreateWindow()
 		f.cards[i] = Card(f.ranksView, r, y)
 		y = y - CARD_HEIGHT
 	end
+	if ns.Lure and ns.Lure.Luremaster then
+		f.perk = PerkCard(f.ranksView)
+	end
 
 	f:SetScript("OnShow", Journey.Refresh)
 	local events = CreateFrame("Frame", nil, f)
@@ -685,6 +752,7 @@ local function CreateWindow()
 	events:RegisterEvent("BAG_UPDATE_DELAYED")
 	events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+	events:RegisterEvent("SPELLS_CHANGED") -- a Legacy perk learned: Luremaster's card
 	-- A swap or a loot fires these in bursts: one refresh for the lot, a moment later.
 	local pending = false
 	events:SetScript("OnEvent", function()
@@ -738,6 +806,14 @@ function Journey.Refresh()
 		c:SetHeight(h)
 		y = y - h
 		learned = learned + (i <= current and 1 or 0)
+	end
+	if frame.perk then
+		local h = PaintPerk(frame.perk)
+		frame.perk:SetIndex(#frame.cards + 1)
+		frame.perk:ClearAllPoints()
+		frame.perk:SetPoint("TOPLEFT", EDGE, y)
+		frame.perk:SetPoint("TOPRIGHT", -EDGE, y)
+		frame.perk:SetHeight(h)
 	end
 	frame.ranksHeader.text:SetText(string.format(L["Ranks  %s(%d of %d learned)|r"], GREY, learned, #frame.cards))
 end

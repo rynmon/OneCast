@@ -6,6 +6,20 @@ local _, ns = ...
 
 ns.CHANGELOG = {
 	{
+		version = "1.2.5",
+		date = "27 November 2026",
+		sections = {
+			{ "New", {
+				{ "Luremaster in your journey.", "The Fisherman's journey has a Luremaster card under the ranks: whether you've learned it in the Legacy system's Professions tree, your rank and chance, and how many extra fish it's given you." },
+			} },
+			{ "Changed", {
+				{ "Clearer name.", "Open clams with the cast key is now Cast key opens containers, since it opens crates and bloated fish too. It's the same setting, and /onecast openclams still turns it on and off." },
+				{ "Full bags, explained.", "With your bags full, Cast key opens containers can't open a clam or crate, so it casts instead. It now tells you so once in chat, until you make room. It follows Warn when your bags are full." },
+				{ "Options pages scroll.", "A category with more settings than the window holds scrolls, with the mouse wheel or a bar at its side, and a setting chosen with a controller scrolls into view. Nothing needs it yet, so nothing looks different for now." },
+			} },
+		},
+	},
+	{
 		version = "1.2.4",
 		date = "26 November 2026",
 		sections = {
